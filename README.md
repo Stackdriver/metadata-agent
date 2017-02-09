@@ -1,1 +1,1 @@
-# metadata-agent
+This is the Stackdriver metadata agent.
