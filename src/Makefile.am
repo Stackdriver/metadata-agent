@@ -1,6 +1,7 @@
 # SUBDIRS += daemon
 
-# AM_CPPFLAGS = -I$(srcdir)/daemon
+AM_CPPFLAGS =
+#AM_CPPFLAGS += -I$(srcdir)/daemon
 AM_CPPFLAGS += -DPREFIX='"${prefix}"'
 AM_CPPFLAGS += -DCONFIGFILE='"${sysconfdir}/${PACKAGE_NAME}.conf"'
 AM_CPPFLAGS += -DLOCALSTATEDIR='"${localstatedir}"'

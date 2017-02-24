@@ -3067,7 +3067,7 @@ AC_SUBST(LCC_VERSION_PATCH)
 AC_SUBST(LCC_VERSION_EXTRA)
 AC_SUBST(LCC_VERSION_STRING)
 
-AC_CONFIG_FILES(src/libcollectdclient/collectd/lcc_features.h)
+#AC_CONFIG_FILES(src/libcollectdclient/collectd/lcc_features.h)
 
 AM_CFLAGS="-Wall"
 AM_CXXFLAGS="-Wall"
@@ -3079,7 +3079,8 @@ fi
 AC_SUBST([AM_CFLAGS])
 AC_SUBST([AM_CXXFLAGS])
 
-AC_CONFIG_FILES([Makefile proto/Makefile src/Makefile src/daemon/Makefile src/collectd.conf src/libcollectdclient/Makefile src/libcollectdclient/libcollectdclient.pc src/liboconfig/Makefile bindings/Makefile bindings/java/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile])
+#AC_CONFIG_FILES([proto/Makefile src/daemon/Makefile src/collectd.conf src/libcollectdclient/Makefile src/libcollectdclient/libcollectdclient.pc src/liboconfig/Makefile bindings/Makefile bindings/java/Makefile])
 AC_OUTPUT
 
 if test "x$with_librrd" = "xyes" \

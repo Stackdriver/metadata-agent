@@ -1,12 +1,13 @@
 ACLOCAL_AMFLAGS = -I libltdl/m4
 
-SUBDIRS = jsoncpp
+SUBDIRS =
 
 if BUILD_INCLUDED_LTDL
 SUBDIRS += libltdl
 endif
 
-SUBDIRS += proto src bindings .
+SUBDIRS += src .
+#SUBDIRS += proto bindings
 
 AM_CPPFLAGS = $(LTDLINCL)
 
