@@ -1,9 +1,9 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_PREREQ([2.60])
 AC_INIT([metadata-agent],[m4_esyscmd(./version-gen.sh)])
-AC_CONFIG_SRCDIR(src/target_set.c)
+AC_CONFIG_SRCDIR(src/metadatad.cc)
 AC_CONFIG_HEADERS(src/config.h)
-# AC_CONFIG_AUX_DIR([libltdl/config])
+AC_CONFIG_AUX_DIR([libltdl/config])
 # AC_CONFIG_SUBDIRS([src/libmongoc])
 
 dnl older automake's default of ARFLAGS=cru is noisy on newer binutils;
