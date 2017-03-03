@@ -3,12 +3,10 @@
 
 //#include "config.h"
 
-#include <map>
-#include <memory>
+#include <chrono>
 #include <mutex>
 #include <string>
 #include <thread>
-#include <utility>
 
 #include "resource.h"
 #include "api_server.h"
@@ -19,37 +17,49 @@ namespace google {
 // All specific metadata updaters inherit from this.
 class PollingMetadataUpdater {
  public:
-  PollingMetadataUpdater(double period_s, MetadataApiServer* store);
+  struct Metadata {
+    Metadata(const std::string& id_,
+             const MonitoredResource& resource_,
+             const std::string& metadata_)
+        : id(id_), resource(resource_), metadata(metadata_) {}
+    std::string id;
+    MonitoredResource resource;
+    std::string metadata;
+  };
+
+  PollingMetadataUpdater(double period_s, MetadataAgent* store,
+                         std::function<Metadata(void)> query_metadata);
+  ~PollingMetadataUpdater();
 
   // Starts updating.
   void start();
 
- protected:
-  virtual std::tuple<std::string, MonitoredResource, std::string>
-      QueryMetadata() = 0;
+  // Stops updating.
+  void stop();
 
  private:
+  using seconds = std::chrono::duration<double, std::chrono::seconds::period>;
   // Metadata poller.
   void PollForMetadata();
 
   // The polling period in seconds.
-  double period_s_;
+  seconds period_;
+
   // The store for the metadata.
-  MetadataApiServer* store_;
+  MetadataAgent* store_;
+
+  // The function to actually query for metadata.
+  std::function<Metadata(void)> query_metadata_;
+
+  // The timer.
+  std::timed_mutex timer_;
 
   // The thread that polls for new metadata.
-  std::unique_ptr<std::thread> reporter_thread;
+  std::thread reporter_thread_;
 };
 
-// A Docker metadata updater.
-class DockerMetadataUpdater : public PollingMetadataUpdater {
- public:
-  DockerMetadataUpdater(double period_s, MetadataApiServer* store)
-      : PollingMetadataUpdater(period_s, store) {}
- protected:
-  std::tuple<std::string, MonitoredResource, std::string> QueryMetadata()
-      override;
-};
+// A Docker metadata query function.
+PollingMetadataUpdater::Metadata DockerMetadataQuery();
 
 }
 

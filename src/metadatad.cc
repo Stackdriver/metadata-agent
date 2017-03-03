@@ -11,8 +11,9 @@
 #include "updater.h"
 
 int main(int ac, char** av) {
-  google::MetadataApiServer server;
-  google::DockerMetadataUpdater docker_updater(60.0, &server);
+  google::MetadataAgent server;
+  google::PollingMetadataUpdater docker_updater(3.0, &server,
+                                                google::DockerMetadataQuery);
 
   docker_updater.start();
   server.start();

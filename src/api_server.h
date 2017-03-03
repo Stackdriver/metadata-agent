@@ -7,17 +7,21 @@
 #include <memory>
 #include <mutex>
 #include <string>
-#include <thread>
 
 #include "resource.h"
 
 namespace google {
 
-// A server that stores the metadata mapping and implements the metadata agent
-// API.
-class MetadataApiServer {
+// A server that implements the metadata agent API.
+class MetadataApiServer;
+
+// A periodic reporter of metadata to Stackdriver.
+class MetadataReporter;
+
+// Stores the metadata mapping and runs the metadata tasks.
+class MetadataAgent {
  public:
-  MetadataApiServer() = default;
+  MetadataAgent();
 
   // Updates metadata for a given resource.
   void UpdateResource(const std::string& id, const MonitoredResource& resource,
@@ -26,13 +30,11 @@ class MetadataApiServer {
   // Starts serving.
   void start();
 
-  ~MetadataApiServer();
+  ~MetadataAgent();
 
  private:
-  // Metadata API implementation.
-  void ServeMetadataAPI();
-  // Metadata reporter.
-  void ReportMetadata();
+  friend class MetadataApiServer;
+  friend class MetadataReporter;
 
   // A lock that guards access to the maps.
   std::mutex mu_;
@@ -41,10 +43,10 @@ class MetadataApiServer {
   // A map from MonitoredResource to (JSON) resource metadata.
   std::map<MonitoredResource, std::string> metadata_map_;
 
-  // The server thread that listens to a socket.
-  std::unique_ptr<std::thread> server_thread;
-  // The thread that reports new metadata to Stackdriver.
-  std::unique_ptr<std::thread> reporter_thread;
+  // The Metadata API server.
+  std::unique_ptr<MetadataApiServer> metadata_api_server_;
+  // The metadata reporter.
+  std::unique_ptr<MetadataReporter> reporter_;
 };
 
 }
