@@ -12,7 +12,7 @@
 
 int main(int ac, char** av) {
   google::MetadataAgent server;
-  google::PollingMetadataUpdater docker_updater(3.0, &server,
+  google::PollingMetadataUpdater docker_updater(30.0, &server,
                                                 google::DockerMetadataQuery);
 
   docker_updater.start();

@@ -24,7 +24,7 @@ class MonitoredResource {
         || (other.type_ == type_ && other.labels_ < labels_);
   }
 
-  std::string ToJSON();
+  std::string ToJSON() const;
   static MonitoredResource FromJSON(const std::string&);
 
   friend std::ostream& operator<<(std::ostream&, const MonitoredResource&);

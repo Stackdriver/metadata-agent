@@ -1,5 +1,7 @@
 #include "resource.h"
 
+#include <sstream>
+
 namespace google {
 
 std::ostream& operator<<(std::ostream& o, const MonitoredResource& r) {
@@ -8,6 +10,12 @@ std::ostream& operator<<(std::ostream& o, const MonitoredResource& r) {
     o << " " << label.first << ": '" << label.second << "'";
   }
   o << " } }";
+}
+
+std::string MonitoredResource::ToJSON() const {
+  std::ostringstream result;
+  result << *this;
+  return result.str();
 }
 
 }
