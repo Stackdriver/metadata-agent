@@ -1,8 +1,9 @@
 #include "api_server.h"
 
+#include "logging.h"
+
 #include <boost/network/protocol/http/server.hpp>
 #include <boost/range/irange.hpp>
-#include <iostream>
 #include <thread>
 
 namespace http = boost::network::http;
@@ -45,11 +46,11 @@ class MetadataReporter {
 void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
                                             HttpServer::response& response) {
   // TODO
-  std::cerr << std::hex << std::this_thread::get_id() << ": Handler called" << std::endl;
+  LOG(INFO) << "Handler called";
 }
 
 void MetadataApiServer::Handler::log(const HttpServer::string_type& info) {
-  std::cerr << std::hex << std::this_thread::get_id() << ": " << info << std::endl;
+  LOG(ERROR) << info;
 }
 
 
@@ -85,7 +86,7 @@ MetadataReporter::~MetadataReporter() {
 
 void MetadataReporter::run() {
   // TODO
-  std::cerr << std::hex << std::this_thread::get_id() << ": Metadata reporter running" << std::endl;
+  LOG(INFO) << "Metadata reporter running";
 }
 
 MetadataAgent::MetadataAgent() {}
@@ -100,9 +101,9 @@ void MetadataAgent::UpdateResource(const std::string& id,
   // TODO: Add "collected_at".
   // TODO: How do we handle deleted resources?
   // TODO: Do we care if the value was already there?
-  std::cerr << std::hex << std::this_thread::get_id() << ": Updating resource map '" << id << "'->" << resource << std::endl;
+  LOG(INFO) << "Updating resource map '" << id << "'->" << resource;
   resource_map_.insert({id, resource});
-  std::cerr << std::hex << std::this_thread::get_id() << ": Updating metadata map " << resource << "->'" << metadata << "'" << std::endl;
+  LOG(INFO) << "Updating metadata map " << resource << "->'" << metadata << "'";
   metadata_map_.insert({resource, metadata});
 }
 
