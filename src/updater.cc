@@ -85,6 +85,9 @@ std::string InstanceZone() {
   return zone;
 }
 
+constexpr char docker_endpoint_url[] =
+    "unix://%2Fvar%2Frun%2Fdocker.sock/v1.24/containers";
+
 }
 
 std::vector<PollingMetadataUpdater::Metadata> DockerMetadataQuery() {
@@ -92,20 +95,21 @@ std::vector<PollingMetadataUpdater::Metadata> DockerMetadataQuery() {
   LOG(INFO) << "Docker Query called";
   const std::string project_id = NumericProjectId();
   const std::string zone = InstanceZone();
+  const std::string docker_endpoint(docker_endpoint_url);
   http::local_client client;
-  http::local_client::request request("unix://%2Fvar%2Frun%2Fdocker.sock/v1.24/containers/json?all=true");
-  http::local_client::response response = client.get(request);
-  LOG(ERROR) << "Response: " << body(response);
-  std::unique_ptr<json::Value> parsed = json::JSONParser::FromString(body(response));
-  LOG(ERROR) << "Parsed response: " << *parsed;
+  http::local_client::request list_request(docker_endpoint + "/json?all=true");
+  http::local_client::response list_response = client.get(list_request);
+  LOG(ERROR) << "List response: " << body(list_response);
+  std::unique_ptr<json::Value> parsed_list = json::JSONParser::FromString(body(list_response));
+  LOG(ERROR) << "Parsed list: " << *parsed_list;
   std::vector<PollingMetadataUpdater::Metadata> result;
-  if (parsed->type() != json::ArrayType) {
-    LOG(ERROR) << "Response is not an array!";
+  if (parsed_list->type() != json::ArrayType) {
+    LOG(ERROR) << "List response is not an array!";
     return result;
   }
-  const json::Array* parsed_array = parsed->As<json::Array>();
+  const json::Array* container_list = parsed_list->As<json::Array>();
   //result.emplace_back("", MonitoredResource("", {}), "");
-  for (const std::unique_ptr<json::Value>& element : *parsed_array) {
+  for (const std::unique_ptr<json::Value>& element : *container_list) {
     if (element->type() != json::ObjectType) {
       LOG(ERROR) << "Element " << *element << " is not an object!";
       continue;
@@ -121,12 +125,17 @@ std::vector<PollingMetadataUpdater::Metadata> DockerMetadataQuery() {
       continue;
     }
     const std::string id = id_it->second->As<json::String>()->value();
+    http::local_client::request inspect_request(docker_endpoint + "/" + id + "/json");
+    http::local_client::response inspect_response = client.get(inspect_request);
+    LOG(ERROR) << "Inspect response: " << body(inspect_response);
+    std::unique_ptr<json::Value> parsed_metadata = json::JSONParser::FromString(body(inspect_response));
+    LOG(ERROR) << "Parsed metadata: " << *parsed_metadata;
     const MonitoredResource resource("docker_container", {
       {"project_id", project_id},
       {"location", zone},
       {"container_id", id},
     });
-    result.emplace_back("container/" + id, resource, container->ToJSON());
+    result.emplace_back("container/" + id, resource, parsed_metadata->ToJSON());
   }
   return result;
 }
