@@ -1,8 +1,14 @@
 #include "updater.h"
 
+#include "json.h"
+#include "local_stream_http.h"
 #include "logging.h"
 
+#include <boost/network/protocol/http/server.hpp>
+#include <boost/network/protocol/http/client.hpp>
 #include <chrono>
+
+namespace http = boost::network::http;
 
 namespace google {
 
@@ -50,6 +56,10 @@ void PollingMetadataUpdater::PollForMetadata() {
 PollingMetadataUpdater::Metadata DockerMetadataQuery() {
   // TODO
   LOG(INFO) << "Docker Query called";
+  http::local_client client;
+  http::local_client::request request("unix://%2Fvar%2Frun%2Fdocker.sock/v1.26/containers/json");
+  http::local_client::response response = client.get(request);
+  LOG(ERROR) << "Response: " << body(response);
   return PollingMetadataUpdater::Metadata("", MonitoredResource("", {}), "");
 }
 
