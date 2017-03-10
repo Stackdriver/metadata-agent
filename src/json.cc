@@ -67,7 +67,7 @@ std::string JSONSerializer::ToString() {
   return {reinterpret_cast<const char*>(buf_len.first), buf_len.second};
 }
 
-std::string Value::ToJSON() {
+std::string Value::ToJSON() const {
   JSONSerializer serializer;
   Serialize(&serializer);
   return serializer.ToString();
