@@ -67,14 +67,14 @@ public:
       if (o->cancel_token_.expired())
         o->ec_ = boost::asio::error::operation_aborted;
       else {
-        LOG(ERROR) << "async_resolve() " << o->query_.host_name();
+        //LOG(ERROR) << "async_resolve() " << o->query_.host_name();
         struct stat buffer;
         int result = stat(o->query_.host_name().c_str(), &buffer);
         if (result || !S_ISSOCK(buffer.st_mode)) {
           LOG(ERROR) << "resolve: unable to stat or not a socket " << o->query_.host_name();
           o->ec_ = boost::asio::error::host_not_found;
         } else {
-          LOG(ERROR) << "resolve: everything ok with " << o->query_.host_name();
+          //LOG(ERROR) << "resolve: everything ok with " << o->query_.host_name();
           o->ec_ = boost::system::error_code();
         }
       }
@@ -146,21 +146,21 @@ public:
   resolver_service(boost::asio::io_service& io_service)
     : resolver_service_base(io_service)
   {
-    LOG(ERROR) << "Constructing resolver_service()";
+    //LOG(ERROR) << "Constructing resolver_service()";
   }
 
   // Resolve a query to a list of entries.
   iterator_type resolve(implementation_type&, const query_type& query,
       boost::system::error_code& ec)
   {
-    LOG(ERROR) << "resolve() " << query.host_name();
+    //LOG(ERROR) << "resolve() " << query.host_name();
     struct stat buffer;
     int result = stat(query.host_name().c_str(), &buffer);
     if (result || !S_ISSOCK(buffer.st_mode)) {
       LOG(ERROR) << "resolve: unable to stat or not a socket " << query.host_name();
       ec = boost::asio::error::host_not_found;
     } else {
-      LOG(ERROR) << "resolve: everything ok with " << query.host_name();
+      //LOG(ERROR) << "resolve: everything ok with " << query.host_name();
       ec = boost::system::error_code();
     }
     return ec ? iterator_type() : iterator_type::create(
@@ -517,7 +517,7 @@ protected:
             resolver_type::protocol_type()
             , path
             , lexical_cast<string_type>(port));
-        LOG(ERROR) << "Going to resolve path " << path;
+        //LOG(ERROR) << "Going to resolve path " << path;
         resolver_.async_resolve(
             q,
             resolver_strand_->wrap(
@@ -542,7 +542,7 @@ protected:
     {
         typename endpoint_cache::iterator iter;
         bool inserted = false;
-        LOG(ERROR) << "Done resolving " << host << " error " << ec;
+        //LOG(ERROR) << "Done resolving " << host << " error " << ec;
         if (!ec && cache_resolved_) {
             boost::fusion::tie(iter, inserted) =
                 endpoint_cache_.insert(
@@ -671,10 +671,9 @@ struct http_async_connection<tags::http_async_8bit_local_resolve, 1, 1>
     linearize(request, method, version_major, version_minor,
               std::ostreambuf_iterator<typename char_<Tag>::type>(
                   &command_streambuf));
-    const auto data = command_streambuf.prepare(1024);
-    std::size_t s1 = boost::asio::buffer_size(data);
-    const char* p1 = boost::asio::buffer_cast<const char*>(data);
-    LOG(ERROR) << "Full request: " << std::string(p1, s1);
+    //LOG(ERROR) << "Full request: "
+    //           << std::string(boost::asio::buffers_begin(command_streambuf.data()),
+    //                          boost::asio::buffers_end(command_streambuf.data()));
     this->method = method;
     boost::uint16_t port_ = port(request);
     resolve_(resolver_, host(request), port_,
