@@ -7,6 +7,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "resource.h"
 #include "api_server.h"
@@ -27,8 +28,9 @@ class PollingMetadataUpdater {
     std::string metadata;
   };
 
-  PollingMetadataUpdater(double period_s, MetadataAgent* store,
-                         std::function<Metadata(void)> query_metadata);
+  PollingMetadataUpdater(
+      double period_s, MetadataAgent* store,
+      std::function<std::vector<Metadata>(void)> query_metadata);
   ~PollingMetadataUpdater();
 
   // Starts updating.
@@ -49,7 +51,7 @@ class PollingMetadataUpdater {
   MetadataAgent* store_;
 
   // The function to actually query for metadata.
-  std::function<Metadata(void)> query_metadata_;
+  std::function<std::vector<Metadata>(void)> query_metadata_;
 
   // The timer.
   std::timed_mutex timer_;
@@ -59,7 +61,10 @@ class PollingMetadataUpdater {
 };
 
 // A Docker metadata query function.
-PollingMetadataUpdater::Metadata DockerMetadataQuery();
+std::vector<PollingMetadataUpdater::Metadata> DockerMetadataQuery();
+
+// A project id query function.
+std::string NumericProjectId();
 
 }
 
