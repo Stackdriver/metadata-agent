@@ -57,9 +57,11 @@ PollingMetadataUpdater::Metadata DockerMetadataQuery() {
   // TODO
   LOG(INFO) << "Docker Query called";
   http::local_client client;
-  http::local_client::request request("unix://%2Fvar%2Frun%2Fdocker.sock/v1.26/containers/json");
+  http::local_client::request request("unix://%2Fvar%2Frun%2Fdocker.sock/v1.24/containers/json");
   http::local_client::response response = client.get(request);
   LOG(ERROR) << "Response: " << body(response);
+  std::unique_ptr<json::Value> parsed = json::JSONParser::FromString(body(response));
+  LOG(ERROR) << "Parsed response: " << *parsed;
   return PollingMetadataUpdater::Metadata("", MonitoredResource("", {}), "");
 }
 
