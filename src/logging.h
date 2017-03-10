@@ -47,8 +47,8 @@ extern LogStream default_log_stream;
 
 }
 
-#define LOG(SEVERITY) Logger(__FILE__, __LINE__, \
-                             google::Logger::SEVERITY, \
-                             &google::default_log_stream)
+#define LOG(SEVERITY) ::google::Logger(__FILE__, __LINE__, \
+                                       ::google::Logger::SEVERITY, \
+                                       &::google::default_log_stream)
 
 #endif  // LOGGING_H_
