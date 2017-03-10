@@ -28,7 +28,7 @@ struct JSONSerializer {
   std::string ToString();
   void ToStream(std::ostream& stream);
 
-  yajl_gen& gen();
+  yajl_gen& gen() { return gen_; }
 
  private:
   std::pair<const unsigned char*, size_t> buf();
@@ -384,20 +384,20 @@ yajl_callbacks callbacks = {
 }
 
 std::unique_ptr<Value> JSONParser::FromStream(std::istream& stream) {
-  std::unique_ptr<Value> result;
+  JSONBuilder builder;
 
   const int kMax = 65536;
   unsigned char data[kMax];
-  yajl_handle handle = yajl_alloc(&callbacks, NULL, (void*) &result);
+  yajl_handle handle = yajl_alloc(&callbacks, NULL, (void*) &builder);
   yajl_config(handle, yajl_allow_comments, 1);
   //yajl_config(handle, yajl_dont_validate_strings, 1);
 
   for (;;) {
-    stream.read(reinterpret_cast<char*>(&data[0]), kMax);
-    size_t count = stream.gcount();
     if (stream.eof()) {
       break;
     }
+    stream.read(reinterpret_cast<char*>(&data[0]), kMax);
+    size_t count = stream.gcount();
     yajl_parse(handle, data, count);
   }
 
@@ -411,7 +411,12 @@ std::unique_ptr<Value> JSONParser::FromStream(std::istream& stream) {
   }
 
   yajl_free(handle);
-  return result;
+  return builder.value();
+}
+
+std::unique_ptr<Value> JSONParser::FromString(const std::string& input) {
+  std::stringstream stream(input);
+  return FromStream(stream);
 }
 
 }
