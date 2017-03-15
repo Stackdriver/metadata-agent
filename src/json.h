@@ -3,7 +3,10 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
+
+#include "logging.h"
 
 namespace json {
 
@@ -27,13 +30,31 @@ enum Type {
 
 namespace {
 
-template<class T> struct Type_ {};
-template<> struct Type_<Null> { static constexpr Type type = NullType; };
-template<> struct Type_<Boolean> { static constexpr Type type = BooleanType; };
-template<> struct Type_<Number> { static constexpr Type type = NumberType; };
-template<> struct Type_<String> { static constexpr Type type = StringType; };
-template<> struct Type_<Array> { static constexpr Type type = ArrayType; };
-template<> struct Type_<Object> { static constexpr Type type = ObjectType; };
+template<class T> struct TypeHelper {};
+template<> struct TypeHelper<Null> {
+  static constexpr Type type = NullType;
+  static constexpr char name[] = "null";
+};
+template<> struct TypeHelper<Boolean> {
+  static constexpr Type type = BooleanType;
+  static constexpr char name[] = "boolean";
+};
+template<> struct TypeHelper<Number> {
+  static constexpr Type type = NumberType;
+  static constexpr char name[] = "number";
+};
+template<> struct TypeHelper<String> {
+  static constexpr Type type = StringType;
+  static constexpr char name[] = "string";
+};
+template<> struct TypeHelper<Array> {
+  static constexpr Type type = ArrayType;
+  static constexpr char name[] = "array";
+};
+template<> struct TypeHelper<Object> {
+  static constexpr Type type = ObjectType;
+  static constexpr char name[] = "object";
+};
 
 }
 
@@ -51,7 +72,7 @@ class Value {
   // Downcast. Can be instantiated with any of the types above.
   template<class T>
   const T* As() const {
-    return type() == Type_<T>::type ? (T*)this : nullptr;
+    return type() == TypeHelper<T>::type ? (T*)this : nullptr;
   }
 
  protected:
@@ -79,6 +100,8 @@ class Null : public Value {
 
 class Boolean : public Value {
  public:
+  using value_type = bool;
+
   Boolean(bool value) : value_(value) {}
   Boolean(const Boolean&) = default;
 
@@ -96,6 +119,8 @@ class Boolean : public Value {
 
 class Number : public Value {
  public:
+  using value_type = double;
+
   Number(double value) : value_(value) {}
   Number(const Number&) = default;
 
@@ -113,6 +138,8 @@ class Number : public Value {
 
 class String : public Value {
  public:
+  using value_type = const std::string&;
+
   String(const std::string& value) : value_(value) {}
   String(const String&) = default;
 
@@ -128,10 +155,20 @@ class String : public Value {
   std::string value_;
 };
 
+// A wrapper class for unique_ptrs in initializer_lists.
+template<typename T> class rref_capture {
+ public:
+  rref_capture(T&& x) : ptr_(&x) {}
+  operator T&& () const { return std::move(*ptr_); }
+ private:
+  T* ptr_;
+};
+
 class Array : public Value, public std::vector<std::unique_ptr<Value>> {
  public:
   Array() {}
   Array(std::vector<std::unique_ptr<Value>>& elements);
+  Array(std::initializer_list<rref_capture<std::unique_ptr<Value>>> elements);
   Array(const Array& other);
 
   Type type() const override { return ArrayType; }
@@ -145,14 +182,67 @@ class Object : public Value, public std::map<std::string, std::unique_ptr<Value>
  public:
   Object() {}
   Object(std::map<std::string, std::unique_ptr<Value>>& fields);
+  Object(std::initializer_list<std::pair<std::string, rref_capture<std::unique_ptr<Value>>>> fields);
   Object(const Object& other);
 
   Type type() const override { return ObjectType; }
+
+#if 0
+  // Sigh. This would have worked if we had exceptions. But I'm not willing to
+  // go there... Yet...
+  // Scalar field accessors.
+  template<
+      class T,
+      class R = typename std::remove_reference<typename T::value_type>::type>
+  R Get(const std::string& field) const {
+    auto value_it = find(field);
+    if (value_it == end()) {
+      LOG(ERROR) << "There is no " << field << " in " << *this;
+      return R();
+    }
+    if (value_it->second->type() != TypeHelper<T>::type) {
+      LOG(ERROR) << field << " " << *value_it->second
+                 << " is not a " << TypeHelper<T>::name;
+      return R();
+    }
+    return value_it->second->As<T>()->value();
+  }
+#endif
 
  protected:
   void Serialize(JSONSerializer*) const override;
   std::unique_ptr<Value> Clone() const override;
 };
+
+// Factory functions.
+inline std::unique_ptr<Value> null() {
+  return std::unique_ptr<Null>(new Null());
+}
+inline std::unique_ptr<Value> boolean(bool value) {
+  return std::unique_ptr<Boolean>(new Boolean(value));
+}
+inline std::unique_ptr<Value> number(double value) {
+  return std::unique_ptr<Number>(new Number(value));
+}
+inline std::unique_ptr<Value> string(const std::string& value) {
+  return std::unique_ptr<String>(new String(value));
+}
+inline std::unique_ptr<Value> array(
+    std::vector<std::unique_ptr<Value>>&& elements) {
+  return std::unique_ptr<Array>(new Array(std::forward<std::vector<std::unique_ptr<Value>>&>(elements)));
+}
+inline std::unique_ptr<Value> array(
+    std::initializer_list<rref_capture<std::unique_ptr<Value>>> elements) {
+  return std::unique_ptr<Array>(new Array(elements));
+}
+inline std::unique_ptr<Value> object(
+    std::map<std::string, std::unique_ptr<Value>>&& fields) {
+  return std::unique_ptr<Object>(new Object(std::forward<std::map<std::string, std::unique_ptr<Value>>&>(fields)));
+}
+inline std::unique_ptr<Value> object(
+    std::initializer_list<std::pair<std::string, rref_capture<std::unique_ptr<Value>>>> fields) {
+  return std::unique_ptr<Object>(new Object(fields));
+}
 
 class JSONParser {
  public:

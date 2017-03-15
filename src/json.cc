@@ -3,6 +3,7 @@
 #include "json.h"
 
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <utility>
 
@@ -127,6 +128,12 @@ Array::Array(std::vector<std::unique_ptr<Value>>& elements) {
   }
 }
 
+Array::Array(std::initializer_list<rref_capture<std::unique_ptr<Value>>> elements) {
+  for (auto& e : elements) {
+    emplace_back(std::move(e));
+  }
+}
+
 void Array::Serialize(JSONSerializer* serializer) const {
   yajl_gen_array_open(serializer->gen());
   for (const auto& e : *this) {
@@ -145,8 +152,13 @@ Object::Object(const Object& other) {
   }
 }
 
-
 Object::Object(std::map<std::string, std::unique_ptr<Value>>& fields) {
+  for (auto& kv : fields) {
+    emplace(kv.first, std::move(kv.second));
+  }
+}
+
+Object::Object(std::initializer_list<std::pair<std::string, rref_capture<std::unique_ptr<Value>>>> fields) {
   for (auto& kv : fields) {
     emplace(kv.first, std::move(kv.second));
   }
