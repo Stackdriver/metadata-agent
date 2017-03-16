@@ -1,11 +1,16 @@
 #include "api_server.h"
 
-#include "logging.h"
-
+#include <boost/network/protocol/http/client.hpp>
 #include <boost/network/protocol/http/server.hpp>
 #include <boost/range/irange.hpp>
 #include <ostream>
 #include <thread>
+
+#include "json.h"
+#include "logging.h"
+#include "oauth2.h"
+#include "time.h"
+#include "updater.h"
 
 namespace http = boost::network::http;
 
@@ -39,13 +44,22 @@ class MetadataApiServer {
 
 class MetadataReporter {
  public:
-  MetadataReporter(const MetadataAgent& agent);
+  MetadataReporter(const MetadataAgent& agent, double period_s);
   ~MetadataReporter();
 
  private:
-  void run();
+  using seconds = std::chrono::duration<double, std::chrono::seconds::period>;
+  // Metadata reporter.
+  void ReportMetadata();
+
+  // Send the given set of metadata.
+  void SendMetadataRequest(
+      std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata);
 
   const MetadataAgent& agent_;
+  OAuth2 auth_;
+  // The reporting period in seconds.
+  seconds period_;
   std::thread reporter_thread_;
 };
 
@@ -116,17 +130,59 @@ MetadataApiServer::~MetadataApiServer() {
   }
 }
 
-MetadataReporter::MetadataReporter(const MetadataAgent& agent)
+MetadataReporter::MetadataReporter(const MetadataAgent& agent, double period_s)
     : agent_(agent),
-      reporter_thread_(std::bind(&MetadataReporter::run, this)) {}
+      period_(period_s),
+      reporter_thread_(std::bind(&MetadataReporter::ReportMetadata, this)) {}
 
 MetadataReporter::~MetadataReporter() {
   reporter_thread_.join();
 }
 
-void MetadataReporter::run() {
-  // TODO
-  LOG(INFO) << "Metadata reporter running";
+void MetadataReporter::ReportMetadata() {
+  LOG(INFO) << "Metadata reporter started";
+  // TODO: Do we need to be able to stop this?
+  while (true) {
+    LOG(INFO) << "Sending metadata request to server";
+    SendMetadataRequest(agent_.GetMetadataMap());
+    LOG(INFO) << "Metadata request sent successfully";
+    std::this_thread::sleep_for(period_);
+  }
+  LOG(INFO) << "Metadata reporter exiting";
+}
+
+void MetadataReporter::SendMetadataRequest(
+    std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata) {
+  LOG(INFO) << "Sending request to the server";
+  const std::string project_id = NumericProjectId();
+
+  std::vector<std::unique_ptr<json::Value>> entries;
+  for (auto& entry : metadata) {
+    const MonitoredResource& resource = entry.first;
+    MetadataAgent::Metadata& metadata = entry.second;
+    entries.emplace_back(json::object({  // MonitoredResourceMetadata
+      {"monitored_resource", resource.ToJSON()},
+      {"metadata", std::move(metadata.metadata)},
+      {"metadata_version", json::string(metadata.version)},
+      {"is_deleted", json::boolean(metadata.is_deleted)},
+      {"created_at", json::string(rfc3339::ToString(metadata.created_at))},
+      {"collected_at", json::string(rfc3339::ToString(metadata.collected_at))},
+    }));
+  }
+  std::unique_ptr<json::Value> update_metadata_request = json::object({
+    {"name", json::string("projects/" + project_id)},
+    {"entries", json::array(std::move(entries))},
+  });
+
+  http::client client;
+  http::client::request request(
+      "https://monitoring.googleapis.com/v3/projects/" + project_id +
+      "/metricDescriptors");
+  auth_.AddAuthHeader(&request);
+  request << boost::network::body(update_metadata_request->ToString());
+  http::client::response response = client.post(request);
+  //project_id = body(response);
+  LOG(INFO) << "Metadata reporter exiting";
 }
 
 MetadataAgent::MetadataAgent() {}
@@ -135,21 +191,39 @@ MetadataAgent::~MetadataAgent() {}
 
 void MetadataAgent::UpdateResource(const std::string& id,
                                    const MonitoredResource& resource,
-                                   const std::string& metadata) {
+                                   Metadata&& entry) {
   std::lock_guard<std::mutex> lock(mu_);
-
   // TODO: Add "collected_at".
   // TODO: How do we handle deleted resources?
   // TODO: Do we care if the value was already there?
   LOG(INFO) << "Updating resource map '" << id << "'->" << resource;
-  resource_map_.insert({id, resource});
-  LOG(INFO) << "Updating metadata map " << resource << "->'" << metadata << "'";
-  metadata_map_.insert({resource, metadata});
+  resource_map_.emplace(id, resource);
+  LOG(INFO) << "Updating metadata map " << resource << "->{"
+            << "version: " << entry.version
+            << "is_deleted: " << entry.is_deleted
+            << "created_at: " << rfc3339::ToString(entry.created_at)
+            << "collected_at: " << rfc3339::ToString(entry.collected_at)
+            << "metadata: " << *entry.metadata
+            << "}";
+  metadata_map_.emplace(resource, std::move(entry));
+}
+
+std::map<MonitoredResource, MetadataAgent::Metadata>
+    MetadataAgent::GetMetadataMap() const {
+  std::lock_guard<std::mutex> lock(mu_);
+
+  std::map<MonitoredResource, Metadata> result;
+  for (const auto& kv : metadata_map_) {
+    const MonitoredResource& resource = kv.first;
+    const Metadata& metadata = kv.second;
+    result.emplace(resource, metadata.Clone());
+  }
+  return result;
 }
 
 void MetadataAgent::start() {
   metadata_api_server_.reset(new MetadataApiServer(*this, 3, "0.0.0.0", 8000));
-  reporter_.reset(new MetadataReporter(*this));
+  reporter_.reset(new MetadataReporter(*this, 60));
 }
 
 }

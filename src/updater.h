@@ -18,19 +18,19 @@ namespace google {
 // All specific metadata updaters inherit from this.
 class PollingMetadataUpdater {
  public:
-  struct Metadata {
-    Metadata(const std::string& id_,
-             const MonitoredResource& resource_,
-             const std::string& metadata_)
-        : id(id_), resource(resource_), metadata(metadata_) {}
+  struct ResourceMetadata {
+    ResourceMetadata(const std::string& id_,
+                     const MonitoredResource& resource_,
+                     MetadataAgent::Metadata&& metadata_)
+        : id(id_), resource(resource_), metadata(std::move(metadata_)) {}
     std::string id;
     MonitoredResource resource;
-    std::string metadata;
+    MetadataAgent::Metadata metadata;
   };
 
   PollingMetadataUpdater(
       double period_s, MetadataAgent* store,
-      std::function<std::vector<Metadata>(void)> query_metadata);
+      std::function<std::vector<ResourceMetadata>()> query_metadata);
   ~PollingMetadataUpdater();
 
   // Starts updating.
@@ -51,7 +51,7 @@ class PollingMetadataUpdater {
   MetadataAgent* store_;
 
   // The function to actually query for metadata.
-  std::function<std::vector<Metadata>(void)> query_metadata_;
+  std::function<std::vector<ResourceMetadata>()> query_metadata_;
 
   // The timer.
   std::timed_mutex timer_;
@@ -61,7 +61,7 @@ class PollingMetadataUpdater {
 };
 
 // A Docker metadata query function.
-std::vector<PollingMetadataUpdater::Metadata> DockerMetadataQuery();
+std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery();
 
 // A project id query function.
 std::string NumericProjectId();
