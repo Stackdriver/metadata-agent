@@ -39,21 +39,30 @@ void PollingMetadataUpdater::stop() {
 }
 
 void PollingMetadataUpdater::PollForMetadata() {
-  // An unlocked timer means we should stop updating.
-  LOG(INFO) << "Trying to unlock the timer";
-  auto start = std::chrono::high_resolution_clock::now();
-  while (!timer_.try_lock_for(period_)) {
-    auto now = std::chrono::high_resolution_clock::now();
-    // Detect spurious wakeups.
-    if (now - start < period_) continue;
-    LOG(INFO) << " Timer unlock timed out after " << std::chrono::duration_cast<seconds>(now - start).count() << "s (good)";
-    start = now;
+  bool done = false;
+  do {
     std::vector<ResourceMetadata> result_vector = query_metadata_();
     for (ResourceMetadata& result : result_vector) {
       store_->UpdateResource(
           result.id, result.resource, std::move(result.metadata));
     }
-  }
+    // An unlocked timer means we should stop updating.
+    LOG(INFO) << "Trying to unlock the timer";
+    auto start = std::chrono::high_resolution_clock::now();
+    done = true;
+    while (!timer_.try_lock_for(period_)) {
+      auto now = std::chrono::high_resolution_clock::now();
+      // Detect spurious wakeups.
+      if (now - start >= period_) {
+        LOG(INFO) << " Timer unlock timed out after "
+                  << std::chrono::duration_cast<seconds>(now - start).count()
+                  << "s (good)";
+        start = now;
+        done = false;
+        break;
+      };
+    }
+  } while (!done);
   LOG(INFO) << "Timer unlocked (stop polling)";
 }
 
