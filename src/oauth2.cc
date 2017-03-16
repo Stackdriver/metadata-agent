@@ -56,6 +56,7 @@ constexpr unsigned char base64url_chars[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 }
 
+// See http://stackoverflow.com/questions/180947.
 std::string encode(const std::string &source) {
   std::string result;
 #if 0
@@ -286,13 +287,13 @@ std::unique_ptr<json::Value> ComputeToken(const std::string& credentials_file) {
   auto now = std::chrono::system_clock::now();
   auto exp = now + std::chrono::hours(1);
   std::unique_ptr<json::Value> claim_set_object = json::object({
-    {std::string("iss"), json::string(service_account_email)},
-    {std::string("scope"), json::string("https://www.googleapis.com/auth/monitoring")},
-    {std::string("aud"), json::string("https://www.googleapis.com/oauth2/v3/token")},
-    {std::string("iat"), json::number(SecondsSinceEpoch(now))},
-    {std::string("exp"), json::number(SecondsSinceEpoch(exp))},
+    {"iss", json::string(service_account_email)},
+    {"scope", json::string("https://www.googleapis.com/auth/monitoring")},
+    {"aud", json::string("https://www.googleapis.com/oauth2/v3/token")},
+    {"iat", json::number(SecondsSinceEpoch(now))},
+    {"exp", json::number(SecondsSinceEpoch(exp))},
   });
-  std::string claim_set = base64::encode(claim_set_object->ToJSON());
+  std::string claim_set = base64::encode(claim_set_object->ToString());
   std::string signature = Sign(jwt_header + "." + claim_set, private_key);
   std::string request_body = "grant_type=" + grant_type + "&assertion=" + jwt_header + "." + claim_set + "." + signature;
   http::client::response response = client.get(request);

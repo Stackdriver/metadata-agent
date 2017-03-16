@@ -85,7 +85,7 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
       const MonitoredResource& resource = result->second;
       LOG(INFO) << "Found resource for " << id << ": " << resource;
       response = HttpServer::response::stock_reply(
-          HttpServer::response::ok, resource.ToJSON());
+          HttpServer::response::ok, resource.ToJSON()->ToString());
     }
   }
 }

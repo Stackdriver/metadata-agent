@@ -1,3 +1,6 @@
+#ifndef JSON_H_
+#define JSON_H_
+
 #include <istream>
 #include <ostream>
 #include <map>
@@ -63,7 +66,7 @@ class Value {
  public:
   virtual ~Value() {}
 
-  std::string ToJSON() const;
+  std::string ToString() const;
 
   virtual Type type() const = 0;
 
@@ -156,6 +159,7 @@ class String : public Value {
 };
 
 // A wrapper class for unique_ptrs in initializer_lists.
+// See http://stackoverflow.com/questions/8193102/.
 template<typename T> class rref_capture {
  public:
   rref_capture(T&& x) : ptr_(&x) {}
@@ -167,7 +171,7 @@ template<typename T> class rref_capture {
 class Array : public Value, public std::vector<std::unique_ptr<Value>> {
  public:
   Array() {}
-  Array(std::vector<std::unique_ptr<Value>>& elements);
+  Array(std::vector<std::unique_ptr<Value>>&& elements);
   Array(std::initializer_list<rref_capture<std::unique_ptr<Value>>> elements);
   Array(const Array& other);
 
@@ -181,7 +185,7 @@ class Array : public Value, public std::vector<std::unique_ptr<Value>> {
 class Object : public Value, public std::map<std::string, std::unique_ptr<Value>> {
  public:
   Object() {}
-  Object(std::map<std::string, std::unique_ptr<Value>>& fields);
+  Object(std::map<std::string, std::unique_ptr<Value>>&& fields);
   Object(std::initializer_list<std::pair<std::string, rref_capture<std::unique_ptr<Value>>>> fields);
   Object(const Object& other);
 
@@ -229,7 +233,7 @@ inline std::unique_ptr<Value> string(const std::string& value) {
 }
 inline std::unique_ptr<Value> array(
     std::vector<std::unique_ptr<Value>>&& elements) {
-  return std::unique_ptr<Array>(new Array(std::forward<std::vector<std::unique_ptr<Value>>&>(elements)));
+  return std::unique_ptr<Array>(new Array(std::move(elements)));
 }
 inline std::unique_ptr<Value> array(
     std::initializer_list<rref_capture<std::unique_ptr<Value>>> elements) {
@@ -237,7 +241,7 @@ inline std::unique_ptr<Value> array(
 }
 inline std::unique_ptr<Value> object(
     std::map<std::string, std::unique_ptr<Value>>&& fields) {
-  return std::unique_ptr<Object>(new Object(std::forward<std::map<std::string, std::unique_ptr<Value>>&>(fields)));
+  return std::unique_ptr<Object>(new Object(std::move(fields)));
 }
 inline std::unique_ptr<Value> object(
     std::initializer_list<std::pair<std::string, rref_capture<std::unique_ptr<Value>>>> fields) {
@@ -252,3 +256,4 @@ class JSONParser {
 
 }
 
+#endif  // JSON_H_

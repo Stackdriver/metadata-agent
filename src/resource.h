@@ -7,6 +7,8 @@
 #include <ostream>
 #include <string>
 
+#include "json.h"
+
 namespace google {
 
 class MonitoredResource {
@@ -24,8 +26,8 @@ class MonitoredResource {
         || (other.type_ == type_ && other.labels_ < labels_);
   }
 
-  std::string ToJSON() const;
-  static MonitoredResource FromJSON(const std::string&);
+  std::unique_ptr<json::Value> ToJSON() const;
+  static MonitoredResource FromJSON(const json::Object* json);
 
   friend std::ostream& operator<<(std::ostream&, const MonitoredResource&);
 

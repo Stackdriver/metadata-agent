@@ -135,7 +135,7 @@ std::vector<PollingMetadataUpdater::Metadata> DockerMetadataQuery() {
       {"location", zone},
       {"container_id", id},
     });
-    result.emplace_back("container/" + id, resource, parsed_metadata->ToJSON());
+    result.emplace_back("container/" + id, resource, parsed_metadata->ToString());
   }
   return result;
 }

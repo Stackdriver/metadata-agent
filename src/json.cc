@@ -68,7 +68,7 @@ std::string JSONSerializer::ToString() {
   return {reinterpret_cast<const char*>(buf_len.first), buf_len.second};
 }
 
-std::string Value::ToJSON() const {
+std::string Value::ToString() const {
   JSONSerializer serializer;
   Serialize(&serializer);
   return serializer.ToString();
@@ -122,7 +122,7 @@ Array::Array(const Array& other) {
   }
 }
 
-Array::Array(std::vector<std::unique_ptr<Value>>& elements) {
+Array::Array(std::vector<std::unique_ptr<Value>>&& elements) {
   for (auto& e : elements) {
     emplace_back(std::move(e));
   }
@@ -152,7 +152,7 @@ Object::Object(const Object& other) {
   }
 }
 
-Object::Object(std::map<std::string, std::unique_ptr<Value>>& fields) {
+Object::Object(std::map<std::string, std::unique_ptr<Value>>&& fields) {
   for (auto& kv : fields) {
     emplace(kv.first, std::move(kv.second));
   }
@@ -351,7 +351,7 @@ static int handle_end_array(void* arg) {
     return 0;
   }
   builder->AddValue(
-      std::unique_ptr<Value>(new Array(array_context->elements)));
+      std::unique_ptr<Value>(new Array(std::move(array_context->elements))));
   return 1;
 }
 
@@ -374,7 +374,7 @@ int handle_end_map(void* arg) {
     return 0;
   }
   builder->AddValue(
-      std::unique_ptr<Value>(new Object(object_context->fields)));
+      std::unique_ptr<Value>(new Object(std::move(object_context->fields))));
   return 1;
 }
 
