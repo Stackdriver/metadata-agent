@@ -1,10 +1,15 @@
 #ifndef LOGGING_H_
 #define LOGGING_H_
 
+#include <ctime>
 #include <mutex>
 #include <sstream>
 
 namespace google {
+
+// Thread-safe versions of std:: functions.
+std::tm safe_localtime(const std::time_t* t);
+std::tm safe_gmtime(const std::time_t* t);
 
 class LogStream {
  public:
