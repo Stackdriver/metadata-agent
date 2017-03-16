@@ -5,24 +5,9 @@
 #include <iostream>
 #include <thread>
 
+#include "time.h"
+
 namespace google {
-
-namespace {
-
-std::mutex localtime_mutex;
-std::mutex gmtime_mutex;
-
-}
-
-std::tm safe_localtime(const std::time_t* t) {
-  std::unique_lock<std::mutex> l(localtime_mutex);
-  return *std::localtime(t);
-}
-
-std::tm safe_gmtime(const std::time_t* t) {
-  std::unique_lock<std::mutex> l(gmtime_mutex);
-  return *std::gmtime(t);
-}
 
 Logger::Logger(const char* file, int line, Severity severity, LogStream* stream)
     : file_(file), line_(line), severity_(severity), stream_(stream)

@@ -7,10 +7,6 @@
 
 namespace google {
 
-// Thread-safe versions of std:: functions.
-std::tm safe_localtime(const std::time_t* t);
-std::tm safe_gmtime(const std::time_t* t);
-
 class LogStream {
  public:
   LogStream(std::ostream& out)
