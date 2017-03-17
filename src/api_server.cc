@@ -1,5 +1,6 @@
 #include "api_server.h"
 
+#define BOOST_NETWORK_ENABLE_HTTPS
 #include <boost/network/protocol/http/client.hpp>
 #include <boost/network/protocol/http/server.hpp>
 #include <boost/range/irange.hpp>
@@ -64,7 +65,7 @@ class MetadataReporter {
 };
 
 
-// To allow logging headers.
+// To allow logging headers. TODO: move to a common location.
 std::ostream& operator<<(
     std::ostream& o,
     const MetadataApiServer::HttpServer::request::headers_container_type& hv) {
@@ -72,7 +73,7 @@ std::ostream& operator<<(
   for (const auto& h : hv) {
     o << " " << h.name << ": " << h.value;
   }
-  o << "]";
+  o << " ]";
 }
 
 
@@ -132,6 +133,7 @@ MetadataApiServer::~MetadataApiServer() {
 
 MetadataReporter::MetadataReporter(const MetadataAgent& agent, double period_s)
     : agent_(agent),
+      auth_("/tmp/token.json"),
       period_(period_s),
       reporter_thread_(std::bind(&MetadataReporter::ReportMetadata, this)) {}
 
@@ -141,6 +143,7 @@ MetadataReporter::~MetadataReporter() {
 
 void MetadataReporter::ReportMetadata() {
   LOG(INFO) << "Metadata reporter started";
+  std::this_thread::sleep_for(std::chrono::seconds(3));
   // TODO: Do we need to be able to stop this?
   while (true) {
     LOG(INFO) << "Sending metadata request to server";
@@ -153,6 +156,11 @@ void MetadataReporter::ReportMetadata() {
 
 void MetadataReporter::SendMetadataRequest(
     std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata) {
+  if (metadata.empty()) {
+    LOG(INFO) << "No data to send";
+    return;
+  }
+
   LOG(INFO) << "Sending request to the server";
   const std::string project_id = NumericProjectId();
 
@@ -174,6 +182,8 @@ void MetadataReporter::SendMetadataRequest(
     {"entries", json::array(std::move(entries))},
   });
 
+  LOG(INFO) << "About to send request: " << *update_metadata_request;
+
   http::client client;
   http::client::request request(
       "https://monitoring.googleapis.com/v3/projects/" + project_id +
@@ -181,6 +191,7 @@ void MetadataReporter::SendMetadataRequest(
   auth_.AddAuthHeader(&request);
   request << boost::network::body(update_metadata_request->ToString());
   http::client::response response = client.post(request);
+  // TODO: process response.
   //project_id = body(response);
   LOG(INFO) << "Metadata reporter exiting";
 }
