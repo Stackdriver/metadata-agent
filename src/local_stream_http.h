@@ -578,10 +578,13 @@ template<> struct connection_delegate_factory<tags::http_async_8bit_local_resolv
       boost::asio::io_service & service,
       bool https,
       bool always_verify_peer,
+      int timeout,
       optional<string_type> certificate_filename,
       optional<string_type> verify_path,
       optional<string_type> certificate_file,
-      optional<string_type> private_key_file) {
+      optional<string_type> private_key_file,
+      optional<string_type> ciphers,
+      long ssl_options) {
     return std::make_shared<local_stream_delegate>(service);
   }
 };
@@ -604,15 +607,14 @@ template<> struct async_connection_base<tags::http_async_8bit_local_resolve, 1, 
   // connection implementation with the correct delegate chosen based on the
   // tag.
   static connection_ptr new_connection(
-      resolve_function resolve,
-      resolver_type & resolver,
-      bool follow_redirect,
-      bool always_verify_peer,
-      bool https,
+      resolve_function resolve, resolver_type &resolver, bool follow_redirect,
+      bool always_verify_peer, bool https, int timeout,
       optional<string_type> certificate_filename=optional<string_type>(),
       optional<string_type> const & verify_path=optional<string_type>(),
       optional<string_type> certificate_file=optional<string_type>(),
-      optional<string_type> private_key_file=optional<string_type>());
+      optional<string_type> private_key_file=optional<string_type>(),
+      optional<string_type> ciphers = optional<string_type>(),
+      long ssl_options = 0);
 
   // This is the pure virtual entry-point for all asynchronous connections.
   virtual response start(

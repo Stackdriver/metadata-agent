@@ -25,10 +25,13 @@ async_connection_base<tags::http_async_8bit_local_resolve, 1, 1>::connection_ptr
     bool follow_redirect,
     bool always_verify_peer,
     bool https,
+    int timeout,
     optional<async_connection_base<tags::http_async_8bit_local_resolve, 1, 1>::string_type> certificate_filename,
     optional<async_connection_base<tags::http_async_8bit_local_resolve, 1, 1>::string_type> const & verify_path,
     optional<async_connection_base<tags::http_async_8bit_local_resolve, 1, 1>::string_type> certificate_file,
-    optional<async_connection_base<tags::http_async_8bit_local_resolve, 1, 1>::string_type> private_key_file) {
+    optional<async_connection_base<tags::http_async_8bit_local_resolve, 1, 1>::string_type> private_key_file,
+    optional<async_connection_base<tags::http_async_8bit_local_resolve, 1, 1>::string_type> ciphers,
+    long ssl_options) {
   typedef http_async_connection<Tag,version_major,version_minor>
       async_connection;
   typedef typename delegate_factory<Tag>::type delegate_factory_type;
@@ -41,11 +44,14 @@ async_connection_base<tags::http_async_8bit_local_resolve, 1, 1>::connection_ptr
           delegate_factory_type::new_connection_delegate(
               resolver.get_io_service(),
               https,
+              timeout,
               always_verify_peer,
               certificate_filename,
               verify_path,
               certificate_file,
-              private_key_file)));
+              private_key_file,
+              ciphers,
+              ssl_options)));
   BOOST_ASSERT(temp.get() != 0);
   return temp;
 }
