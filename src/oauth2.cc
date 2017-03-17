@@ -337,10 +337,14 @@ std::unique_ptr<json::Value> ComputeToken(const std::string& credentials_file) {
   LOG(INFO) << "encoded claim_set = " << claim_set;
   std::string signature = base64::encode(
       Sign(jwt_header + "." + claim_set, private_key));
-  std::string request_body = "grant_type=" + grant_type + "&assertion=" + jwt_header + "." + claim_set + "." + signature;
+  std::string request_body =
+      "grant_type=" + grant_type + "&assertion=" +
+      jwt_header + "." + claim_set + "." + signature;
   //request << boost::network::header("Connection", "close");
-  request << boost::network::header("Content-Length", std::to_string(request_body.size()));
-  request << boost::network::header("Content-Type", "application/x-www-form-urlencoded");
+  request << boost::network::header("Content-Length",
+                                    std::to_string(request_body.size()));
+  request << boost::network::header("Content-Type",
+                                    "application/x-www-form-urlencoded");
   request << boost::network::body(request_body);
   LOG(INFO) << "About to send request: " << request.uri().string()
             << " headers: " << request.headers()
