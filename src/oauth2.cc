@@ -1,5 +1,6 @@
 #include "oauth2.h"
 
+#define BOOST_NETWORK_ENABLE_HTTPS
 #include <boost/network/protocol/http/client.hpp>
 #include <boost/network/uri.hpp>
 #include <chrono>
@@ -147,6 +148,14 @@ class PKey {
     }
   }
 
+  std::string ToString() const {
+    std::unique_ptr<BIO, BIO_Deleter> mem(BIO_new(BIO_s_mem()));
+    EVP_PKEY_print_private(mem.get(), private_key_.get(), 0, NULL);
+    char* pp;
+    long len = BIO_get_mem_data(mem.get(), &pp);
+    return std::string(pp, len);
+  }
+
   EVP_PKEY* private_key() const {
     // A const_cast is fine because this is passed into functions that don't
     // modify pkey, but have silly signatures.
@@ -166,12 +175,17 @@ class Finally {
 };
 
 std::string Sign(const std::string& data, const PKey& pkey) {
+#if 0
+  LOG(ERROR) << "Signing '" << data << "' with '" << pkey.ToString() << "'";
+#endif
   unsigned int capacity = EVP_PKEY_size(pkey.private_key());
   std::unique_ptr<unsigned char> result(new unsigned char[capacity]);
 
   char error[1024];
 
   EVP_MD_CTX ctx;
+  EVP_SignInit(&ctx, EVP_sha256());
+
   Finally cleanup([&ctx, &error]() {
     if (EVP_MD_CTX_cleanup(&ctx) == 0) {
       ERR_error_string_n(ERR_get_error(), error, sizeof(error));
@@ -179,9 +193,7 @@ std::string Sign(const std::string& data, const PKey& pkey) {
     }
   });
 
-  EVP_SignInit(&ctx, EVP_sha256());
-
-  if (EVP_SignUpdate(&ctx, result.get(), capacity) == 0) {
+  if (EVP_SignUpdate(&ctx, data.data(), data.size()) == 0) {
     ERR_error_string_n(ERR_get_error(), error, sizeof(error));
     LOG(ERROR) << "EVP_SignUpdate failed: " << error;
     return "";
@@ -193,7 +205,12 @@ std::string Sign(const std::string& data, const PKey& pkey) {
     LOG(ERROR) << "EVP_SignFinal failed: " << error;
     return "";
   }
-  return std::string(reinterpret_cast<char*>(result.get()));
+#if 0
+  for (int i = 0; i < actual_result_size; ++i) {
+    LOG(ERROR) << "Signature char '" << static_cast<int>(result.get()[i]) << "'";
+  }
+#endif
+  return std::string(reinterpret_cast<char*>(result.get()), actual_result_size);
 }
 
 double SecondsSinceEpoch(
@@ -201,6 +218,19 @@ double SecondsSinceEpoch(
   return std::chrono::duration_cast<std::chrono::seconds>(
       t.time_since_epoch()).count();
 }
+
+
+// To allow logging headers. TODO: move to a common location.
+std::ostream& operator<<(
+    std::ostream& o,
+    const http::client::request::headers_container_type& hv) {
+  o << "[";
+  for (const auto& h : hv) {
+    o << " " << h.first << ": " << h.second;
+  }
+  o << " ]";
+}
+
 
 std::unique_ptr<json::Value> ComputeToken(const std::string& credentials_file) {
   std::string filename = credentials_file;
@@ -219,6 +249,7 @@ std::unique_ptr<json::Value> ComputeToken(const std::string& credentials_file) {
   }
   LOG(INFO) << "Reading credentials from " << filename;
   std::unique_ptr<json::Value> creds_json = json::JSONParser::FromStream(input);
+  LOG(INFO) << "Retrieved credentials from " << filename << ": " << *creds_json;
   if (creds_json->type() != json::ObjectType) {
     LOG(ERROR) << "Credentials " << *creds_json << " is not an object!";
     return nullptr;
@@ -249,6 +280,8 @@ std::unique_ptr<json::Value> ComputeToken(const std::string& credentials_file) {
   const std::string private_key_pem =
       key_it->second->As<json::String>()->value();
 
+  LOG(INFO) << "Retrieved private key from " << filename;
+
   PKey private_key(private_key_pem);
 
   // Make a POST request to https://www.googleapis.com/oauth2/v3/token
@@ -278,12 +311,18 @@ std::unique_ptr<json::Value> ComputeToken(const std::string& credentials_file) {
   // private key to use is the one associated with the service account email
   // address (i.e. the email address specified in the 'iss' field above).
 
+  LOG(INFO) << "Getting an OAuth2 token";
   http::client client;
   http::client::request request("https://www.googleapis.com/oauth2/v3/token");
   std::string grant_type = boost::network::uri::encoded(
       "urn:ietf:params:oauth:grant-type:jwt-bearer");
-  std::string jwt_header = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9";
-  // TODO: base64::encode("{\"alg\":\"RS256\",\"typ\":\"JWT\"}")
+  //std::string jwt_header = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9";
+  //std::string jwt_header = base64::encode("{\"alg\":\"RS256\",\"typ\":\"JWT\"}");
+  std::unique_ptr<json::Value> jwt_object = json::object({
+    {"alg", json::string("RS256")},
+    {"typ", json::string("JWT")},
+  });
+  std::string jwt_header = base64::encode(jwt_object->ToString());
   auto now = std::chrono::system_clock::now();
   auto exp = now + std::chrono::hours(1);
   std::unique_ptr<json::Value> claim_set_object = json::object({
@@ -293,10 +332,20 @@ std::unique_ptr<json::Value> ComputeToken(const std::string& credentials_file) {
     {"iat", json::number(SecondsSinceEpoch(now))},
     {"exp", json::number(SecondsSinceEpoch(exp))},
   });
+  LOG(INFO) << "claim_set = " << claim_set_object->ToString();
   std::string claim_set = base64::encode(claim_set_object->ToString());
-  std::string signature = Sign(jwt_header + "." + claim_set, private_key);
+  LOG(INFO) << "encoded claim_set = " << claim_set;
+  std::string signature = base64::encode(
+      Sign(jwt_header + "." + claim_set, private_key));
   std::string request_body = "grant_type=" + grant_type + "&assertion=" + jwt_header + "." + claim_set + "." + signature;
-  http::client::response response = client.get(request);
+  //request << boost::network::header("Connection", "close");
+  request << boost::network::header("Content-Length", std::to_string(request_body.size()));
+  request << boost::network::header("Content-Type", "application/x-www-form-urlencoded");
+  request << boost::network::body(request_body);
+  LOG(INFO) << "About to send request: " << request.uri().string()
+            << " headers: " << request.headers()
+            << " body: " << request.body();
+  http::client::response response = client.post(request);
   LOG(ERROR) << "Token response: " << body(response);
   std::unique_ptr<json::Value> parsed_token = json::JSONParser::FromString(body(response));
   LOG(ERROR) << "Parsed token: " << *parsed_token;
