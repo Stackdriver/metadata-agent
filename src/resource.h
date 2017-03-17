@@ -26,7 +26,7 @@ class MonitoredResource {
         || (other.type_ == type_ && other.labels_ < labels_);
   }
 
-  std::unique_ptr<json::Value> ToJSON() const;
+  json::value ToJSON() const;
   static MonitoredResource FromJSON(const json::Object* json);
 
   friend std::ostream& operator<<(std::ostream&, const MonitoredResource&);

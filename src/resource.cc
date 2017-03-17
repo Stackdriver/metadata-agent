@@ -12,8 +12,8 @@ std::ostream& operator<<(std::ostream& o, const MonitoredResource& r) {
   o << " } }";
 }
 
-std::unique_ptr<json::Value> MonitoredResource::ToJSON() const {
-  std::map<std::string, std::unique_ptr<json::Value>> labels;
+json::value MonitoredResource::ToJSON() const {
+  std::map<std::string, json::value> labels;
   for (const auto& kv : labels_) {
     labels.emplace(kv.first, json::string(kv.second));
   }

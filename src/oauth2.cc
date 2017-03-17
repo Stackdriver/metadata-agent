@@ -30,7 +30,7 @@ std::string GetString(const json::Object* obj, const std::string& field) {
     LOG(ERROR) << "There is no " << field << " in " << *obj;
     return "";
   }
-  if (value_it->second->type() != json::StringType) {
+  if (!value_it->second->Is<json::String>()) {
     LOG(ERROR) << field << " " << *value_it->second << " is not a string";
     return "";
   }
@@ -39,13 +39,13 @@ std::string GetString(const json::Object* obj, const std::string& field) {
 }
 #endif
 
-std::unique_ptr<json::Value> GetMetadataToken() {
+json::value GetMetadataToken() {
   http::client client;
   http::client::request request("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token");
   request << boost::network::header("Metadata-Flavor", "Google");
   http::client::response response = client.get(request);
   LOG(ERROR) << "Token response: " << body(response);
-  std::unique_ptr<json::Value> parsed_token = json::JSONParser::FromString(body(response));
+  json::value parsed_token = json::JSONParser::FromString(body(response));
   LOG(ERROR) << "Parsed token: " << *parsed_token;
   return parsed_token;
 }
@@ -232,7 +232,7 @@ std::ostream& operator<<(
 }
 
 
-std::unique_ptr<json::Value> ComputeToken(const std::string& credentials_file) {
+json::value ComputeToken(const std::string& credentials_file) {
   std::string filename = credentials_file;
   if (filename.empty()) {
     const char* creds_env_var = std::getenv("GOOGLE_APPLICATION_CREDENTIALS");
@@ -248,9 +248,9 @@ std::unique_ptr<json::Value> ComputeToken(const std::string& credentials_file) {
     return nullptr;
   }
   LOG(INFO) << "Reading credentials from " << filename;
-  std::unique_ptr<json::Value> creds_json = json::JSONParser::FromStream(input);
+  json::value creds_json = json::JSONParser::FromStream(input);
   LOG(INFO) << "Retrieved credentials from " << filename << ": " << *creds_json;
-  if (creds_json->type() != json::ObjectType) {
+  if (!creds_json->Is<json::Object>()) {
     LOG(ERROR) << "Credentials " << *creds_json << " is not an object!";
     return nullptr;
   }
@@ -261,7 +261,7 @@ std::unique_ptr<json::Value> ComputeToken(const std::string& credentials_file) {
     LOG(ERROR) << "There is no client_email in " << *creds;
     return nullptr;
   }
-  if (email_it->second->type() != json::StringType) {
+  if (!email_it->second->Is<json::String>()) {
     LOG(ERROR) << "client_email " << *email_it->second << " is not a string";
     return nullptr;
   }
@@ -273,7 +273,7 @@ std::unique_ptr<json::Value> ComputeToken(const std::string& credentials_file) {
     LOG(ERROR) << "There is no private_key in " << *creds;
     return nullptr;
   }
-  if (key_it->second->type() != json::StringType) {
+  if (!key_it->second->Is<json::String>()) {
     LOG(ERROR) << "private_key " << *key_it->second << " is not a string";
     return nullptr;
   }
@@ -318,14 +318,14 @@ std::unique_ptr<json::Value> ComputeToken(const std::string& credentials_file) {
       "urn:ietf:params:oauth:grant-type:jwt-bearer");
   //std::string jwt_header = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9";
   //std::string jwt_header = base64::encode("{\"alg\":\"RS256\",\"typ\":\"JWT\"}");
-  std::unique_ptr<json::Value> jwt_object = json::object({
+  json::value jwt_object = json::object({
     {"alg", json::string("RS256")},
     {"typ", json::string("JWT")},
   });
   std::string jwt_header = base64::encode(jwt_object->ToString());
   auto now = std::chrono::system_clock::now();
   auto exp = now + std::chrono::hours(1);
-  std::unique_ptr<json::Value> claim_set_object = json::object({
+  json::value claim_set_object = json::object({
     {"iss", json::string(service_account_email)},
     {"scope", json::string("https://www.googleapis.com/auth/monitoring")},
     {"aud", json::string("https://www.googleapis.com/oauth2/v3/token")},
@@ -351,7 +351,7 @@ std::unique_ptr<json::Value> ComputeToken(const std::string& credentials_file) {
             << " body: " << request.body();
   http::client::response response = client.post(request);
   LOG(ERROR) << "Token response: " << body(response);
-  std::unique_ptr<json::Value> parsed_token = json::JSONParser::FromString(body(response));
+  json::value parsed_token = json::JSONParser::FromString(body(response));
   LOG(ERROR) << "Parsed token: " << *parsed_token;
 
   return parsed_token;
@@ -365,7 +365,7 @@ std::string OAuth2::GetAuthHeaderValue() {
       token_expiration_ <
           std::chrono::system_clock::now() + std::chrono::seconds(60)) {
     // Token expired; retrieve new value.
-    std::unique_ptr<json::Value> token_json = ComputeToken(credentials_file_);
+    json::value token_json = ComputeToken(credentials_file_);
     if (token_json == nullptr) {
       LOG(INFO) << "Getting auth token from metadata server";
       token_json = std::move(GetMetadataToken());
@@ -374,7 +374,7 @@ std::string OAuth2::GetAuthHeaderValue() {
       LOG(ERROR) << "Unable to get auth token";
       return "";
     }
-    if (token_json->type() != json::ObjectType) {
+    if (!token_json->Is<json::Object>()) {
       LOG(ERROR) << "Token " << *token_json << " is not an object!";
       return "";
     }
@@ -391,7 +391,7 @@ std::string OAuth2::GetAuthHeaderValue() {
       LOG(ERROR) << "There is no access_token in " << *token;
       return "";
     }
-    if (access_token_it->second->type() != json::StringType) {
+    if (!access_token_it->second->Is<json::String>()) {
       LOG(ERROR) << "access_token " << *access_token_it->second << " is not a string";
       return "";
     }
@@ -403,7 +403,7 @@ std::string OAuth2::GetAuthHeaderValue() {
       LOG(ERROR) << "There is no token_type in " << *token;
       return "";
     }
-    if (token_type_it->second->type() != json::StringType) {
+    if (!token_type_it->second->Is<json::String>()) {
       LOG(ERROR) << "token_type " << *token_type_it->second << " is not a string";
       return "";
     }
@@ -415,7 +415,7 @@ std::string OAuth2::GetAuthHeaderValue() {
       LOG(ERROR) << "There is no expires_in in " << *token;
       return "";
     }
-    if (expires_in_it->second->type() != json::NumberType) {
+    if (!expires_in_it->second->Is<json::Number>()) {
       LOG(ERROR) << "expires_in " << *expires_in_it->second << " is not a number";
       return "";
     }

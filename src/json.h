@@ -13,6 +13,9 @@
 
 namespace json {
 
+class Value;
+using value = std::unique_ptr<Value>;
+
 class JSONSerializer;
 class Null;
 class Boolean;
@@ -72,10 +75,16 @@ class Value {
 
   virtual std::unique_ptr<Value> Clone() const = 0;
 
+  // Type check. Can be instantiated with any of the types above.
+  template<class T>
+  bool Is() const {
+    return type() == TypeHelper<T>::type;
+  }
+
   // Downcast. Can be instantiated with any of the types above.
   template<class T>
   const T* As() const {
-    return type() == TypeHelper<T>::type ? (T*)this : nullptr;
+    return Is<T>() ? (T*)this : nullptr;
   }
 
  protected:

@@ -116,17 +116,16 @@ std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery() {
   http::local_client::response list_response = client.get(list_request);
   Timestamp collected_at = std::chrono::high_resolution_clock::now();
   LOG(ERROR) << "List response: " << body(list_response);
-  std::unique_ptr<json::Value> parsed_list =
-      json::JSONParser::FromString(body(list_response));
+  json::value parsed_list = json::JSONParser::FromString(body(list_response));
   LOG(ERROR) << "Parsed list: " << *parsed_list;
   std::vector<PollingMetadataUpdater::ResourceMetadata> result;
-  if (parsed_list->type() != json::ArrayType) {
+  if (!parsed_list->Is<json::Array>()) {
     LOG(ERROR) << "List response is not an array!";
     return result;
   }
   const json::Array* container_list = parsed_list->As<json::Array>();
-  for (const std::unique_ptr<json::Value>& element : *container_list) {
-    if (element->type() != json::ObjectType) {
+  for (const json::value& element : *container_list) {
+    if (!element->Is<json::Object>()) {
       LOG(ERROR) << "Element " << *element << " is not an object!";
       continue;
     }
@@ -136,7 +135,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery() {
       LOG(ERROR) << "There is no container id in " << *container;
       continue;
     }
-    if (id_it->second->type() != json::StringType) {
+    if (!id_it->second->Is<json::String>()) {
       LOG(ERROR) << "Container id " << *id_it->second << " is not a string";
       continue;
     }
@@ -145,7 +144,8 @@ std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery() {
     http::local_client::request inspect_request(docker_endpoint + "/" + id + "/json");
     http::local_client::response inspect_response = client.get(inspect_request);
     LOG(ERROR) << "Inspect response: " << body(inspect_response);
-    std::unique_ptr<json::Value> parsed_metadata = json::JSONParser::FromString(body(inspect_response));
+    json::value parsed_metadata =
+        json::JSONParser::FromString(body(inspect_response));
     LOG(ERROR) << "Parsed metadata: " << *parsed_metadata;
     const MonitoredResource resource("docker_container", {
       {"project_id", project_id},
@@ -153,7 +153,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery() {
       {"container_id", id},
     });
 
-    if (parsed_metadata->type() != json::ObjectType) {
+    if (!parsed_metadata->Is<json::Object>()) {
       LOG(ERROR) << "Metadata is not an object";
       continue;
     }
@@ -164,7 +164,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery() {
       LOG(ERROR) << "There is no created time in " << *container_desc;
       continue;
     }
-    if (created_it->second->type() != json::StringType) {
+    if (!created_it->second->Is<json::String>()) {
       LOG(ERROR) << "Created time " << *created_it->second << " is not a string";
       continue;
     }
@@ -176,7 +176,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery() {
       LOG(ERROR) << "There is no state object in " << *container_desc;
       continue;
     }
-    if (state_it->second->type() != json::ObjectType) {
+    if (!state_it->second->Is<json::Object>()) {
       LOG(ERROR) << "State " << *state_it->second << " is not an object";
       continue;
     }
@@ -186,7 +186,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery() {
       LOG(ERROR) << "There is no dead indicator in " << *state;
       continue;
     }
-    if (dead_it->second->type() != json::BooleanType) {
+    if (!dead_it->second->Is<json::Boolean>()) {
       LOG(ERROR) << "Dead indicator " << *dead_it->second << " is not a boolean";
       continue;
     }

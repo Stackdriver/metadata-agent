@@ -31,7 +31,7 @@ class MetadataAgent {
              bool is_deleted_,
              const Timestamp& created_at_,
              const Timestamp& collected_at_,
-             std::unique_ptr<json::Value> metadata_)
+             json::value metadata_)
         : version(version_), is_deleted(is_deleted_), created_at(created_at_),
           collected_at(collected_at_), metadata(std::move(metadata_)) {}
     Metadata(Metadata&& other)
@@ -47,7 +47,7 @@ class MetadataAgent {
     bool is_deleted;
     Timestamp created_at;
     Timestamp collected_at;
-    std::unique_ptr<json::Value> metadata;
+    json::value metadata;
   };
 
   MetadataAgent();

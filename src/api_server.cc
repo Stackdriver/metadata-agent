@@ -164,7 +164,7 @@ void MetadataReporter::SendMetadataRequest(
   LOG(INFO) << "Sending request to the server";
   const std::string project_id = NumericProjectId();
 
-  std::vector<std::unique_ptr<json::Value>> entries;
+  std::vector<json::value> entries;
   for (auto& entry : metadata) {
     const MonitoredResource& resource = entry.first;
     MetadataAgent::Metadata& metadata = entry.second;
@@ -177,7 +177,7 @@ void MetadataReporter::SendMetadataRequest(
       {"collected_at", json::string(rfc3339::ToString(metadata.collected_at))},
     }));
   }
-  std::unique_ptr<json::Value> update_metadata_request = json::object({
+  json::value update_metadata_request = json::object({
     {"name", json::string("projects/" + project_id)},
     {"entries", json::array(std::move(entries))},
   });
