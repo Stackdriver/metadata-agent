@@ -187,13 +187,16 @@ void MetadataReporter::SendMetadataRequest(
   http::client client;
   http::client::request request(
       "https://monitoring.googleapis.com/v3/projects/" + project_id +
-      "/metricDescriptors");
+      "/updateResourceMetadata");
+  std::string request_body = update_metadata_request->ToString();
+  request << boost::network::header("Content-Length",
+                                    std::to_string(request_body.size()));
+  request << boost::network::header("Content-Type", "application/json");
   auth_.AddAuthHeader(&request);
-  request << boost::network::body(update_metadata_request->ToString());
+  request << boost::network::body(request_body);
   http::client::response response = client.post(request);
+  LOG(INFO) << "Server responded with " << body(response);
   // TODO: process response.
-  //project_id = body(response);
-  LOG(INFO) << "Metadata reporter exiting";
 }
 
 MetadataAgent::MetadataAgent() {}
