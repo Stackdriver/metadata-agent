@@ -213,10 +213,10 @@ void MetadataAgent::UpdateResource(const std::string& id,
   LOG(INFO) << "Updating resource map '" << id << "'->" << resource;
   resource_map_.emplace(id, resource);
   LOG(INFO) << "Updating metadata map " << resource << "->{"
-            << "version: " << entry.version
-            << "is_deleted: " << entry.is_deleted
-            << "created_at: " << rfc3339::ToString(entry.created_at)
-            << "collected_at: " << rfc3339::ToString(entry.collected_at)
+            << "version: " << entry.version << ", "
+            << "is_deleted: " << entry.is_deleted << ", "
+            << "created_at: " << rfc3339::ToString(entry.created_at) << ", "
+            << "collected_at: " << rfc3339::ToString(entry.collected_at) << ", "
             << "metadata: " << *entry.metadata
             << "}";
   metadata_map_.emplace(resource, std::move(entry));
