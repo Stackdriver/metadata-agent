@@ -125,77 +125,56 @@ std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery() {
   }
   const json::Array* container_list = parsed_list->As<json::Array>();
   for (const json::value& element : *container_list) {
-    if (!element->Is<json::Object>()) {
-      LOG(ERROR) << "Element " << *element << " is not an object!";
-      continue;
-    }
-    const json::Object* container = element->As<json::Object>();
-    auto id_it = container->find("Id");
-    if (id_it == container->end()) {
-      LOG(ERROR) << "There is no container id in " << *container;
-      continue;
-    }
-    if (!id_it->second->Is<json::String>()) {
-      LOG(ERROR) << "Container id " << *id_it->second << " is not a string";
-      continue;
-    }
-    const std::string id = id_it->second->As<json::String>()->value();
-    // Inspect the container.
-    http::local_client::request inspect_request(docker_endpoint + "/" + id + "/json");
-    http::local_client::response inspect_response = client.get(inspect_request);
-    LOG(ERROR) << "Inspect response: " << body(inspect_response);
-    json::value parsed_metadata =
-        json::JSONParser::FromString(body(inspect_response));
-    LOG(ERROR) << "Parsed metadata: " << *parsed_metadata;
-    const MonitoredResource resource("docker_container", {
-      {"project_id", project_id},
-      {"location", zone},
-      {"container_id", id},
-    });
+    try {
+      if (!element->Is<json::Object>()) {
+        LOG(ERROR) << "Element " << *element << " is not an object!";
+        continue;
+      }
+      const json::Object* container = element->As<json::Object>();
+      const std::string id = container->Get<json::String>("Id");
+      // Inspect the container.
+      http::local_client::request inspect_request(docker_endpoint + "/" + id + "/json");
+      http::local_client::response inspect_response = client.get(inspect_request);
+      LOG(ERROR) << "Inspect response: " << body(inspect_response);
+      json::value parsed_metadata =
+          json::JSONParser::FromString(body(inspect_response));
+      LOG(ERROR) << "Parsed metadata: " << *parsed_metadata;
+      const MonitoredResource resource("docker_container", {
+        {"project_id", project_id},
+            {"location", zone},
+            {"container_id", id},
+      });
 
-    if (!parsed_metadata->Is<json::Object>()) {
-      LOG(ERROR) << "Metadata is not an object";
-      continue;
-    }
-    const json::Object* container_desc = parsed_metadata->As<json::Object>();
+      if (!parsed_metadata->Is<json::Object>()) {
+        LOG(ERROR) << "Metadata is not an object";
+        continue;
+      }
+      const json::Object* container_desc = parsed_metadata->As<json::Object>();
 
-    auto created_it = container_desc->find("Created");
-    if (created_it == container_desc->end()) {
-      LOG(ERROR) << "There is no created time in " << *container_desc;
-      continue;
-    }
-    if (!created_it->second->Is<json::String>()) {
-      LOG(ERROR) << "Created time " << *created_it->second << " is not a string";
-      continue;
-    }
-    const std::string created_str = created_it->second->As<json::String>()->value();
-    Timestamp created_at = rfc3339::FromString(created_str);
+      const std::string created_str =
+          container_desc->Get<json::String>("Created");
+      Timestamp created_at = rfc3339::FromString(created_str);
 
-    auto state_it = container_desc->find("State");
-    if (state_it == container_desc->end()) {
-      LOG(ERROR) << "There is no state object in " << *container_desc;
-      continue;
-    }
-    if (!state_it->second->Is<json::Object>()) {
-      LOG(ERROR) << "State " << *state_it->second << " is not an object";
-      continue;
-    }
-    const json::Object* state = state_it->second->As<json::Object>();
-    auto dead_it = state->find("Dead");
-    if (dead_it == state->end()) {
-      LOG(ERROR) << "There is no dead indicator in " << *state;
-      continue;
-    }
-    if (!dead_it->second->Is<json::Boolean>()) {
-      LOG(ERROR) << "Dead indicator " << *dead_it->second << " is not a boolean";
-      continue;
-    }
-    bool is_deleted = dead_it->second->As<json::Boolean>()->value();
+      auto state_it = container_desc->find("State");
+      if (state_it == container_desc->end()) {
+        LOG(ERROR) << "There is no state object in " << *container_desc;
+        continue;
+      }
+      if (!state_it->second->Is<json::Object>()) {
+        LOG(ERROR) << "State " << *state_it->second << " is not an object";
+        continue;
+      }
+      const json::Object* state = state_it->second->As<json::Object>();
+      bool is_deleted = state->Get<json::Boolean>("Dead");
 
-    result.emplace_back("container/" + id, resource,
-                        MetadataAgent::Metadata(docker_version, is_deleted,
-                                                created_at, collected_at,
-                                                std::move(parsed_metadata)));
+      result.emplace_back("container/" + id, resource,
+                          MetadataAgent::Metadata(docker_version, is_deleted,
+                                                  created_at, collected_at,
+                                                  std::move(parsed_metadata)));
+    } catch (const json::Exception& e) {
+      LOG(ERROR) << e.what();
+      continue;
+    }
   }
   return result;
 }
