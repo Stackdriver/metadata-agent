@@ -22,6 +22,17 @@
 
 namespace json {
 
+namespace internal {
+
+constexpr char TypeHelper<Null>::name[];
+constexpr char TypeHelper<Boolean>::name[];
+constexpr char TypeHelper<Number>::name[];
+constexpr char TypeHelper<String>::name[];
+constexpr char TypeHelper<Array>::name[];
+constexpr char TypeHelper<Object>::name[];
+
+}  // internal
+
 struct JSONSerializer {
   JSONSerializer();
   ~JSONSerializer();
@@ -431,4 +442,4 @@ std::unique_ptr<Value> JSONParser::FromString(const std::string& input) {
   return FromStream(stream);
 }
 
-}
+}  // json

@@ -13,6 +13,15 @@
 
 namespace json {
 
+// A representation of all JSON-related errors.
+class Exception {
+ public:
+  Exception(const std::string& what) : explanation_(what) {}
+  const std::string& what() const { return explanation_; }
+ private:
+  std::string explanation_;
+};
+
 class Value;
 using value = std::unique_ptr<Value>;
 
@@ -34,7 +43,7 @@ enum Type {
   ObjectType,
 };
 
-namespace {
+namespace internal {
 
 template<class T> struct TypeHelper {};
 template<> struct TypeHelper<Null> {
@@ -78,7 +87,7 @@ class Value {
   // Type check. Can be instantiated with any of the types above.
   template<class T>
   bool Is() const {
-    return type() == TypeHelper<T>::type;
+    return type() == internal::TypeHelper<T>::type;
   }
 
   // Downcast. Can be instantiated with any of the types above.
@@ -200,27 +209,21 @@ class Object : public Value, public std::map<std::string, std::unique_ptr<Value>
 
   Type type() const override { return ObjectType; }
 
-#if 0
-  // Sigh. This would have worked if we had exceptions. But I'm not willing to
-  // go there... Yet...
   // Scalar field accessors.
   template<
       class T,
       class R = typename std::remove_reference<typename T::value_type>::type>
-  R Get(const std::string& field) const {
+  R Get(const std::string& field) const throw(Exception) {
     auto value_it = find(field);
     if (value_it == end()) {
-      LOG(ERROR) << "There is no " << field << " in " << *this;
-      return R();
+      throw json::Exception("There is no " + field + " in " + ToString());
     }
-    if (value_it->second->type() != TypeHelper<T>::type) {
-      LOG(ERROR) << field << " " << *value_it->second
-                 << " is not a " << TypeHelper<T>::name;
-      return R();
+    if (value_it->second->type() != internal::TypeHelper<T>::type) {
+      throw json::Exception(field + " " + value_it->second->ToString() +
+                            " is not a " + internal::TypeHelper<T>::name);
     }
     return value_it->second->As<T>()->value();
   }
-#endif
 
  protected:
   void Serialize(JSONSerializer*) const override;
