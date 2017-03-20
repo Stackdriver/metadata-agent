@@ -24,12 +24,12 @@ namespace json {
 
 namespace internal {
 
-constexpr char TypeHelper<Null>::name[];
-constexpr char TypeHelper<Boolean>::name[];
-constexpr char TypeHelper<Number>::name[];
-constexpr char TypeHelper<String>::name[];
-constexpr char TypeHelper<Array>::name[];
-constexpr char TypeHelper<Object>::name[];
+constexpr const char TypeHelper<Null>::name[];
+constexpr const char TypeHelper<Boolean>::name[];
+constexpr const char TypeHelper<Number>::name[];
+constexpr const char TypeHelper<String>::name[];
+constexpr const char TypeHelper<Array>::name[];
+constexpr const char TypeHelper<Object>::name[];
 
 }  // internal
 

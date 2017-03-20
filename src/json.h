@@ -6,6 +6,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -48,27 +49,36 @@ namespace internal {
 template<class T> struct TypeHelper {};
 template<> struct TypeHelper<Null> {
   static constexpr Type type = NullType;
-  static constexpr char name[] = "null";
+  static constexpr const char name[] = "null";
 };
 template<> struct TypeHelper<Boolean> {
   static constexpr Type type = BooleanType;
-  static constexpr char name[] = "boolean";
+  static constexpr const char name[] = "boolean";
 };
 template<> struct TypeHelper<Number> {
   static constexpr Type type = NumberType;
-  static constexpr char name[] = "number";
+  static constexpr const char name[] = "number";
 };
 template<> struct TypeHelper<String> {
   static constexpr Type type = StringType;
-  static constexpr char name[] = "string";
+  static constexpr const char name[] = "string";
 };
 template<> struct TypeHelper<Array> {
   static constexpr Type type = ArrayType;
-  static constexpr char name[] = "array";
+  static constexpr const char name[] = "array";
 };
 template<> struct TypeHelper<Object> {
   static constexpr Type type = ObjectType;
-  static constexpr char name[] = "object";
+  static constexpr const char name[] = "object";
+};
+
+template<char F, class Enable = void>
+struct ArticleHelper {
+  static constexpr const char* value() { return "a"; }
+};
+template<char F>
+struct ArticleHelper<F, typename std::enable_if<F=='a'||F=='e'||F=='i'||F=='o'||F=='u'>::type> {
+  static constexpr const char* value() { return "an"; }
 };
 
 }
@@ -93,7 +103,7 @@ class Value {
   // Downcast. Can be instantiated with any of the types above.
   template<class T>
   const T* As() const {
-    return Is<T>() ? (T*)this : nullptr;
+    return Is<T>() ? static_cast<const T*>(this) : nullptr;
   }
 
  protected:
@@ -121,8 +131,6 @@ class Null : public Value {
 
 class Boolean : public Value {
  public:
-  using value_type = bool;
-
   Boolean(bool value) : value_(value) {}
   Boolean(const Boolean&) = default;
 
@@ -140,8 +148,6 @@ class Boolean : public Value {
 
 class Number : public Value {
  public:
-  using value_type = double;
-
   Number(double value) : value_(value) {}
   Number(const Number&) = default;
 
@@ -159,8 +165,6 @@ class Number : public Value {
 
 class String : public Value {
  public:
-  using value_type = const std::string&;
-
   String(const std::string& value) : value_(value) {}
   String(const String&) = default;
 
@@ -209,20 +213,53 @@ class Object : public Value, public std::map<std::string, std::unique_ptr<Value>
 
   Type type() const override { return ObjectType; }
 
-  // Scalar field accessors.
-  template<
-      class T,
-      class R = typename std::remove_reference<typename T::value_type>::type>
-  R Get(const std::string& field) const throw(Exception) {
+ private:
+  // Field accessor common functionality.
+  template<class T>
+  const T* GetField(const std::string& field) const throw(Exception) {
     auto value_it = find(field);
     if (value_it == end()) {
       throw json::Exception("There is no " + field + " in " + ToString());
     }
     if (value_it->second->type() != internal::TypeHelper<T>::type) {
+      constexpr const char* name = internal::TypeHelper<T>::name;
+      constexpr const char* article = internal::ArticleHelper<name[0]>::value();
       throw json::Exception(field + " " + value_it->second->ToString() +
-                            " is not a " + internal::TypeHelper<T>::name);
+                            " is not " + article + " " + name);
     }
-    return value_it->second->As<T>()->value();
+    return value_it->second->As<T>();
+  }
+  template <class T, class R>
+  friend struct FieldGetter;
+
+  template<typename T> struct Void { using type = void; };
+
+  // Field accessors.
+  template<class T, class R = void>
+  struct FieldGetter {
+    using return_type = const T*;
+    static const T* GetField(const Object* obj, const std::string& field)
+        throw(Exception) {
+      return obj->GetField<T>(field);
+    }
+  };
+  // Scalar field accessors (for types that define a value() method).
+  template<class T>
+  struct FieldGetter<T, typename Void<decltype(&T::value)>::type> {
+    using value_type = typename std::result_of<decltype(&T::value)(T)>::type;
+    using return_type = typename std::remove_reference<value_type>::type;
+    static return_type GetField(const Object* obj, const std::string& field)
+        throw(Exception) {
+      return obj->GetField<T>(field)->value();
+    }
+  };
+
+ public:
+  // Field accessors.
+  template<class T>
+  typename FieldGetter<T>::return_type Get(const std::string& field) const
+      throw(Exception) {
+    return FieldGetter<T>::GetField(this, field);
   }
 
  protected:

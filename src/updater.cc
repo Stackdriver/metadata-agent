@@ -141,8 +141,8 @@ std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery() {
       LOG(ERROR) << "Parsed metadata: " << *parsed_metadata;
       const MonitoredResource resource("docker_container", {
         {"project_id", project_id},
-            {"location", zone},
-            {"container_id", id},
+        {"location", zone},
+        {"container_id", id},
       });
 
       if (!parsed_metadata->Is<json::Object>()) {
@@ -155,16 +155,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery() {
           container_desc->Get<json::String>("Created");
       Timestamp created_at = rfc3339::FromString(created_str);
 
-      auto state_it = container_desc->find("State");
-      if (state_it == container_desc->end()) {
-        LOG(ERROR) << "There is no state object in " << *container_desc;
-        continue;
-      }
-      if (!state_it->second->Is<json::Object>()) {
-        LOG(ERROR) << "State " << *state_it->second << " is not an object";
-        continue;
-      }
-      const json::Object* state = state_it->second->As<json::Object>();
+      const json::Object* state = container_desc->Get<json::Object>("State");
       bool is_deleted = state->Get<json::Boolean>("Dead");
 
       result.emplace_back("container/" + id, resource,

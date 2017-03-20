@@ -348,33 +348,38 @@ std::string OAuth2::GetAuthHeaderValue() {
       LOG(ERROR) << "Unable to get auth token";
       return "";
     }
-    if (!token_json->Is<json::Object>()) {
-      LOG(ERROR) << "Token " << *token_json << " is not an object!";
+    try {
+      if (!token_json->Is<json::Object>()) {
+        LOG(ERROR) << "Token " << *token_json << " is not an object!";
+        return "";
+      }
+      // This object should be of the form:
+      // {
+      //  "access_token" : $THE_ACCESS_TOKEN,
+      //  "token_type" : "Bearer",
+      //  "expires_in" : 3600
+      // }
+      const json::Object* token = token_json->As<json::Object>();
+
+      const std::string access_token =
+          token->Get<json::String>("access_token");
+      const std::string token_type =
+          token->Get<json::String>("token_type");
+      const double expires_in =
+          token->Get<json::Number>("expires_in");
+
+      if (token_type != "Bearer") {
+        LOG(ERROR) << "Token type is not 'Bearer', but '" << token_type << "'";
+      }
+
+      auth_header_value_ = token_type + " " + access_token;
+      token_expiration_ =
+          std::chrono::system_clock::now() +
+          std::chrono::seconds(static_cast<long>(expires_in));
+    } catch (const json::Exception& e) {
+      LOG(ERROR) << e.what();
       return "";
     }
-    // This object should be of the form:
-    // {
-    //  "access_token" : $THE_ACCESS_TOKEN,
-    //  "token_type" : "Bearer",
-    //  "expires_in" : 3600
-    // }
-    const json::Object* token = token_json->As<json::Object>();
-
-    const std::string access_token =
-        token->Get<json::String>("access_token");
-    const std::string token_type =
-        token->Get<json::String>("token_type");
-    const double expires_in =
-        token->Get<json::Number>("expires_in");
-
-    if (token_type != "Bearer") {
-      LOG(ERROR) << "Token type is not 'Bearer', but '" << token_type << "'";
-    }
-
-    auth_header_value_ = token_type + " " + access_token;
-    token_expiration_ =
-        std::chrono::system_clock::now() +
-        std::chrono::seconds(static_cast<long>(expires_in));
   }
   return auth_header_value_;
 }
