@@ -116,7 +116,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery() {
   http::local_client::response list_response = client.get(list_request);
   Timestamp collected_at = std::chrono::high_resolution_clock::now();
   LOG(ERROR) << "List response: " << body(list_response);
-  json::value parsed_list = json::JSONParser::FromString(body(list_response));
+  json::value parsed_list = json::Parser::FromString(body(list_response));
   LOG(ERROR) << "Parsed list: " << *parsed_list;
   std::vector<PollingMetadataUpdater::ResourceMetadata> result;
   try {
@@ -130,7 +130,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery() {
         http::local_client::response inspect_response = client.get(inspect_request);
         LOG(ERROR) << "Inspect response: " << body(inspect_response);
         json::value parsed_metadata =
-            json::JSONParser::FromString(body(inspect_response));
+            json::Parser::FromString(body(inspect_response));
         LOG(ERROR) << "Parsed metadata: " << *parsed_metadata;
         const MonitoredResource resource("docker_container", {
           {"project_id", project_id},

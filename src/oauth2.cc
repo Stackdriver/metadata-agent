@@ -27,7 +27,7 @@ json::value GetMetadataToken() {
   request << boost::network::header("Metadata-Flavor", "Google");
   http::client::response response = client.get(request);
   LOG(ERROR) << "Token response: " << body(response);
-  json::value parsed_token = json::JSONParser::FromString(body(response));
+  json::value parsed_token = json::Parser::FromString(body(response));
   LOG(ERROR) << "Parsed token: " << *parsed_token;
   return parsed_token;
 }
@@ -231,7 +231,7 @@ json::value ComputeToken(const std::string& credentials_file) {
     return nullptr;
   }
   LOG(INFO) << "Reading credentials from " << filename;
-  json::value creds_json = json::JSONParser::FromStream(input);
+  json::value creds_json = json::Parser::FromStream(input);
   if (creds_json == nullptr) {
     LOG(ERROR) << "Could not parse credentials from " << filename;
     return nullptr;
@@ -317,7 +317,7 @@ json::value ComputeToken(const std::string& credentials_file) {
               << " body: " << request.body();
     http::client::response response = client.post(request);
     LOG(ERROR) << "Token response: " << body(response);
-    json::value parsed_token = json::JSONParser::FromString(body(response));
+    json::value parsed_token = json::Parser::FromString(body(response));
     LOG(ERROR) << "Parsed token: " << *parsed_token;
 
     return parsed_token;

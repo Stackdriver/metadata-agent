@@ -302,7 +302,7 @@ inline std::unique_ptr<Value> object(
   return std::unique_ptr<Object>(new Object(fields));
 }
 
-class JSONParser {
+class Parser {
  public:
   static std::unique_ptr<Value> FromStream(std::istream& stream);
   static std::unique_ptr<Value> FromString(const std::string& input);

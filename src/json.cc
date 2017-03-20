@@ -406,7 +406,7 @@ yajl_callbacks callbacks = {
 
 }
 
-std::unique_ptr<Value> JSONParser::FromStream(std::istream& stream) {
+std::unique_ptr<Value> Parser::FromStream(std::istream& stream) {
   JSONBuilder builder;
 
   const int kMax = 65536;
@@ -437,7 +437,7 @@ std::unique_ptr<Value> JSONParser::FromStream(std::istream& stream) {
   return builder.value();
 }
 
-std::unique_ptr<Value> JSONParser::FromString(const std::string& input) {
+std::unique_ptr<Value> Parser::FromString(const std::string& input) {
   std::stringstream stream(input);
   return FromStream(stream);
 }
