@@ -26,7 +26,6 @@ class Exception {
 class Value;
 using value = std::unique_ptr<Value>;
 
-class JSONSerializer;
 class Null;
 class Boolean;
 class Number;
@@ -45,6 +44,8 @@ enum Type {
 };
 
 namespace internal {
+
+class JSONSerializer;
 
 template<class T> struct TypeHelper {};
 template<> struct TypeHelper<Null> {
@@ -119,7 +120,7 @@ class Value {
   Value() = default;
   Value(const Value&) = default;
 
-  virtual void Serialize(JSONSerializer*) const = 0;
+  virtual void Serialize(internal::JSONSerializer*) const = 0;
 };
 
 class Null : public Value {
@@ -130,7 +131,7 @@ class Null : public Value {
   Type type() const override { return NullType; }
 
  protected:
-  void Serialize(JSONSerializer*) const override;
+  void Serialize(internal::JSONSerializer*) const override;
   std::unique_ptr<Value> Clone() const override;
 };
 
@@ -144,7 +145,7 @@ class Boolean : public Value {
   bool value() const { return value_; }
 
  protected:
-  void Serialize(JSONSerializer*) const override;
+  void Serialize(internal::JSONSerializer*) const override;
   std::unique_ptr<Value> Clone() const override;
 
  private:
@@ -161,7 +162,7 @@ class Number : public Value {
   double value() const { return value_; }
 
  protected:
-  void Serialize(JSONSerializer*) const override;
+  void Serialize(internal::JSONSerializer*) const override;
   std::unique_ptr<Value> Clone() const override;
 
  private:
@@ -178,7 +179,7 @@ class String : public Value {
   const std::string& value() const { return value_; }
 
  protected:
-  void Serialize(JSONSerializer*) const override;
+  void Serialize(internal::JSONSerializer*) const override;
   std::unique_ptr<Value> Clone() const override;
 
  private:
@@ -205,7 +206,7 @@ class Array : public Value, public std::vector<std::unique_ptr<Value>> {
   Type type() const override { return ArrayType; }
 
  protected:
-  void Serialize(JSONSerializer*) const override;
+  void Serialize(internal::JSONSerializer*) const override;
   std::unique_ptr<Value> Clone() const override;
 };
 
@@ -268,7 +269,7 @@ class Object : public Value, public std::map<std::string, std::unique_ptr<Value>
   }
 
  protected:
-  void Serialize(JSONSerializer*) const override;
+  void Serialize(internal::JSONSerializer*) const override;
   std::unique_ptr<Value> Clone() const override;
 };
 

@@ -31,8 +31,6 @@ constexpr const char TypeHelper<String>::name[];
 constexpr const char TypeHelper<Array>::name[];
 constexpr const char TypeHelper<Object>::name[];
 
-}  // internal
-
 struct JSONSerializer {
   JSONSerializer();
   ~JSONSerializer();
@@ -79,23 +77,22 @@ std::string JSONSerializer::ToString() {
   return {reinterpret_cast<const char*>(buf_len.first), buf_len.second};
 }
 
+}  // internal
+
 std::string Value::ToString() const {
-  JSONSerializer serializer;
+  internal::JSONSerializer serializer;
   Serialize(&serializer);
   return serializer.ToString();
-  //std::stringstream stream;
-  //stream << *this;
-  //return stream.str();
 }
 
 std::ostream& operator<<(std::ostream& stream, const Value& value) {
-  JSONSerializer serializer;
+  internal::JSONSerializer serializer;
   value.Serialize(&serializer);
   serializer.ToStream(stream);
   return stream;
 }
 
-void Null::Serialize(JSONSerializer* serializer) const {
+void Null::Serialize(internal::JSONSerializer* serializer) const {
   yajl_gen_null(serializer->gen());
 }
 
@@ -103,7 +100,7 @@ std::unique_ptr<Value> Null::Clone() const {
   return std::unique_ptr<Value>(new Null());
 }
 
-void Boolean::Serialize(JSONSerializer* serializer) const {
+void Boolean::Serialize(internal::JSONSerializer* serializer) const {
   yajl_gen_bool(serializer->gen(), value_);
 }
 
@@ -111,7 +108,7 @@ std::unique_ptr<Value> Boolean::Clone() const {
   return std::unique_ptr<Value>(new Boolean(value_));
 }
 
-void Number::Serialize(JSONSerializer* serializer) const {
+void Number::Serialize(internal::JSONSerializer* serializer) const {
   yajl_gen_double(serializer->gen(), value_);
 }
 
@@ -119,7 +116,7 @@ std::unique_ptr<Value> Number::Clone() const {
   return std::unique_ptr<Value>(new Number(value_));
 }
 
-void String::Serialize(JSONSerializer* serializer) const {
+void String::Serialize(internal::JSONSerializer* serializer) const {
   yajl_gen_string(serializer->gen(), reinterpret_cast<const unsigned char*>(value_.data()), value_.size());
 }
 
@@ -145,7 +142,7 @@ Array::Array(std::initializer_list<rref_capture<std::unique_ptr<Value>>> element
   }
 }
 
-void Array::Serialize(JSONSerializer* serializer) const {
+void Array::Serialize(internal::JSONSerializer* serializer) const {
   yajl_gen_array_open(serializer->gen());
   for (const auto& e : *this) {
     e->Serialize(serializer);
@@ -175,7 +172,7 @@ Object::Object(std::initializer_list<std::pair<std::string, rref_capture<std::un
   }
 }
 
-void Object::Serialize(JSONSerializer* serializer) const {
+void Object::Serialize(internal::JSONSerializer* serializer) const {
   yajl_gen_map_open(serializer->gen());
   for (const auto& e : *this) {
     yajl_gen_string(serializer->gen(), reinterpret_cast<const unsigned char*>(e.first.data()), e.first.size());
