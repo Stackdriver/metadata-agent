@@ -119,53 +119,45 @@ std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery() {
   json::value parsed_list = json::JSONParser::FromString(body(list_response));
   LOG(ERROR) << "Parsed list: " << *parsed_list;
   std::vector<PollingMetadataUpdater::ResourceMetadata> result;
-  if (!parsed_list->Is<json::Array>()) {
-    LOG(ERROR) << "List response is not an array!";
-    return result;
-  }
-  const json::Array* container_list = parsed_list->As<json::Array>();
-  for (const json::value& element : *container_list) {
-    try {
-      if (!element->Is<json::Object>()) {
-        LOG(ERROR) << "Element " << *element << " is not an object!";
+  try {
+    const json::Array* container_list = parsed_list->As<json::Array>();
+    for (const json::value& element : *container_list) {
+      try {
+        const json::Object* container = element->As<json::Object>();
+        const std::string id = container->Get<json::String>("Id");
+        // Inspect the container.
+        http::local_client::request inspect_request(docker_endpoint + "/" + id + "/json");
+        http::local_client::response inspect_response = client.get(inspect_request);
+        LOG(ERROR) << "Inspect response: " << body(inspect_response);
+        json::value parsed_metadata =
+            json::JSONParser::FromString(body(inspect_response));
+        LOG(ERROR) << "Parsed metadata: " << *parsed_metadata;
+        const MonitoredResource resource("docker_container", {
+          {"project_id", project_id},
+          {"location", zone},
+          {"container_id", id},
+        });
+
+        const json::Object* container_desc = parsed_metadata->As<json::Object>();
+
+        const std::string created_str =
+            container_desc->Get<json::String>("Created");
+        Timestamp created_at = rfc3339::FromString(created_str);
+
+        const json::Object* state = container_desc->Get<json::Object>("State");
+        bool is_deleted = state->Get<json::Boolean>("Dead");
+
+        result.emplace_back("container/" + id, resource,
+                            MetadataAgent::Metadata(docker_version, is_deleted,
+                                                    created_at, collected_at,
+                                                    std::move(parsed_metadata)));
+      } catch (const json::Exception& e) {
+        LOG(ERROR) << e.what();
         continue;
       }
-      const json::Object* container = element->As<json::Object>();
-      const std::string id = container->Get<json::String>("Id");
-      // Inspect the container.
-      http::local_client::request inspect_request(docker_endpoint + "/" + id + "/json");
-      http::local_client::response inspect_response = client.get(inspect_request);
-      LOG(ERROR) << "Inspect response: " << body(inspect_response);
-      json::value parsed_metadata =
-          json::JSONParser::FromString(body(inspect_response));
-      LOG(ERROR) << "Parsed metadata: " << *parsed_metadata;
-      const MonitoredResource resource("docker_container", {
-        {"project_id", project_id},
-        {"location", zone},
-        {"container_id", id},
-      });
-
-      if (!parsed_metadata->Is<json::Object>()) {
-        LOG(ERROR) << "Metadata is not an object";
-        continue;
-      }
-      const json::Object* container_desc = parsed_metadata->As<json::Object>();
-
-      const std::string created_str =
-          container_desc->Get<json::String>("Created");
-      Timestamp created_at = rfc3339::FromString(created_str);
-
-      const json::Object* state = container_desc->Get<json::Object>("State");
-      bool is_deleted = state->Get<json::Boolean>("Dead");
-
-      result.emplace_back("container/" + id, resource,
-                          MetadataAgent::Metadata(docker_version, is_deleted,
-                                                  created_at, collected_at,
-                                                  std::move(parsed_metadata)));
-    } catch (const json::Exception& e) {
-      LOG(ERROR) << e.what();
-      continue;
     }
+  } catch (const json::Exception& e) {
+    LOG(ERROR) << e.what();
   }
   return result;
 }

@@ -239,10 +239,6 @@ json::value ComputeToken(const std::string& credentials_file) {
   LOG(INFO) << "Retrieved credentials from " << filename << ": " << *creds_json;
 
   try {
-    if (!creds_json->Is<json::Object>()) {
-      LOG(ERROR) << "Credentials " << *creds_json << " is not an object!";
-      return nullptr;
-    }
     const json::Object* creds = creds_json->As<json::Object>();
 
     const std::string service_account_email =
@@ -349,10 +345,6 @@ std::string OAuth2::GetAuthHeaderValue() {
       return "";
     }
     try {
-      if (!token_json->Is<json::Object>()) {
-        LOG(ERROR) << "Token " << *token_json << " is not an object!";
-        return "";
-      }
       // This object should be of the form:
       // {
       //  "access_token" : $THE_ACCESS_TOKEN,

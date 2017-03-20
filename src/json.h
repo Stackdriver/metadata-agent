@@ -102,8 +102,13 @@ class Value {
 
   // Downcast. Can be instantiated with any of the types above.
   template<class T>
-  const T* As() const {
-    return Is<T>() ? static_cast<const T*>(this) : nullptr;
+  const T* As() const throw(Exception) {
+    if (!Is<T>()) {
+      constexpr const char* name = internal::TypeHelper<T>::name;
+      constexpr const char* article = internal::ArticleHelper<name[0]>::value();
+      throw Exception(ToString() + " is not " + article + " " + name);
+    }
+    return static_cast<const T*>(this);
   }
 
  protected:
