@@ -13,7 +13,8 @@ SRCS=\
      local_stream_delegate.cc \
      json.cc \
      time.cc \
-     base64.cc
+     base64.cc \
+     format.cc
 OBJS=$(SRCS:%.cc=%.o)
 
 metadatad: $(OBJS)
