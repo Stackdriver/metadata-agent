@@ -9,7 +9,7 @@
 #include <mutex>
 #include <string>
 
-#include "agent_config.h"
+#include "configuration.h"
 #include "json.h"
 #include "resource.h"
 

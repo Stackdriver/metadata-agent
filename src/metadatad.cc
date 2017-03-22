@@ -7,7 +7,7 @@
 #include <thread>
 #include <utility>
 
-#include "agent_config.h"
+#include "configuration.h"
 #include "api_server.h"
 #include "updater.h"
 

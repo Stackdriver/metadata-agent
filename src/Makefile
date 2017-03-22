@@ -5,7 +5,7 @@ LDLIBS=-lcppnetlib-uri -lcppnetlib-client-connections -lboost_system -lboost_thr
 SRCS=\
      metadatad.cc \
      api_server.cc \
-     agent_config.cc \
+     configuration.cc \
      updater.cc \
      resource.cc \
      oauth2.cc \
