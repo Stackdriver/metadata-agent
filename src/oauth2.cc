@@ -22,17 +22,6 @@ namespace google {
 
 namespace {
 
-json::value GetMetadataToken() {
-  http::client client;
-  http::client::request request("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token");
-  request << boost::network::header("Metadata-Flavor", "Google");
-  http::client::response response = client.get(request);
-  LOG(ERROR) << "Token response: " << body(response);
-  json::value parsed_token = json::Parser::FromString(body(response));
-  LOG(ERROR) << "Parsed token: " << *parsed_token;
-  return parsed_token;
-}
-
 template<class T, class R, R(*D)(T*)>
 struct Deleter {
   void operator()(T* p) { if (p) D(p); }
@@ -147,7 +136,9 @@ std::ostream& operator<<(
 }
 
 
-json::value ComputeToken(const std::string& credentials_file) {
+}
+
+json::value OAuth2::ComputeToken(const std::string& credentials_file) const {
   std::string filename = credentials_file;
   if (filename.empty()) {
     const char* creds_env_var = std::getenv("GOOGLE_APPLICATION_CREDENTIALS");
@@ -260,6 +251,16 @@ json::value ComputeToken(const std::string& credentials_file) {
   }
 }
 
+json::value OAuth2::GetMetadataToken() const {
+  std::string token_response =
+      environment_.GetMetadataString("instance/service-accounts/default/token");
+  if (token_response.empty()) {
+    return nullptr;
+  }
+  LOG(ERROR) << "Token response: " << token_response;
+  json::value parsed_token = json::Parser::FromString(token_response);
+  LOG(ERROR) << "Parsed token: " << *parsed_token;
+  return parsed_token;
 }
 
 std::string OAuth2::GetAuthHeaderValue() {

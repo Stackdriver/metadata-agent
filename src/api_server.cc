@@ -136,7 +136,7 @@ MetadataApiServer::~MetadataApiServer() {
 MetadataReporter::MetadataReporter(const MetadataAgent& agent, double period_s)
     : agent_(agent),
       environment_(agent.config_),
-      auth_(agent.config_.CredentialsFile()),
+      auth_(environment_),
       period_(period_s),
       reporter_thread_(std::bind(&MetadataReporter::ReportMetadata, this)) {}
 

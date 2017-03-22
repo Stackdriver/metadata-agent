@@ -8,9 +8,10 @@ namespace http = boost::network::http;
 
 namespace google {
 
-namespace {
+Environment::Environment(const MetadataAgentConfiguration& config)
+    : config_(config) {}
 
-std::string GetMetadataString(const std::string& path) {
+std::string Environment::GetMetadataString(const std::string& path) const {
   http::client client;
   http::client::request request(
       "http://metadata.google.internal/computeMetadata/v1/" + path);
@@ -22,13 +23,9 @@ std::string GetMetadataString(const std::string& path) {
     LOG(ERROR) << "Exception: " << e.what()
                << ": 'http://metadata.google.internal/computeMetadata/v1/"
                << path << "'";
+    return "";
   }
 }
-
-}
-
-Environment::Environment(const MetadataAgentConfiguration& config)
-    : config_(config) {}
 
 std::string Environment::NumericProjectId() const {
   static std::string project_id;

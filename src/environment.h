@@ -16,6 +16,8 @@ class Environment {
  private:
   friend class OAuth2;
 
+  std::string GetMetadataString(const std::string& path) const;
+
   const MetadataAgentConfiguration& config_;
 };
 
