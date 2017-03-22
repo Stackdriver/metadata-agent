@@ -73,22 +73,20 @@ std::string GetMetadataString(const std::string& path) {
   http::client::request request(
       "http://metadata.google.internal/computeMetadata/v1/" + path);
   request << boost::network::header("Metadata-Flavor", "Google");
-  http::client::response response = client.get(request);
-  return body(response);
-}
-
-std::string InstanceZone() {
-  // Query the metadata server.
-  // TODO: Other sources?
-  static std::string zone("us-central1-a");
-  if (zone.empty()) {
-    zone = GetMetadataString("instance/zone");
+  try {
+    http::client::response response = client.get(request);
+    return body(response);
+  } catch (const boost::system::system_error& e) {
+    LOG(ERROR) << "Exception: " << e.what()
+               << ": 'http://metadata.google.internal/computeMetadata/v1/"
+               << path << "'";
   }
-  return zone;
 }
 
+#if 0
 constexpr char docker_endpoint_host[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
 constexpr char docker_endpoint_version[] = "v1.24";
+#endif
 constexpr char docker_endpoint_path[] = "/containers";
 
 }
@@ -103,16 +101,41 @@ std::string NumericProjectId() {
   return project_id;
 }
 
-std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery() {
+DockerReader::DockerReader(const MetadataAgentConfiguration& config)
+    : config_(config) {}
+
+std::string DockerReader::InstanceZone() const {
+  static std::string zone;
+  if (zone.empty()) {
+    if (!config_.InstanceZone().empty()) {
+      zone = config_.InstanceZone();
+    } else {
+      // Query the metadata server.
+      // TODO: Other sources?
+      zone = GetMetadataString("instance/zone");
+    }
+    if (zone.empty()) {
+      zone = "1234567890";
+    }
+  }
+  return zone;
+}
+
+std::vector<PollingMetadataUpdater::ResourceMetadata>
+    DockerReader::MetadataQuery() const {
   LOG(INFO) << "Docker Query called";
   const std::string project_id = NumericProjectId();
   const std::string zone = InstanceZone();
-  const std::string docker_version(docker_endpoint_version);
-  const std::string docker_endpoint(docker_endpoint_host +
+  const std::string docker_version = config_.DockerEndpointVersion();
+  const std::string docker_endpoint(config_.DockerEndpointHost() +
                                     docker_version +
                                     docker_endpoint_path);
+  const std::string container_filter(
+      config_.DockerContainerFilter().empty()
+      ? "" : "&" + config_.DockerContainerFilter());
   http::local_client client;
-  http::local_client::request list_request(docker_endpoint + "/json?all=true");
+  http::local_client::request list_request(
+      docker_endpoint + "/json?all=true" + container_filter);
   http::local_client::response list_response = client.get(list_request);
   Timestamp collected_at = std::chrono::high_resolution_clock::now();
   LOG(ERROR) << "List response: " << body(list_response);

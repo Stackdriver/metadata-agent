@@ -60,8 +60,17 @@ class PollingMetadataUpdater {
   std::thread reporter_thread_;
 };
 
-// A Docker metadata query function.
-std::vector<PollingMetadataUpdater::ResourceMetadata> DockerMetadataQuery();
+class DockerReader {
+ public:
+  DockerReader(const MetadataAgentConfiguration& config);
+  // A Docker metadata query function.
+  std::vector<PollingMetadataUpdater::ResourceMetadata> MetadataQuery() const;
+
+ private:
+  std::string InstanceZone() const;
+
+  const MetadataAgentConfiguration& config_;
+};
 
 // A project id query function.
 std::string NumericProjectId();

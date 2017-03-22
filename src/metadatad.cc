@@ -14,9 +14,10 @@
 int main(int ac, char** av) {
   google::MetadataAgentConfiguration config(ac > 1 ? av[1] : "");
   google::MetadataAgent server(config);
+  google::DockerReader docker(config);
   google::PollingMetadataUpdater docker_updater(
       config.DockerUpdaterIntervalSeconds(), &server,
-      google::DockerMetadataQuery);
+      [&docker](){ return docker.MetadataQuery(); });
 
   docker_updater.start();
   server.start();
