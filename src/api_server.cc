@@ -7,12 +7,12 @@
 #include <ostream>
 #include <thread>
 
+#include "environment.h"
 #include "format.h"
 #include "json.h"
 #include "logging.h"
 #include "oauth2.h"
 #include "time.h"
-#include "updater.h"
 
 namespace http = boost::network::http;
 
@@ -59,6 +59,7 @@ class MetadataReporter {
       std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata);
 
   const MetadataAgent& agent_;
+  Environment environment_;
   OAuth2 auth_;
   // The reporting period in seconds.
   seconds period_;
@@ -134,6 +135,7 @@ MetadataApiServer::~MetadataApiServer() {
 
 MetadataReporter::MetadataReporter(const MetadataAgent& agent, double period_s)
     : agent_(agent),
+      environment_(agent.config_),
       auth_(agent.config_.CredentialsFile()),
       period_(period_s),
       reporter_thread_(std::bind(&MetadataReporter::ReportMetadata, this)) {}
@@ -163,7 +165,7 @@ void MetadataReporter::SendMetadataRequest(
   }
 
   LOG(INFO) << "Sending request to the server";
-  const std::string project_id = NumericProjectId();
+  const std::string project_id = environment_.NumericProjectId();
 
   std::vector<json::value> entries;
   for (auto& entry : metadata) {

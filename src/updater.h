@@ -9,8 +9,9 @@
 #include <thread>
 #include <vector>
 
-#include "resource.h"
 #include "api_server.h"
+#include "environment.h"
+#include "resource.h"
 
 namespace google {
 
@@ -67,13 +68,9 @@ class DockerReader {
   std::vector<PollingMetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
  private:
-  std::string InstanceZone() const;
-
   const MetadataAgentConfiguration& config_;
+  Environment environment_;
 };
-
-// A project id query function.
-std::string NumericProjectId();
 
 }
 

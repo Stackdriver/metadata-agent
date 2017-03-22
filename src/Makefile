@@ -15,7 +15,8 @@ SRCS=\
      json.cc \
      time.cc \
      base64.cc \
-     format.cc
+     format.cc \
+     environment.cc
 OBJS=$(SRCS:%.cc=%.o)
 
 metadatad: $(OBJS)

@@ -68,21 +68,6 @@ void PollingMetadataUpdater::PollForMetadata() {
 
 namespace {
 
-std::string GetMetadataString(const std::string& path) {
-  http::client client;
-  http::client::request request(
-      "http://metadata.google.internal/computeMetadata/v1/" + path);
-  request << boost::network::header("Metadata-Flavor", "Google");
-  try {
-    http::client::response response = client.get(request);
-    return body(response);
-  } catch (const boost::system::system_error& e) {
-    LOG(ERROR) << "Exception: " << e.what()
-               << ": 'http://metadata.google.internal/computeMetadata/v1/"
-               << path << "'";
-  }
-}
-
 #if 0
 constexpr char docker_endpoint_host[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
 constexpr char docker_endpoint_version[] = "v1.24";
@@ -91,41 +76,14 @@ constexpr char docker_endpoint_path[] = "/containers";
 
 }
 
-std::string NumericProjectId() {
-  // Query the metadata server.
-  // TODO: Other sources.
-  static std::string project_id("1234567890");
-  if (project_id.empty()) {
-    project_id = GetMetadataString("project/numeric-project-id");
-  }
-  return project_id;
-}
-
 DockerReader::DockerReader(const MetadataAgentConfiguration& config)
-    : config_(config) {}
-
-std::string DockerReader::InstanceZone() const {
-  static std::string zone;
-  if (zone.empty()) {
-    if (!config_.InstanceZone().empty()) {
-      zone = config_.InstanceZone();
-    } else {
-      // Query the metadata server.
-      // TODO: Other sources?
-      zone = GetMetadataString("instance/zone");
-    }
-    if (zone.empty()) {
-      zone = "1234567890";
-    }
-  }
-  return zone;
-}
+    : config_(config), environment_(config) {}
 
 std::vector<PollingMetadataUpdater::ResourceMetadata>
     DockerReader::MetadataQuery() const {
   LOG(INFO) << "Docker Query called";
-  const std::string project_id = NumericProjectId();
-  const std::string zone = InstanceZone();
+  const std::string project_id = environment_.NumericProjectId();
+  const std::string zone = environment_.InstanceZone();
   const std::string docker_version = config_.DockerEndpointVersion();
   const std::string docker_endpoint(config_.DockerEndpointHost() +
                                     docker_version +
