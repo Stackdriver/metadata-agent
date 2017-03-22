@@ -1,0 +1,2 @@
+#MetadataIngestionEndpointFormat: "https://monitoring-test.sandbox.googleapis.com/v3/projects/{{project_id}}/updateResourceMetadata"
+CredentialsFile: /tmp/token.json
