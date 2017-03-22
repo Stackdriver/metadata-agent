@@ -9,6 +9,7 @@
 #include <mutex>
 #include <string>
 
+#include "agent_config.h"
 #include "json.h"
 #include "resource.h"
 
@@ -50,7 +51,8 @@ class MetadataAgent {
     json::value metadata;
   };
 
-  MetadataAgent();
+  MetadataAgent(const MetadataAgentConfiguration& config);
+  ~MetadataAgent();
 
   // Updates metadata for a given resource.
   void UpdateResource(const std::string& resource_id,
@@ -60,13 +62,13 @@ class MetadataAgent {
   // Starts serving.
   void start();
 
-  ~MetadataAgent();
-
  private:
   friend class MetadataApiServer;
   friend class MetadataReporter;
 
   std::map<MonitoredResource, Metadata> GetMetadataMap() const;
+
+  const MetadataAgentConfiguration& config_;
 
   // A lock that guards access to the maps.
   mutable std::mutex mu_;

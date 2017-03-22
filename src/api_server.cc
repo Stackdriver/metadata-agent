@@ -7,6 +7,7 @@
 #include <ostream>
 #include <thread>
 
+#include "format.h"
 #include "json.h"
 #include "logging.h"
 #include "oauth2.h"
@@ -133,7 +134,7 @@ MetadataApiServer::~MetadataApiServer() {
 
 MetadataReporter::MetadataReporter(const MetadataAgent& agent, double period_s)
     : agent_(agent),
-      auth_("/tmp/token.json"),
+      auth_(agent.config_.CredentialsFile()),
       period_(period_s),
       reporter_thread_(std::bind(&MetadataReporter::ReportMetadata, this)) {}
 
@@ -186,8 +187,8 @@ void MetadataReporter::SendMetadataRequest(
 
   http::client client;
   http::client::request request(
-      "https://monitoring.googleapis.com/v3/projects/" + project_id +
-      "/updateResourceMetadata");
+      format::Substitute(agent_.config_.MetadataIngestionEndpointFormat(),
+                         {{"project_id", project_id}}));
   std::string request_body = update_metadata_request->ToString();
   request << boost::network::header("Content-Length",
                                     std::to_string(request_body.size()));
@@ -199,7 +200,8 @@ void MetadataReporter::SendMetadataRequest(
   // TODO: process response.
 }
 
-MetadataAgent::MetadataAgent() {}
+MetadataAgent::MetadataAgent(const MetadataAgentConfiguration& config)
+    : config_(config) {}
 
 MetadataAgent::~MetadataAgent() {}
 
@@ -236,8 +238,11 @@ std::map<MonitoredResource, MetadataAgent::Metadata>
 }
 
 void MetadataAgent::start() {
-  metadata_api_server_.reset(new MetadataApiServer(*this, 3, "0.0.0.0", 8000));
-  reporter_.reset(new MetadataReporter(*this, 60));
+  metadata_api_server_.reset(new MetadataApiServer(
+      *this, config_.MetadataApiNumThreads(), "0.0.0.0",
+      config_.MetadataApiPort()));
+  reporter_.reset(new MetadataReporter(
+      *this, config_.MetadataReporterIntervalSeconds()));
 }
 
 }
