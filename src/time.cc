@@ -69,12 +69,12 @@ std::mutex gmtime_mutex;
 }
 
 std::tm safe_localtime(const std::time_t* t) {
-  std::unique_lock<std::mutex> l(localtime_mutex);
+  std::lock_guard<std::mutex> l(localtime_mutex);
   return *std::localtime(t);
 }
 
 std::tm safe_gmtime(const std::time_t* t) {
-  std::unique_lock<std::mutex> l(gmtime_mutex);
+  std::lock_guard<std::mutex> l(gmtime_mutex);
   return *std::gmtime(t);
 }
 
