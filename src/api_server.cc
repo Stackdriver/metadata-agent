@@ -172,16 +172,15 @@ void MetadataReporter::SendMetadataRequest(
     const MonitoredResource& resource = entry.first;
     MetadataAgent::Metadata& metadata = entry.second;
     entries.emplace_back(json::object({  // MonitoredResourceMetadata
-      {"monitored_resource", resource.ToJSON()},
+      {"metadataVersion", json::string(metadata.version)},
+      {"monitoredResource", resource.ToJSON()},
+      {"createTime", json::string(rfc3339::ToString(metadata.created_at))},
+      {"state", json::string(metadata.is_deleted ? "DELETED" : "ACTIVE")},
       {"metadata", std::move(metadata.metadata)},
-      {"metadata_version", json::string(metadata.version)},
-      {"is_deleted", json::boolean(metadata.is_deleted)},
-      {"created_at", json::string(rfc3339::ToString(metadata.created_at))},
-      {"collected_at", json::string(rfc3339::ToString(metadata.collected_at))},
+      {"collectTime", json::string(rfc3339::ToString(metadata.collected_at))},
     }));
   }
   json::value update_metadata_request = json::object({
-    {"name", json::string("projects/" + project_id)},
     {"entries", json::array(std::move(entries))},
   });
 
