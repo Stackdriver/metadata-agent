@@ -5,7 +5,6 @@
 #include <boost/network/uri.hpp>
 #include <chrono>
 #include <cstdlib>
-#include <fstream>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -138,40 +137,16 @@ std::ostream& operator<<(
 
 }
 
-json::value OAuth2::ComputeToken(const std::string& credentials_file) const {
-  std::string filename = credentials_file;
-  if (filename.empty()) {
-    const char* creds_env_var = std::getenv("GOOGLE_APPLICATION_CREDENTIALS");
-    if (creds_env_var) {
-      filename = creds_env_var;
-    } else {
-      // TODO: On Windows, "C:/ProgramData/Google/Auth/application_default_credentials.json"
-      filename = "/etc/google/auth/application_default_credentials.json";
-    }
-  }
-  std::ifstream input(filename);
-  if (!input.good()) {
-    LOG(ERROR) << "Missing credentials file " << filename;
+json::value OAuth2::ComputeTokenFromCredentials() const {
+  const std::string service_account_email =
+      environment_.CredentialsClientEmail();
+  const std::string private_key_pem =
+      environment_.CredentialsPrivateKey();
+  if (private_key_pem.empty() || service_account_email.empty()) {
     return nullptr;
   }
-  LOG(INFO) << "Reading credentials from " << filename;
-  json::value creds_json = json::Parser::FromStream(input);
-  if (creds_json == nullptr) {
-    LOG(ERROR) << "Could not parse credentials from " << filename;
-    return nullptr;
-  }
-  LOG(INFO) << "Retrieved credentials from " << filename << ": " << *creds_json;
 
   try {
-    const json::Object* creds = creds_json->As<json::Object>();
-
-    const std::string service_account_email =
-        creds->Get<json::String>("client_email");
-    const std::string private_key_pem =
-        creds->Get<json::String>("private_key");
-
-    LOG(INFO) << "Retrieved private key from " << filename;
-
     PKey private_key(private_key_pem);
 
     // Make a POST request to https://www.googleapis.com/oauth2/v3/token
@@ -269,7 +244,7 @@ std::string OAuth2::GetAuthHeaderValue() {
       token_expiration_ <
           std::chrono::system_clock::now() + std::chrono::seconds(60)) {
     // Token expired; retrieve new value.
-    json::value token_json = ComputeToken(credentials_file_);
+    json::value token_json = ComputeTokenFromCredentials();
     if (token_json == nullptr) {
       LOG(INFO) << "Getting auth token from metadata server";
       token_json = std::move(GetMetadataToken());

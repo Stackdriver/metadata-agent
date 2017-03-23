@@ -1,5 +1,5 @@
 #MetadataIngestionEndpointFormat: "https://monitoring-test.sandbox.googleapis.com/v3/projects/{{project_id}}/updateResourceMetadata"
 CredentialsFile: /tmp/token.json
-ProjectId: "1234567890"
+#ProjectId: "1234567890"
 InstanceZone: "us-central1-a"
 DockerContainerFilter: "limit=1"

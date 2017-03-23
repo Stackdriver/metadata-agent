@@ -13,9 +13,7 @@ namespace google {
 
 class OAuth2 {
  public:
-  OAuth2(const Environment& environment)
-      : environment_(environment),
-        credentials_file_(environment.config_.CredentialsFile()) {}
+  OAuth2(const Environment& environment) : environment_(environment) {}
 
   std::string GetAuthHeaderValue();
 
@@ -23,11 +21,10 @@ class OAuth2 {
   void AddAuthHeader(Request* request);
 
  private:
-  json::value ComputeToken(const std::string& credentials_file) const;
+  json::value ComputeTokenFromCredentials() const;
   json::value GetMetadataToken() const;
 
   const Environment& environment_;
-  std::string credentials_file_;
   std::string auth_header_value_;
   std::chrono::time_point<std::chrono::system_clock> token_expiration_;
 };
