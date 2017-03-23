@@ -43,6 +43,7 @@ MetadataAgentConfiguration::MetadataAgentConfiguration()
 MetadataAgentConfiguration::MetadataAgentConfiguration(
     const std::string& filename) : MetadataAgentConfiguration()
 {
+  std::lock_guard<std::mutex> lock(mutex_);
   if (filename.empty()) return;
 
   YAML::Node config = YAML::LoadFile(filename);
