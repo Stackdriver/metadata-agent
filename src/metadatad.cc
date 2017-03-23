@@ -1,5 +1,6 @@
 //#include "config.h"
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -17,7 +18,7 @@ int main(int ac, char** av) {
   google::DockerReader docker(config);
   google::PollingMetadataUpdater docker_updater(
       config.DockerUpdaterIntervalSeconds(), &server,
-      [&docker](){ return docker.MetadataQuery(); });
+      std::bind(&google::DockerReader::MetadataQuery, &docker));
 
   docker_updater.start();
   server.start();
