@@ -1,4 +1,4 @@
-#MetadataIngestionEndpointFormat: "https://monitoring-test.sandbox.googleapis.com/v3/projects/{{project_id}}/updateResourceMetadata"
+MetadataIngestionEndpointFormat: "https://test-stackdriver.sandbox.googleapis.com/v1beta2/projects/{{project_id}}/monitoredResourceMetadata:batchUpdate"
 CredentialsFile: /tmp/token.json
 #ProjectId: "1234567890"
 InstanceZone: "us-central1-a"

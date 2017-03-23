@@ -15,8 +15,8 @@ constexpr const int kMetadataApiDefaultPort = 8000;
 constexpr const int kMetadataReporterDefaultIntervalSeconds = 60;
 constexpr const int kDockerUpdaterDefaultIntervalSeconds = 60;
 constexpr const char kMetadataIngestionDefaultEndpointFormat[] =
-    "https://monitoring.googleapis.com/v3/projects/{{project_id}}"
-    "/updateResourceMetadata";
+    "https://stackdriver.googleapis.com/v1beta2/projects/{{project_id}}"
+    "/monitoredResourceMetadata:batchUpdate";
 constexpr const char kDockerDefaultEndpointHost[] =
     "unix://%2Fvar%2Frun%2Fdocker.sock/";
 constexpr const char kDockerDefaultEndpointVersion[] = "v1.24";
