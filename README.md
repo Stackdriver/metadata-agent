@@ -1,5 +1,11 @@
 This is the Stackdriver metadata agent.
 
+# Prerequisites
+
+1. Install required packages:
+
+       $ sudo apt-get install cmake
+
 # Building
 
 1. Init the submodules:
