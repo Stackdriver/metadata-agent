@@ -2,9 +2,17 @@ This is the Stackdriver metadata agent.
 
 # Prerequisites
 
-1. Install required packages:
+1. Install runtime dependencies:
 
-       $ sudo apt-get install cmake
+       $ sudo apt-get install libyajl2 libboost-system1.55.0 libboost-thread1.55.0
+
+2. Install build dependencies:
+
+       $ sudo apt-get install cmake libyajl-dev libboost1.55-dev \
+         libboost-system1.55-dev libboost-atomic1.55-dev libboost-chrono1.55-dev \
+         libboost-date-time1.55-dev libboost-filesystem1.55-dev \
+         libboost-program-options1.55-dev libboost-thread1.55-dev \
+         libboost-timer1.55-dev
 
 # Building
 
