@@ -8,11 +8,19 @@ This is the Stackdriver metadata agent.
 
 2. Install build dependencies:
 
-       $ sudo apt-get install cmake libyajl-dev libboost1.55-dev \
+       $ sudo apt-get install cmake libyajl-dev libssl-dev libboost1.55-dev \
          libboost-system1.55-dev libboost-atomic1.55-dev libboost-chrono1.55-dev \
          libboost-date-time1.55-dev libboost-filesystem1.55-dev \
          libboost-program-options1.55-dev libboost-thread1.55-dev \
          libboost-timer1.55-dev
+
+3. Install build dependencies (Ubuntu 16.04 special edition):
+
+       $ sudo apt-get install cmake libyajl-dev libssl-dev libboost1.58-dev \
+         libboost-system1.58-dev libboost-atomic1.58-dev libboost-chrono1.58-dev \
+         libboost-date-time1.58-dev libboost-filesystem1.58-dev \
+         libboost-program-options1.58-dev libboost-regex1.58-dev \
+         libboost-thread1.58-dev libboost-timer1.58-dev
 
 # Building
 
