@@ -20,7 +20,7 @@ constexpr const char kMetadataIngestionDefaultEndpointFormat[] =
 constexpr const char kDockerDefaultEndpointHost[] =
     "unix://%2Fvar%2Frun%2Fdocker.sock/";
 constexpr const char kDockerDefaultEndpointVersion[] = "v1.24";
-constexpr const char kDockerDefaultContainerFilter[] = "";
+constexpr const char kDockerDefaultContainerFilter[] = "limit=30";
 constexpr const char kDefaultInstanceZone[] = "";
 
 }
