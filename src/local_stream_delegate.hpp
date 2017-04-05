@@ -21,12 +21,13 @@ namespace http {
 namespace impl {
 
 struct local_connection_delegate {
-  virtual void connect(boost::asio::local::stream_protocol::endpoint & endpoint,
-                       std::function<void(system::error_code const &)> handler) = 0;
-  virtual void write(boost::asio::streambuf & command_streambuf,
-                     std::function<void(system::error_code const &, size_t)> handler) = 0;
-  virtual void read_some(boost::asio::mutable_buffers_1 const & read_buffer,
-                         std::function<void(system::error_code const &, size_t)> handler) = 0;
+  // TODO: this is similar enough to connection_delegate that it may be possible to refactor.
+  virtual void connect(boost::asio::local::stream_protocol::endpoint &endpoint,
+                       std::function<void(boost::system::error_code const &)> handler) = 0;
+  virtual void write(boost::asio::streambuf &command_streambuf,
+                     std::function<void(boost::system::error_code const &, size_t)> handler) = 0;
+  virtual void read_some(boost::asio::mutable_buffers_1 const &read_buffer,
+                         std::function<void(boost::system::error_code const &, size_t)> handler) = 0;
   virtual ~local_connection_delegate() {}
 };
 
