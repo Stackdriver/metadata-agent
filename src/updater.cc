@@ -69,10 +69,11 @@ void PollingMetadataUpdater::PollForMetadata() {
 namespace {
 
 #if 0
-constexpr char docker_endpoint_host[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
-constexpr char docker_endpoint_version[] = "v1.24";
+constexpr const char docker_endpoint_host[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
+constexpr const char docker_endpoint_version[] = "v1.24";
 #endif
-constexpr char docker_endpoint_path[] = "/containers";
+constexpr const char docker_endpoint_path[] = "/containers";
+constexpr const char resource_type_separator[] = ".";
 
 }
 
@@ -128,7 +129,8 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
         const json::Object* state = container_desc->Get<json::Object>("State");
         bool is_deleted = state->Get<json::Boolean>("Dead");
 
-        result.emplace_back("container/" + id, resource,
+        result.emplace_back(std::string("container") + resource_type_separator + id,
+                            resource,
                             MetadataAgent::Metadata(docker_version, is_deleted,
                                                     created_at, collected_at,
                                                     std::move(parsed_metadata)));
