@@ -83,7 +83,6 @@ DockerReader::DockerReader(const MetadataAgentConfiguration& config)
 std::vector<PollingMetadataUpdater::ResourceMetadata>
     DockerReader::MetadataQuery() const {
   LOG(INFO) << "Docker Query called";
-  const std::string project_id = environment_.NumericProjectId();
   const std::string zone = environment_.InstanceZone();
   const std::string docker_version = config_.DockerEndpointVersion();
   const std::string docker_endpoint(config_.DockerEndpointHost() +
@@ -115,7 +114,6 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
             json::Parser::FromString(body(inspect_response));
         LOG(ERROR) << "Parsed metadata: " << *parsed_metadata;
         const MonitoredResource resource("docker_container", {
-          {"project_id", project_id},
           {"location", zone},
           {"container_id", id},
         });
