@@ -109,6 +109,7 @@ const std::string& Environment::InstanceZone() const {
       // Query the metadata server.
       // TODO: Other sources?
       zone_ = GetMetadataString("instance/zone");
+      zone_ = zone_.substr(zone_.rfind('/') + 1);
     }
     if (zone_.empty()) {
       zone_ = "1234567890";
