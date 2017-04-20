@@ -30,6 +30,7 @@ This is the Stackdriver metadata agent.
 
 # Building
 
+<!-- Old stuff, not needed anymore.
 1. Init the submodules:
 
        $ git submodule init
@@ -53,6 +54,7 @@ This is the Stackdriver metadata agent.
          -DYAML_CPP_BUILD_TOOLS=OFF
        $ make -j10
        $ cd -
+-->
 
 1. Build the metadata agent:
 
