@@ -70,7 +70,7 @@ namespace {
 
 #if 0
 constexpr const char docker_endpoint_host[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
-constexpr const char docker_api_version[] = "1.24";
+constexpr const char docker_api_version[] = "1.23";
 #endif
 constexpr const char docker_endpoint_path[] = "/containers";
 constexpr const char resource_type_separator[] = ".";

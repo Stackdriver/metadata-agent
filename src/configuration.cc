@@ -19,7 +19,7 @@ constexpr const char kMetadataIngestionDefaultEndpointFormat[] =
     "/monitoredResourceMetadata:batchUpdate";
 constexpr const char kDockerDefaultEndpointHost[] =
     "unix://%2Fvar%2Frun%2Fdocker.sock/";
-constexpr const char kDockerDefaultApiVersion[] = "1.24";
+constexpr const char kDockerDefaultApiVersion[] = "1.23";
 constexpr const char kDockerDefaultContainerFilter[] = "limit=30";
 constexpr const char kDefaultInstanceZone[] = "";
 
