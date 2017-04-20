@@ -47,9 +47,9 @@ class MetadataAgentConfiguration {
     std::lock_guard<std::mutex> lock(mutex_);
     return docker_endpoint_host_;
   }
-  const std::string& DockerEndpointVersion() const {
+  const std::string& DockerApiVersion() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    return docker_endpoint_version_;
+    return docker_api_version_;
   }
   const std::string& DockerContainerFilter() const {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -70,7 +70,7 @@ class MetadataAgentConfiguration {
   std::string metadata_ingestion_endpoint_format_;
   int docker_updater_interval_seconds_;
   std::string docker_endpoint_host_;
-  std::string docker_endpoint_version_;
+  std::string docker_api_version_;
   std::string docker_container_filter_;
   std::string instance_zone_;
 };

@@ -70,7 +70,7 @@ namespace {
 
 #if 0
 constexpr const char docker_endpoint_host[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
-constexpr const char docker_endpoint_version[] = "v1.24";
+constexpr const char docker_api_version[] = "1.24";
 #endif
 constexpr const char docker_endpoint_path[] = "/containers";
 constexpr const char resource_type_separator[] = ".";
@@ -84,7 +84,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
     DockerReader::MetadataQuery() const {
   LOG(INFO) << "Docker Query called";
   const std::string zone = environment_.InstanceZone();
-  const std::string docker_version = config_.DockerEndpointVersion();
+  const std::string docker_version = "v" + config_.DockerApiVersion();
   const std::string docker_endpoint(config_.DockerEndpointHost() +
                                     docker_version +
                                     docker_endpoint_path);

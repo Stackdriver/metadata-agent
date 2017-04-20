@@ -19,7 +19,7 @@ constexpr const char kMetadataIngestionDefaultEndpointFormat[] =
     "/monitoredResourceMetadata:batchUpdate";
 constexpr const char kDockerDefaultEndpointHost[] =
     "unix://%2Fvar%2Frun%2Fdocker.sock/";
-constexpr const char kDockerDefaultEndpointVersion[] = "v1.24";
+constexpr const char kDockerDefaultApiVersion[] = "1.24";
 constexpr const char kDockerDefaultContainerFilter[] = "limit=30";
 constexpr const char kDefaultInstanceZone[] = "";
 
@@ -36,7 +36,7 @@ MetadataAgentConfiguration::MetadataAgentConfiguration()
           kMetadataIngestionDefaultEndpointFormat),
       docker_updater_interval_seconds_(kDockerUpdaterDefaultIntervalSeconds),
       docker_endpoint_host_(kDockerDefaultEndpointHost),
-      docker_endpoint_version_(kDockerDefaultEndpointVersion),
+      docker_api_version_(kDockerDefaultApiVersion),
       docker_container_filter_(kDockerDefaultContainerFilter),
       instance_zone_(kDefaultInstanceZone) {}
 
@@ -66,9 +66,9 @@ MetadataAgentConfiguration::MetadataAgentConfiguration(
           kDockerUpdaterDefaultIntervalSeconds);
   docker_endpoint_host_ =
       config["DockerEndpointHost"].as<std::string>(kDockerDefaultEndpointHost);
-  docker_endpoint_version_ =
-      config["DockerEndpointVersion"].as<std::string>(
-          kDockerDefaultEndpointVersion);
+  docker_api_version_ =
+      config["DockerApiVersion"].as<std::string>(
+          kDockerDefaultApiVersion);
   docker_container_filter_ =
       config["DockerContainerFilter"].as<std::string>(
           kDockerDefaultContainerFilter);
