@@ -84,9 +84,8 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
     DockerReader::MetadataQuery() const {
   LOG(INFO) << "Docker Query called";
   const std::string zone = environment_.InstanceZone();
-  const std::string docker_version = "v" + config_.DockerApiVersion();
   const std::string docker_endpoint(config_.DockerEndpointHost() +
-                                    docker_version +
+                                    "v" + config_.DockerApiVersion() +
                                     docker_endpoint_path);
   const std::string container_filter(
       config_.DockerContainerFilter().empty()
@@ -129,8 +128,8 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
 
         result.emplace_back(std::string("container") + resource_type_separator + id,
                             resource,
-                            MetadataAgent::Metadata(docker_version, is_deleted,
-                                                    created_at, collected_at,
+                            MetadataAgent::Metadata(config_.DockerApiVersion(),
+                                                    is_deleted, created_at, collected_at,
                                                     std::move(parsed_metadata)));
       } catch (const json::Exception& e) {
         LOG(ERROR) << e.what();
