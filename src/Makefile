@@ -1,7 +1,13 @@
+LIBDIR=../lib
+CPP_NETLIB_DIR=$(LIBDIR)/cpp-netlib
+CPP_NETLIB_LIBDIR=$(CPP_NETLIB_DIR)/libs/network/src
+YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
+YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
+
 SED=/usr/bin/env sed
 CMAKE=cmake
-CXXFLAGS=-std=c++11 -g -I../lib/cpp-netlib -I../lib/yaml-cpp/include
-LDFLAGS=-L../lib/cpp-netlib/libs/network/src -L../lib/yaml-cpp
+CXXFLAGS=-std=c++11 -g -I$(CPP_NETLIB_DIR) -I$(YAML_CPP_DIR)/include
+LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(YAML_CPP_LIBDIR)
 LDLIBS=-lcppnetlib-uri -lcppnetlib-client-connections -lboost_system -lboost_thread -lpthread -lyajl -lssl -lcrypto -lyaml-cpp
 
 SRCS=\
@@ -22,10 +28,10 @@ SRCS=\
 OBJS=$(SRCS:%.cc=%.o)
 
 CPP_NETLIB_LIBS=\
-    ../lib/cpp-netlib/libs/network/src/libcppnetlib-uri.a \
-    ../lib/cpp-netlib/libs/network/src/libcppnetlib-client-connections.a
+    $(CPP_NETLIB_LIBDIR)/libcppnetlib-uri.a \
+    $(CPP_NETLIB_LIBDIR)/libcppnetlib-client-connections.a
 YAML_CPP_LIBS=\
-    ../lib/yaml-cpp/libyaml-cpp.a
+    $(YAML_CPP_LIBDIR)/libyaml-cpp.a
 LIBS=$(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 
 metadatad: $(LIBS) $(OBJS)
@@ -35,34 +41,34 @@ clean:
 	$(RM) metadatad $(OBJS)
 
 purge:
-	$(RM) -r ../lib/cpp-netlib ../lib/yaml-cpp
+	$(RM) -r $(CPP_NETLIB_DIR) $(YAML_CPP_DIR)
 
-../lib/cpp-netlib/CMakeLists.txt ../lib/yaml-cpp/CMakeLists.txt:
+$(CPP_NETLIB_DIR)/CMakeLists.txt $(YAML_CPP_DIR)/CMakeLists.txt:
 	cd .. && \
 	git submodule init && \
 	git submodule update
 
-init-submodules: ../lib/cpp-netlib/CMakeLists.txt ../lib/yaml-cpp/CMakeLists.txt
+init-submodules: $(CPP_NETLIB_DIR)/CMakeLists.txt $(YAML_CPP_DIR)/CMakeLists.txt
 
-../lib/cpp-netlib/Makefile: ../lib/cpp-netlib/CMakeLists.txt
-	cd ../lib/cpp-netlib && \
+$(CPP_NETLIB_DIR)/Makefile: $(CPP_NETLIB_DIR)/CMakeLists.txt
+	cd $(CPP_NETLIB_DIR) && \
 	$(SED) -i -e 's/unit_test_framework //' CMakeLists.txt && \
 	$(CMAKE) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
 	    -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
 	    -DCPP-NETLIB_BUILD_TESTS=OFF -DCPP-NETLIB_BUILD_EXAMPLES=OFF
 
-$(CPP_NETLIB_LIBS): ../lib/cpp-netlib/Makefile
-	cd ../lib/cpp-netlib && \
+$(CPP_NETLIB_LIBS): $(CPP_NETLIB_DIR)/Makefile
+	cd $(CPP_NETLIB_DIR) && \
 	$(MAKE) $(MAKEFLAGS)
 
-../lib/yaml-cpp/Makefile: ../lib/yaml-cpp/CMakeLists.txt
-	cd ../lib/yaml-cpp && \
+$(YAML_CPP_DIR)/Makefile: $(YAML_CPP_DIR)/CMakeLists.txt
+	cd $(YAML_CPP_DIR) && \
 	$(CMAKE) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
 	    -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
 	    -DYAML_CPP_BUILD_TOOLS=OFF
 
-$(YAML_CPP_LIBS): ../lib/yaml-cpp/Makefile
-	cd ../lib/yaml-cpp && \
+$(YAML_CPP_LIBS): $(YAML_CPP_DIR)/Makefile
+	cd $(YAML_CPP_DIR) && \
 	$(MAKE) $(MAKEFLAGS)
 
 cpp-netlib: $(CPP_NETLIB_LIBS)
