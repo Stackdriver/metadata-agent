@@ -37,39 +37,47 @@ LIBS=$(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 metadatad: $(LIBS) $(OBJS)
 	$(CXX) -o $@ $(LDFLAGS) $^ $(LDLIBS)
 
+$(OBJS): init-submodules
+
 clean:
 	$(RM) metadatad $(OBJS)
 
-purge:
-	$(RM) -r $(CPP_NETLIB_DIR) $(YAML_CPP_DIR)
+purge: clean
+	$(RM) -r init-submodules build-cpp-netlib build-yaml-cpp \
+	    $(CPP_NETLIB_DIR) $(YAML_CPP_DIR)
 
-$(CPP_NETLIB_DIR)/CMakeLists.txt $(YAML_CPP_DIR)/CMakeLists.txt:
+init-submodules:
 	cd .. && \
 	git submodule init && \
 	git submodule update
+	touch init-submodules
 
-init-submodules: $(CPP_NETLIB_DIR)/CMakeLists.txt $(YAML_CPP_DIR)/CMakeLists.txt
-
-$(CPP_NETLIB_DIR)/Makefile: $(CPP_NETLIB_DIR)/CMakeLists.txt
+$(CPP_NETLIB_DIR)/Makefile: init-submodules
 	cd $(CPP_NETLIB_DIR) && \
 	$(SED) -i -e 's/unit_test_framework //' CMakeLists.txt && \
 	$(CMAKE) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
 	    -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
 	    -DCPP-NETLIB_BUILD_TESTS=OFF -DCPP-NETLIB_BUILD_EXAMPLES=OFF
 
-$(CPP_NETLIB_LIBS): $(CPP_NETLIB_DIR)/Makefile
+$(CPP_NETLIB_LIBS): build-cpp-netlib
+
+build-cpp-netlib: $(CPP_NETLIB_DIR)/Makefile
 	cd $(CPP_NETLIB_DIR) && \
 	$(MAKE) $(MAKEFLAGS)
+	touch build-cpp-netlib
 
-$(YAML_CPP_DIR)/Makefile: $(YAML_CPP_DIR)/CMakeLists.txt
+$(YAML_CPP_DIR)/Makefile: init-submodules
 	cd $(YAML_CPP_DIR) && \
 	$(CMAKE) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
 	    -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
 	    -DYAML_CPP_BUILD_TOOLS=OFF
 
-$(YAML_CPP_LIBS): $(YAML_CPP_DIR)/Makefile
+$(YAML_CPP_LIBS): build-yaml-cpp
+
+build-yaml-cpp: $(YAML_CPP_DIR)/Makefile
 	cd $(YAML_CPP_DIR) && \
 	$(MAKE) $(MAKEFLAGS)
+	touch build-yaml-cpp
 
 cpp-netlib: $(CPP_NETLIB_LIBS)
 
@@ -79,4 +87,4 @@ submodules: cpp-netlib yaml-cpp
 
 all: submodules metadatad
 
-.PHONY: all submodules cpp-netlib yaml-cpp init-submodules purge clean
+.PHONY: all submodules cpp-netlib yaml-cpp purge clean
