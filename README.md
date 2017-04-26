@@ -61,6 +61,30 @@ This is the Stackdriver metadata agent.
        $ cd src
        $ make -j10
 
+# Packaging
+
+1. Build the DEB package:
+
+       $ cd src
+       $ make deb
+
+   If you want to embed the distro name (e.g., "xenial") into the package
+   filename, use:
+
+       $ cd src
+       $ make DISTRO=xenial deb
+
+2. Build the RPM package:
+
+       $ cd src
+       $ make rpm
+
+   If you want to embed the distro name (e.g., "el7") into the package
+   filename, use:
+
+       $ cd src
+       $ make DISTRO=el7 rpm
+
 # Running
 
 1. Run the agent with default settings:
