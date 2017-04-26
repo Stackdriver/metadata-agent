@@ -34,10 +34,50 @@ YAML_CPP_LIBS=\
     $(YAML_CPP_LIBDIR)/libyaml-cpp.a
 LIBS=$(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 
+sbindir=/opt/stackdriver/metadata/sbin
+INSTALL=/usr/bin/install
+INSTALL_PROGRAM=$(INSTALL)
+INSTALL_DATA=$(INSTALL) -m 644
+
 metadatad: $(LIBS) $(OBJS)
 	$(CXX) -o $@ $(LDFLAGS) $^ $(LDLIBS)
 
 $(OBJS): init-submodules
+
+install: metadatad
+	$(INSTALL) -d $(DESTDIR)$(sbindir) && \
+	$(INSTALL_PROGRAM) -t $(DESTDIR)$(sbindir) $^
+
+export DISTRO
+PKG_NAME=stackdriver-metadata
+PKG_VERSION=0.0.6
+PKG_RELEASE=1
+PKG_MAINTAINER=Stackdriver Engineering <engineering@stackdriver.com>
+
+PKG_TMPDIR=$$(mktemp -d --tmpdir metadata-build.XXXXXXXXXX)
+
+DEB_PKG=$(PKG_NAME)_$(PKG_VERSION)-$(PKG_RELEASE)$(if $(DISTRO),.$(DISTRO),).deb
+
+$(DEB_PKG): metadatad $(wildcard ../pkg/deb/debian/*) Makefile
+	export TMPDIR=$(PKG_TMPDIR) && \
+	export DEB_DIR=$$TMPDIR/deb && \
+	mkdir -p $$DEB_DIR/package && \
+	$(MAKE) DESTDIR=$$DEB_DIR/package install && \
+	$(INSTALL) -d $$DEB_DIR/package/DEBIAN && \
+	touch $$DEB_DIR/package/DEBIAN/files && \
+	(echo "$(PKG_NAME) ($(PKG_VERSION)-$(PKG_RELEASE)) trusty xenial squeeze wheezy jessie; urgency=low" >> $$DEB_DIR/changelog) && \
+	(echo >> $$DEB_DIR/changelog) && \
+	(echo "  * automated build" >> $$DEB_DIR/changelog) && \
+	(echo >> $$DEB_DIR/changelog) && \
+	(echo " -- $(PKG_MAINTAINER)  $$(date -u +"%a, %d %b %Y %T %z")" >> $$DEB_DIR/changelog) && \
+	(echo >> $$DEB_DIR/changelog) && \
+	export DEB_CONTROL=../pkg/deb/debian/control.base && \
+	if [ -f ../pkg/deb/debian/control.$${DISTRO} ]; then DEB_CONTROL=../pkg/deb/debian/control.$${DISTRO}; fi && \
+	dpkg-gencontrol -v$(PKG_VERSION)-$(PKG_RELEASE) -c$$DEB_CONTROL -l$$DEB_DIR/changelog -f$$DEB_DIR/package/DEBIAN/files -Vmaintainer="$(PKG_MAINTAINER)" -P$$DEB_DIR/package -n"$@" && \
+	dpkg-deb -b $$DEB_DIR/package "$@" &> $$DEB_DIR/dpkgbuild.log && \
+	$(RM) -r $$TMPDIR
+
+deb: $(DEB_PKG)
 
 clean:
 	$(RM) metadatad $(OBJS)
@@ -87,4 +127,4 @@ submodules: cpp-netlib yaml-cpp
 
 all: submodules metadatad
 
-.PHONY: all submodules cpp-netlib yaml-cpp purge clean
+.PHONY: all submodules cpp-netlib yaml-cpp purge clean install deb
