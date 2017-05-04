@@ -30,23 +30,22 @@ This is the Stackdriver metadata agent.
 
 ## CentOS 7 special edition
 
-1. Download vendored packages (CentOS 7 special edition):
+1. Install runtime dependencies (CentOS 7 special edition):
 
+       $ sudo yum install -y yajl
+       $ (cd /tmp && \
+          VENDOR_URL=http://testrepo.stackdriver.com/vendor/boost/x86_64 && \
+          curl -O ${VENDOR_URL}/boost-system-1.54.0-1.el7.x86_64.rpm && \
+          curl -O ${VENDOR_URL}/boost-thread-1.54.0-1.el7.x86_64.rpm)
+       $ sudo rpm --nodeps -ivp /tmp/boost-{system,thread}-1.54.0-1.el7.x86_64.rpm
+
+2. Install build dependencies (CentOS 7 special edition):
+
+       $ sudo yum install -y gcc-c++ cmake rpm-build yajl-devel openssl-devel
        $ (cd /tmp && \
           VENDOR_URL=http://testrepo.stackdriver.com/vendor/boost/x86_64 && \
           curl -O ${VENDOR_URL}/boost-devel-1.54.0-1.el7.x86_64.rpm && \
-          curl -O ${VENDOR_URL}/boost-static-1.54.0-1.el7.x86_64.rpm && \
-          curl -O ${VENDOR_URL}/boost-system-1.54.0-1.el7.x86_64.rpm && \
-          curl -O ${VENDOR_URL}/boost-thread-1.54.0-1.el7.x86_64.rpm)
-
-2. Install runtime dependencies (CentOS 7 special edition):
-
-       $ sudo yum install -y yajl boost-system boost-thread
-       $ sudo rpm --nodeps -ivp /tmp/boost-{system,thread}-1.54.0-1.el7.x86_64.rpm
-
-3. Install build dependencies (CentOS 7 special edition):
-
-       $ sudo yum install -y gcc-c++ cmake rpm-build yajl-devel openssl-devel
+          curl -O ${VENDOR_URL}/boost-static-1.54.0-1.el7.x86_64.rpm)
        $ sudo rpm --nodeps -ivp /tmp/boost-{devel,static}-1.54.0-1.el7.x86_64.rpm
 
 # Building
