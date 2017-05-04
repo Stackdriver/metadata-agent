@@ -7,7 +7,7 @@ Version: %{version}
 Release: %{release}
 License: Apache Software License 2.0
 Group: System Environment/Daemons
-Requires: libyajl2, libboost-system1.55.0, libboost-thread1.55.0
+Requires: yajl, boost-system >= 1.54.0, boost-thread >= 1.54.0
 
 %description
 The Stackdriver metadata daemon collects resource metadata and
