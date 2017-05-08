@@ -15,3 +15,4 @@ sends it to the Stackdriver service.
 
 %files
 %{_sbindir}/metadatad
+%{_initddir}/%{name}

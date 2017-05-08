@@ -72,6 +72,7 @@ YAML_CPP_LIBS=\
 LIBS=$(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 
 sbindir=/opt/stackdriver/metadata/sbin
+initddir=/etc/rc.d/init.d
 INSTALL=/usr/bin/install
 INSTALL_PROGRAM=$(INSTALL)
 INSTALL_DATA=$(INSTALL) -m 644
@@ -105,6 +106,8 @@ $(DEB_PKG): metadatad $(wildcard ../pkg/deb/debian/*) Makefile
 	export DEB_DIR=$$TMPDIR/deb && \
 	mkdir -p $$DEB_DIR/package && \
 	$(MAKE) DESTDIR=$$DEB_DIR/package install && \
+	$(INSTALL) -d $$DEB_DIR/package$(initddir) && \
+	$(INSTALL_PROGRAM) -T ../pkg/deb/debian/$(PKG_NAME).init $$DEB_DIR/package$(initddir)/$(PKG_NAME) && \
 	$(INSTALL) -d $$DEB_DIR/package/DEBIAN && \
 	touch $$DEB_DIR/package/DEBIAN/files && \
 	(echo "$(PKG_NAME) ($(PKG_VERSION)-$(PKG_RELEASE)) trusty xenial wheezy jessie; urgency=low" >> $$DEB_DIR/changelog) && \
@@ -126,6 +129,8 @@ $(RPM_PKG): metadatad $(wildcard ../pkg/rpm/*) Makefile
 	export RPM_DIR=$$TMPDIR/rpm && \
 	mkdir -p $$RPM_DIR/package && \
 	$(MAKE) DESTDIR=$$RPM_DIR/package install && \
+	$(INSTALL) -d $$RPM_DIR/package$(initddir) && \
+	$(INSTALL_PROGRAM) -t $$RPM_DIR/package$(initddir) ../pkg/rpm/$(PKG_NAME) && \
 	(rpmbuild -bb --target=x86_64 -D"%_topdir $$RPM_DIR/rpmbuild" -D"%_rpmdir $(dir $@)" -D"%_rpmfilename $(notdir $@)" -D"%version $(PKG_VERSION)" -D"%release $(PKG_RELEASE)" --buildroot=$$RPM_DIR/package --noclean ../pkg/rpm/stackdriver-metadata.spec > $$RPM_DIR/rpmbuild.log 2>&1) && \
 	$(RM) -r $$TMPDIR
 

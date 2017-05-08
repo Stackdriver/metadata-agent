@@ -1,0 +1,131 @@
+#!/bin/bash
+#
+# stackdriver-metadata    Startup script for the Stackdriver metadata agent
+# chkconfig: 2345 86 15
+# description: Metadata collection agent for Stackdriver
+# processname: metadatad
+# pidfile: /var/run/stackdriver-metadata.pid
+
+### BEGIN INIT INFO
+# Provides: stackdriver-metadata
+# Required-Start: $local_fs $remote_fs $network $syslog $named
+# Required-Stop: $local_fs $remote_fs $network $syslog
+# Short-Description: start and stop Stackdriver Metadata Agent
+# Description: The Stackdriver Metadata Agent is used with the Stackdriver metadata SaaS service.
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+### END INIT INFO
+
+# Source function library.
+. /etc/init.d/functions
+
+RETVAL=0
+DESC="Stackdriver metadata collection agent"
+NAME="stackdriver-collectd"
+prog="stackdriver-collectd"
+DAEMON=/opt/stackdriver/metadata/sbin/metadatad
+
+PIDFILE=/var/run/stackdriver-metadata.pid
+
+# Gracefully exit if the package has been removed.
+test -x $DAEMON || exit 0
+
+if [ -r /etc/default/${NAME} ]; then
+    . /etc/default/${NAME}
+fi
+if [ -r /etc/sysconfig/stackdriver ]; then
+    . /etc/sysconfig/stackdriver
+fi
+
+get_instance_id () {
+    local iid
+
+    # allow override of instance id in sysconfig file
+    if [ -n "$INSTANCE_ID" ]; then
+        iid=$INSTANCE_ID
+    elif [ -r /opt/stackdriver/hostid ]; then
+        iid=$(cat /opt/stackdriver/hostid)
+    # RS: Check Rackspace first because we can fail quickly.
+    elif [[ -x /usr/bin/xenstore-read && $(/usr/bin/xenstore-read vm-data/provider_data/provider) = "Rackspace" ]]; then
+        iid=$(/usr/bin/xenstore-read name |sed -e 's/^instance-//')
+    elif [ -z "$SKIP_METADATA_CHECKS" ]; then
+        # AWS: If we're on EC2, this ought to return the instance id.
+        iid=$(curl --silent -f http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null)
+        if [ -z "$iid" ]; then
+            # that failed.  let's try to see if it looks like we're on GCE
+            iid=$(curl --silent -f -H 'Metadata-Flavor: Google' http://169.254.169.254/computeMetadata/v1/instance/id 2>/dev/null)
+        fi
+    elif [ -r /sys/hypervisor/uuid -a $(cat /sys/hypervisor/version/extra |grep -c amazon) -eq 0 ]; then
+        iid=$(cat /sys/hypervisor/uuid)
+    else
+        echo 'Unable to discover an id for this machine!' >&2
+    fi
+
+    echo $iid
+}
+
+gen_hostid() {
+    echo "Generating a host id"
+    uuidgen > /opt/stackdriver/hostid
+    return 0
+}
+
+start () {
+    echo -n $"Starting $DESC: "
+
+    # allow setting a proxy
+    if [ -n "$PROXY_URL" ]; then
+        export https_proxy=$PROXY_URL
+    fi
+
+    daemon $DAEMON -P "$PIDFILE"
+    RETVAL=$?
+    echo
+    [ $RETVAL -eq 0 ] && touch /var/lock/subsys/$prog
+    return $RETVAL
+}
+
+stop () {
+    PID=$( cat "$PIDFILE" 2> /dev/null ) || true
+
+    echo -n $"Stopping $DESC: "
+    if test -n "$PID"; then
+        kill -TERM $PID
+        RETVAL=$?
+    else
+        RETVAL=0
+    fi
+    echo
+
+    [ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/$prog
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        status -p $PIDFILE $prog
+        ;;
+    restart|reload)
+        stop
+        start
+        ;;
+    condrestart)
+        [ -f /var/lock/subsys/$prog ] && stop && start || :
+        ;;
+    genhostid)
+        gen_hostid
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|restart|status|reload|condrestart}"
+        exit 1
+        ;;
+esac
+
+exit $?
+
+# vim: syntax=sh noexpandtab sw=4 ts=4 :
