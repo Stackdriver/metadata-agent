@@ -119,6 +119,9 @@ $(DEB_PKG): metadatad $(wildcard ../pkg/deb/debian/*) Makefile
 	export DEB_CONTROL=../pkg/deb/debian/control.base && \
 	if [ -f ../pkg/deb/debian/control.$${DISTRO} ]; then DEB_CONTROL=../pkg/deb/debian/control.$${DISTRO}; fi && \
 	dpkg-gencontrol -v$(PKG_VERSION)-$(PKG_RELEASE) -c$$DEB_CONTROL -l$$DEB_DIR/changelog -f$$DEB_DIR/package/DEBIAN/files -Vmaintainer="$(PKG_MAINTAINER)" -P$$DEB_DIR/package -n"$@" && \
+	$(INSTALL_PROGRAM) -t $$DEB_DIR/package/DEBIAN ../pkg/deb/debian/postinst && \
+	$(INSTALL_PROGRAM) -t $$DEB_DIR/package/DEBIAN ../pkg/deb/debian/postrm && \
+	$(INSTALL_PROGRAM) -t $$DEB_DIR/package/DEBIAN ../pkg/deb/debian/prerm && \
 	(dpkg-deb -b $$DEB_DIR/package "$@" > $$DEB_DIR/dpkgbuild.log 2>&1) && \
 	$(RM) -r $$TMPDIR
 

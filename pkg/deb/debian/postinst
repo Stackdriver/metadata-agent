@@ -1,0 +1,12 @@
+#! /bin/sh
+set -e
+# Automatically added by dh_installinit
+if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ]; then
+        if [ -x "/etc/init.d/stackdriver-metadata" ]; then
+                update-rc.d stackdriver-metadata defaults >/dev/null
+        fi
+        if [ -x "/etc/init.d/stackdriver-metadata" ] || [ -e "/etc/init/stackdriver-metadata.conf" ]; then
+                invoke-rc.d stackdriver-metadata start || exit $?
+        fi
+fi
+# End automatically added section

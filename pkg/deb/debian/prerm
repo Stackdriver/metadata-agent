@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+# Automatically added by dh_installinit
+if [ -x "/etc/init.d/stackdriver-metadata" ] || [ -e "/etc/init/stackdriver-metadata.conf" ]; then
+        invoke-rc.d stackdriver-metadata stop || exit $?
+fi
+# End automatically added section

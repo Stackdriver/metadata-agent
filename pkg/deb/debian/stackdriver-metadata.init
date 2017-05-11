@@ -94,7 +94,7 @@ d_start() {
     fi
 
     start-stop-daemon --start --quiet --oknodo --pidfile "$PIDFILE" \
-        --exec $DAEMON -- -P "$PIDFILE" \
+        --exec $DAEMON \
         || return 2
     return 0
 }
