@@ -75,7 +75,7 @@ $(DEB_PKG): metadatad $(wildcard ../pkg/deb/debian/*) Makefile
 	export DEB_CONTROL=../pkg/deb/debian/control.base && \
 	if [ -f ../pkg/deb/debian/control.$${DISTRO} ]; then DEB_CONTROL=../pkg/deb/debian/control.$${DISTRO}; fi && \
 	dpkg-gencontrol -v$(PKG_VERSION)-$(PKG_RELEASE) -c$$DEB_CONTROL -l$$DEB_DIR/changelog -f$$DEB_DIR/package/DEBIAN/files -Vmaintainer="$(PKG_MAINTAINER)" -P$$DEB_DIR/package -n"$@" && \
-	dpkg-deb -b $$DEB_DIR/package "$@" &> $$DEB_DIR/dpkgbuild.log && \
+	(dpkg-deb -b $$DEB_DIR/package "$@" > $$DEB_DIR/dpkgbuild.log 2>&1) && \
 	$(RM) -r $$TMPDIR
 
 deb: $(DEB_PKG)
@@ -85,7 +85,7 @@ $(RPM_PKG): metadatad $(wildcard ../pkg/rpm/*) Makefile
 	export RPM_DIR=$$TMPDIR/rpm && \
 	mkdir -p $$RPM_DIR/package && \
 	$(MAKE) DESTDIR=$$RPM_DIR/package install && \
-	rpmbuild -bb --target=x86_64 -D"%_topdir $$RPM_DIR/rpmbuild" -D"%_rpmdir $(dir $@)" -D"%_rpmfilename $(notdir $@)" -D"%version $(PKG_VERSION)" -D"%release $(PKG_RELEASE)" --buildroot=$$RPM_DIR/package --noclean ../pkg/rpm/stackdriver-metadata.spec > $$RPM_DIR/rpmbuild.log && \
+	(rpmbuild -bb --target=x86_64 -D"%_topdir $$RPM_DIR/rpmbuild" -D"%_rpmdir $(dir $@)" -D"%_rpmfilename $(notdir $@)" -D"%version $(PKG_VERSION)" -D"%release $(PKG_RELEASE)" --buildroot=$$RPM_DIR/package --noclean ../pkg/rpm/stackdriver-metadata.spec > $$RPM_DIR/rpmbuild.log 2>&1) && \
 	$(RM) -r $$TMPDIR
 
 rpm: $(RPM_PKG)
