@@ -222,15 +222,16 @@ MetadataAgent::MetadataAgent(const MetadataAgentConfiguration& config)
 
 MetadataAgent::~MetadataAgent() {}
 
-void MetadataAgent::UpdateResource(const std::string& id,
+void MetadataAgent::UpdateResource(const std::vector<std::string>& ids,
                                    const MonitoredResource& resource,
                                    Metadata&& entry) {
   std::lock_guard<std::mutex> lock(mu_);
-  // TODO: Add "collected_at".
   // TODO: How do we handle deleted resources?
   // TODO: Do we care if the value was already there?
-  LOG(INFO) << "Updating resource map '" << id << "'->" << resource;
-  resource_map_.emplace(id, resource);
+  for (const std::string& id : ids) {
+    LOG(INFO) << "Updating resource map '" << id << "'->" << resource;
+    resource_map_.emplace(id, resource);
+  }
   LOG(INFO) << "Updating metadata map " << resource << "->{"
             << "version: " << entry.version << ", "
             << "is_deleted: " << entry.is_deleted << ", "

@@ -70,7 +70,7 @@ class MetadataAgent {
   ~MetadataAgent();
 
   // Updates metadata for a given resource.
-  void UpdateResource(const std::string& resource_id,
+  void UpdateResource(const std::vector<std::string>& resource_ids,
                       const MonitoredResource& resource,
                       Metadata&& entry);
 

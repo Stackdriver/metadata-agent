@@ -35,11 +35,11 @@ namespace google {
 class PollingMetadataUpdater {
  public:
   struct ResourceMetadata {
-    ResourceMetadata(const std::string& id_,
+    ResourceMetadata(const std::vector<std::string>& ids_,
                      const MonitoredResource& resource_,
                      MetadataAgent::Metadata&& metadata_)
-        : id(id_), resource(resource_), metadata(std::move(metadata_)) {}
-    std::string id;
+        : ids(ids_), resource(resource_), metadata(std::move(metadata_)) {}
+    std::vector<std::string> ids;
     MonitoredResource resource;
     MetadataAgent::Metadata metadata;
   };
