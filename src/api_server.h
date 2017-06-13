@@ -70,6 +70,9 @@ class MetadataAgent {
   ~MetadataAgent();
 
   // Updates metadata for a given resource.
+  // Each local id in `resource_ids` is effectively an alias for `resource`.
+  // Adds a resource mapping from each of the `resource_ids` to the `resource`
+  // and a metadata mapping from the `resource` to the metadata `entry`.
   void UpdateResource(const std::vector<std::string>& resource_ids,
                       const MonitoredResource& resource,
                       Metadata&& entry);
