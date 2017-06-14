@@ -60,7 +60,7 @@ void PollingMetadataUpdater::PollForMetadata() {
     std::vector<ResourceMetadata> result_vector = query_metadata_();
     for (ResourceMetadata& result : result_vector) {
       store_->UpdateResource(
-          result.id, result.resource, std::move(result.metadata));
+          result.ids, result.resource, std::move(result.metadata));
     }
     // An unlocked timer means we should stop updating.
     LOG(INFO) << "Trying to unlock the timer";
@@ -134,6 +134,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
         });
 
         const json::Object* container_desc = parsed_metadata->As<json::Object>();
+        const std::string name = container_desc->Get<json::String>("Name");
 
         const std::string created_str =
             container_desc->Get<json::String>("Created");
@@ -142,7 +143,12 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
         const json::Object* state = container_desc->Get<json::Object>("State");
         bool is_deleted = state->Get<json::Boolean>("Dead");
 
-        result.emplace_back(std::string("container") + resource_type_separator + id,
+        const std::string resource_id =
+            std::string("container") + resource_type_separator + id;
+        // The container name reported by Docker will always have a leading '/'.
+        const std::string resource_name =
+            std::string("containerName") + resource_type_separator + name.substr(1);
+        result.emplace_back(std::vector<std::string>{resource_id, resource_name},
                             resource,
                             MetadataAgent::Metadata(config_.DockerApiVersion(),
                                                     is_deleted, created_at, collected_at,
