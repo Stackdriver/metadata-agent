@@ -213,6 +213,15 @@ void MetadataReporter::SendMetadata(
                          {{"project_id", project_id}});
   const std::string auth_header = auth_.GetAuthHeaderValue();
 
+  const json::value empty_request = json::object({
+    {"entries", json::array({})},
+  });
+  const int empty_size = empty_request->ToString().size();
+
+  const int limit_bytes =
+      agent_.config_.MetadataIngestionRequestSizeLimitBytes();
+  int total_size = empty_size;
+
   std::vector<json::value> entries;
   for (auto& entry : metadata) {
     const MonitoredResource& resource = entry.first;
@@ -226,7 +235,15 @@ void MetadataReporter::SendMetadata(
           {"createTime", json::string(rfc3339::ToString(metadata.created_at))},
           {"collectTime", json::string(rfc3339::ToString(metadata.collected_at))},
         });
+    // TODO: This is probably all kinds of inefficient...
+    const int size = metadata_entry->ToString().size();
+    if (total_size + size > limit_bytes) {
+      SendMetadataRequest(std::move(entries), endpoint, auth_header);
+      entries.clear();
+      total_size = empty_size;
+    }
     entries.emplace_back(std::move(metadata_entry));
+    total_size += size;
   }
   SendMetadataRequest(std::move(entries), endpoint, auth_header);
 }
