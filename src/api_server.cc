@@ -71,7 +71,7 @@ class MetadataReporter {
   void ReportMetadata();
 
   // Send the given set of metadata.
-  void SendMetadataRequest(
+  void SendMetadata(
       std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata);
 
   const MetadataAgent& agent_;
@@ -166,14 +166,14 @@ void MetadataReporter::ReportMetadata() {
   // TODO: Do we need to be able to stop this?
   while (true) {
     LOG(INFO) << "Sending metadata request to server";
-    SendMetadataRequest(agent_.GetMetadataMap());
+    SendMetadata(agent_.GetMetadataMap());
     LOG(INFO) << "Metadata request sent successfully";
     std::this_thread::sleep_for(period_);
   }
   LOG(INFO) << "Metadata reporter exiting";
 }
 
-void MetadataReporter::SendMetadataRequest(
+void MetadataReporter::SendMetadata(
     std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata) {
   if (metadata.empty()) {
     LOG(INFO) << "No data to send";
@@ -187,14 +187,16 @@ void MetadataReporter::SendMetadataRequest(
   for (auto& entry : metadata) {
     const MonitoredResource& resource = entry.first;
     MetadataAgent::Metadata& metadata = entry.second;
-    entries.emplace_back(json::object({  // MonitoredResourceMetadata
-      {"resource", resource.ToJSON()},
-      {"rawContentVersion", json::string(metadata.version)},
-      {"rawContent", std::move(metadata.metadata)},
-      {"state", json::string(metadata.is_deleted ? "DELETED" : "ACTIVE")},
-      {"createTime", json::string(rfc3339::ToString(metadata.created_at))},
-      {"collectTime", json::string(rfc3339::ToString(metadata.collected_at))},
-    }));
+    json::value metadata_entry =
+        json::object({  // MonitoredResourceMetadata
+          {"resource", resource.ToJSON()},
+          {"rawContentVersion", json::string(metadata.version)},
+          {"rawContent", std::move(metadata.metadata)},
+          {"state", json::string(metadata.is_deleted ? "DELETED" : "ACTIVE")},
+          {"createTime", json::string(rfc3339::ToString(metadata.created_at))},
+          {"collectTime", json::string(rfc3339::ToString(metadata.collected_at))},
+        });
+    entries.emplace_back(std::move(metadata_entry));
   }
   json::value update_metadata_request = json::object({
     {"entries", json::array(std::move(entries))},
