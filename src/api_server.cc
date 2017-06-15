@@ -237,6 +237,12 @@ void MetadataReporter::SendMetadata(
         });
     // TODO: This is probably all kinds of inefficient...
     const int size = metadata_entry->ToString().size();
+    if (empty_size + size > limit_bytes) {
+      LOG(ERROR) << "Individual entry too large: " << size
+                 << "B is greater than the limit " << limit_bytes
+                 << "B, dropping; entry " << *metadata_entry;
+      continue;
+    }
     if (total_size + size > limit_bytes) {
       SendMetadataRequest(std::move(entries), endpoint, auth_header);
       entries.clear();
