@@ -1,7 +1,11 @@
 FROM ubuntu:xenial
 
-ADD https://storage.googleapis.com/stackdriver-container-alpha/deb/xenial/stackdriver-metadata_0.0.8-1.xenial.deb /stackdriver-metadata_0.0.8-1.xenial.deb
-RUN apt-get update && (dpkg -i stackdriver-metadata_0.0.8-1.xenial.deb || apt-get install -f -y)
+ARG version=0.0.8-1
+ADD https://storage.googleapis.com/stackdriver-container-alpha/deb/xenial/stackdriver-metadata_{$version}.xenial.deb /stackdriver-metadata_{$version}.xenial.deb
+RUN apt-get update \
+    && (dpkg -i stackdriver-metadata_{$version}.xenial.deb || true) \
+    && apt-get install -f -y \
+    && rm -rf /var/lib/apt/lists/*
 
 CMD /opt/stackdriver/metadata/sbin/metadatad
 
