@@ -173,6 +173,32 @@ void MetadataReporter::ReportMetadata() {
   LOG(INFO) << "Metadata reporter exiting";
 }
 
+namespace {
+
+void SendMetadataRequest(std::vector<json::value>&& entries,
+                         const std::string& endpoint,
+                         const std::string& auth_header) {
+  json::value update_metadata_request = json::object({
+    {"entries", json::array(std::move(entries))},
+  });
+
+  LOG(INFO) << "About to send request: " << *update_metadata_request;
+
+  http::client client;
+  http::client::request request(endpoint);
+  std::string request_body = update_metadata_request->ToString();
+  request << boost::network::header("Content-Length",
+                                    std::to_string(request_body.size()));
+  request << boost::network::header("Content-Type", "application/json");
+  request << boost::network::header("Authorization", auth_header);
+  request << boost::network::body(request_body);
+  http::client::response response = client.post(request);
+  LOG(INFO) << "Server responded with " << body(response);
+  // TODO: process response.
+}
+
+}
+
 void MetadataReporter::SendMetadata(
     std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata) {
   if (metadata.empty()) {
@@ -182,6 +208,10 @@ void MetadataReporter::SendMetadata(
 
   LOG(INFO) << "Sending request to the server";
   const std::string project_id = environment_.NumericProjectId();
+  const std::string endpoint =
+      format::Substitute(agent_.config_.MetadataIngestionEndpointFormat(),
+                         {{"project_id", project_id}});
+  const std::string auth_header = auth_.GetAuthHeaderValue();
 
   std::vector<json::value> entries;
   for (auto& entry : metadata) {
@@ -198,25 +228,7 @@ void MetadataReporter::SendMetadata(
         });
     entries.emplace_back(std::move(metadata_entry));
   }
-  json::value update_metadata_request = json::object({
-    {"entries", json::array(std::move(entries))},
-  });
-
-  LOG(INFO) << "About to send request: " << *update_metadata_request;
-
-  http::client client;
-  http::client::request request(
-      format::Substitute(agent_.config_.MetadataIngestionEndpointFormat(),
-                         {{"project_id", project_id}}));
-  std::string request_body = update_metadata_request->ToString();
-  request << boost::network::header("Content-Length",
-                                    std::to_string(request_body.size()));
-  request << boost::network::header("Content-Type", "application/json");
-  auth_.AddAuthHeader(&request);
-  request << boost::network::body(request_body);
-  http::client::response response = client.post(request);
-  LOG(INFO) << "Server responded with " << body(response);
-  // TODO: process response.
+  SendMetadataRequest(std::move(entries), endpoint, auth_header);
 }
 
 MetadataAgent::MetadataAgent(const MetadataAgentConfiguration& config)
