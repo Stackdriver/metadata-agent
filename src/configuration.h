@@ -53,6 +53,10 @@ class MetadataAgentConfiguration {
     std::lock_guard<std::mutex> lock(mutex_);
     return metadata_ingestion_endpoint_format_;
   }
+  int MetadataIngestionRequestSizeLimitBytes() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return metadata_ingestion_request_size_limit_bytes_;
+  }
   // Docker metadata updater options.
   int DockerUpdaterIntervalSeconds() const {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -83,6 +87,7 @@ class MetadataAgentConfiguration {
   int metadata_api_port_;
   int metadata_reporter_interval_seconds_;
   std::string metadata_ingestion_endpoint_format_;
+  int metadata_ingestion_request_size_limit_bytes_;
   int docker_updater_interval_seconds_;
   std::string docker_endpoint_host_;
   std::string docker_api_version_;

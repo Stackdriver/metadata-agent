@@ -71,7 +71,7 @@ class MetadataReporter {
   void ReportMetadata();
 
   // Send the given set of metadata.
-  void SendMetadataRequest(
+  void SendMetadata(
       std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata);
 
   const MetadataAgent& agent_;
@@ -166,14 +166,40 @@ void MetadataReporter::ReportMetadata() {
   // TODO: Do we need to be able to stop this?
   while (true) {
     LOG(INFO) << "Sending metadata request to server";
-    SendMetadataRequest(agent_.GetMetadataMap());
+    SendMetadata(agent_.GetMetadataMap());
     LOG(INFO) << "Metadata request sent successfully";
     std::this_thread::sleep_for(period_);
   }
   LOG(INFO) << "Metadata reporter exiting";
 }
 
-void MetadataReporter::SendMetadataRequest(
+namespace {
+
+void SendMetadataRequest(std::vector<json::value>&& entries,
+                         const std::string& endpoint,
+                         const std::string& auth_header) {
+  json::value update_metadata_request = json::object({
+    {"entries", json::array(std::move(entries))},
+  });
+
+  LOG(INFO) << "About to send request: " << *update_metadata_request;
+
+  http::client client;
+  http::client::request request(endpoint);
+  std::string request_body = update_metadata_request->ToString();
+  request << boost::network::header("Content-Length",
+                                    std::to_string(request_body.size()));
+  request << boost::network::header("Content-Type", "application/json");
+  request << boost::network::header("Authorization", auth_header);
+  request << boost::network::body(request_body);
+  http::client::response response = client.post(request);
+  LOG(INFO) << "Server responded with " << body(response);
+  // TODO: process response.
+}
+
+}
+
+void MetadataReporter::SendMetadata(
     std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata) {
   if (metadata.empty()) {
     LOG(INFO) << "No data to send";
@@ -182,39 +208,50 @@ void MetadataReporter::SendMetadataRequest(
 
   LOG(INFO) << "Sending request to the server";
   const std::string project_id = environment_.NumericProjectId();
+  const std::string endpoint =
+      format::Substitute(agent_.config_.MetadataIngestionEndpointFormat(),
+                         {{"project_id", project_id}});
+  const std::string auth_header = auth_.GetAuthHeaderValue();
+
+  const json::value empty_request = json::object({
+    {"entries", json::array({})},
+  });
+  const int empty_size = empty_request->ToString().size();
+
+  const int limit_bytes =
+      agent_.config_.MetadataIngestionRequestSizeLimitBytes();
+  int total_size = empty_size;
 
   std::vector<json::value> entries;
   for (auto& entry : metadata) {
     const MonitoredResource& resource = entry.first;
     MetadataAgent::Metadata& metadata = entry.second;
-    entries.emplace_back(json::object({  // MonitoredResourceMetadata
-      {"resource", resource.ToJSON()},
-      {"rawContentVersion", json::string(metadata.version)},
-      {"rawContent", std::move(metadata.metadata)},
-      {"state", json::string(metadata.is_deleted ? "DELETED" : "ACTIVE")},
-      {"createTime", json::string(rfc3339::ToString(metadata.created_at))},
-      {"collectTime", json::string(rfc3339::ToString(metadata.collected_at))},
-    }));
+    json::value metadata_entry =
+        json::object({  // MonitoredResourceMetadata
+          {"resource", resource.ToJSON()},
+          {"rawContentVersion", json::string(metadata.version)},
+          {"rawContent", std::move(metadata.metadata)},
+          {"state", json::string(metadata.is_deleted ? "DELETED" : "ACTIVE")},
+          {"createTime", json::string(rfc3339::ToString(metadata.created_at))},
+          {"collectTime", json::string(rfc3339::ToString(metadata.collected_at))},
+        });
+    // TODO: This is probably all kinds of inefficient...
+    const int size = metadata_entry->ToString().size();
+    if (empty_size + size > limit_bytes) {
+      LOG(ERROR) << "Individual entry too large: " << size
+                 << "B is greater than the limit " << limit_bytes
+                 << "B, dropping; entry " << *metadata_entry;
+      continue;
+    }
+    if (total_size + size > limit_bytes) {
+      SendMetadataRequest(std::move(entries), endpoint, auth_header);
+      entries.clear();
+      total_size = empty_size;
+    }
+    entries.emplace_back(std::move(metadata_entry));
+    total_size += size;
   }
-  json::value update_metadata_request = json::object({
-    {"entries", json::array(std::move(entries))},
-  });
-
-  LOG(INFO) << "About to send request: " << *update_metadata_request;
-
-  http::client client;
-  http::client::request request(
-      format::Substitute(agent_.config_.MetadataIngestionEndpointFormat(),
-                         {{"project_id", project_id}}));
-  std::string request_body = update_metadata_request->ToString();
-  request << boost::network::header("Content-Length",
-                                    std::to_string(request_body.size()));
-  request << boost::network::header("Content-Type", "application/json");
-  auth_.AddAuthHeader(&request);
-  request << boost::network::body(request_body);
-  http::client::response response = client.post(request);
-  LOG(INFO) << "Server responded with " << body(response);
-  // TODO: process response.
+  SendMetadataRequest(std::move(entries), endpoint, auth_header);
 }
 
 MetadataAgent::MetadataAgent(const MetadataAgentConfiguration& config)

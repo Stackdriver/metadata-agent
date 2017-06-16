@@ -33,6 +33,8 @@ constexpr const int kDockerUpdaterDefaultIntervalSeconds = 60;
 constexpr const char kMetadataIngestionDefaultEndpointFormat[] =
     "https://stackdriver.googleapis.com/v1beta2/projects/{{project_id}}"
     "/monitoredResourceMetadata:batchUpdate";
+constexpr const int kMetadataIngestionDefaultRequestSizeLimitBytes =
+    8*1024*1024;
 constexpr const char kDockerDefaultEndpointHost[] =
     "unix://%2Fvar%2Frun%2Fdocker.sock/";
 constexpr const char kDockerDefaultApiVersion[] = "1.23";
@@ -50,6 +52,8 @@ MetadataAgentConfiguration::MetadataAgentConfiguration()
           kMetadataReporterDefaultIntervalSeconds),
       metadata_ingestion_endpoint_format_(
           kMetadataIngestionDefaultEndpointFormat),
+      metadata_ingestion_request_size_limit_bytes_(
+          kMetadataIngestionDefaultRequestSizeLimitBytes),
       docker_updater_interval_seconds_(kDockerUpdaterDefaultIntervalSeconds),
       docker_endpoint_host_(kDockerDefaultEndpointHost),
       docker_api_version_(kDockerDefaultApiVersion),
@@ -77,6 +81,9 @@ MetadataAgentConfiguration::MetadataAgentConfiguration(
   metadata_ingestion_endpoint_format_ =
       config["MetadataIngestionEndpointFormat"].as<std::string>(
           kMetadataIngestionDefaultEndpointFormat);
+  metadata_ingestion_request_size_limit_bytes_ =
+      config["MetadataIngestionRequestSizeLimitBytes"].as<int>(
+          kMetadataIngestionDefaultRequestSizeLimitBytes);
   docker_updater_interval_seconds_ =
       config["DockerUpdaterIntervalSeconds"].as<int>(
           kDockerUpdaterDefaultIntervalSeconds);
