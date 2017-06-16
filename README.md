@@ -8,7 +8,7 @@ This is the Stackdriver metadata agent.
 
 2. Install build dependencies:
 
-       $ sudo apt-get install g++ libyajl-dev
+       $ sudo apt-get install g++ cmake libyajl-dev
 
 ## CentOS 7 special edition
 
@@ -18,7 +18,7 @@ This is the Stackdriver metadata agent.
 
 2. Install build dependencies (CentOS 7 special edition):
 
-       $ sudo yum install -y gcc-c++ yajl-devel
+       $ sudo yum install -y gcc-c++ cmake yajl-devel
 
 # Building
 

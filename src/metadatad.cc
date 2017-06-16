@@ -14,5 +14,8 @@
  * limitations under the License.
  **/
 
+#include "configuration.h"
+
 int main(int ac, char** av) {
+  google::MetadataAgentConfiguration config(ac > 1 ? av[1] : "");
 }
