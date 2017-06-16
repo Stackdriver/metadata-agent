@@ -96,6 +96,7 @@ clean:
 purge: clean
 	$(RM) -r init-submodules build-cpp-netlib build-yaml-cpp \
 	    $(CPP_NETLIB_DIR) $(YAML_CPP_DIR)
+	git submodule deinit --all
 
 init-submodules:
 	cd .. && \
