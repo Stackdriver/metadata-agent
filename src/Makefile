@@ -1,9 +1,10 @@
 CXXFLAGS=-std=c++11 -g
-LDLIBS=
+LDLIBS=-lyajl
 
 SRCS=\
      metadatad.cc \
      logging.cc \
+     json.cc \
      time.cc
 OBJS=$(SRCS:%.cc=%.o)
 
