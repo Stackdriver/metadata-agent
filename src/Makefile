@@ -2,7 +2,9 @@ CXXFLAGS=-std=c++11 -g
 LDLIBS=
 
 SRCS=\
-     metadatad.cc
+     metadatad.cc \
+     logging.cc \
+     time.cc
 OBJS=$(SRCS:%.cc=%.o)
 
 LIBS=
