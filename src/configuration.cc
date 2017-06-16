@@ -33,7 +33,8 @@ constexpr const int kDockerUpdaterDefaultIntervalSeconds = 60;
 constexpr const char kMetadataIngestionDefaultEndpointFormat[] =
     "https://stackdriver.googleapis.com/v1beta2/projects/{{project_id}}"
     "/monitoredResourceMetadata:batchUpdate";
-constexpr const int kMetadataIngestionDefaultRequestSizeLimitBytes = 1024*1024;
+constexpr const int kMetadataIngestionDefaultRequestSizeLimitBytes =
+    8*1024*1024;
 constexpr const char kDockerDefaultEndpointHost[] =
     "unix://%2Fvar%2Frun%2Fdocker.sock/";
 constexpr const char kDockerDefaultApiVersion[] = "1.23";
