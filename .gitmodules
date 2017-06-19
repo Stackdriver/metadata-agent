@@ -1,3 +1,6 @@
+[submodule "lib/cpp-netlib"]
+	path = lib/cpp-netlib
+	url = https://github.com/cpp-netlib/cpp-netlib
 [submodule "lib/yaml-cpp"]
 	path = lib/yaml-cpp
 	url = https://github.com/jbeder/yaml-cpp
