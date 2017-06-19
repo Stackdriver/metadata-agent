@@ -13,6 +13,7 @@ LDLIBS=-lcppnetlib-uri -lcppnetlib-client-connections -lboost_system \
 
 SRCS=\
      metadatad.cc \
+     api_server.cc \
      configuration.cc \
      resource.cc \
      oauth2.cc \
@@ -20,6 +21,7 @@ SRCS=\
      json.cc \
      time.cc \
      base64.cc \
+     format.cc \
      environment.cc
 OBJS=$(SRCS:%.cc=%.o)
 
