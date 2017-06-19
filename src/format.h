@@ -13,27 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  **/
-#ifndef TIME_H_
-#define TIME_H_
+#ifndef FORMAT_H_
+#define FORMAT_H_
 
-#include <chrono>
-#include <ctime>
+#include <map>
 #include <string>
 
-namespace google {
+namespace format {
 
-namespace rfc3339 {
+// A representation of format substitution errors.
+class Exception {
+ public:
+  Exception(const std::string& what) : explanation_(what) {}
+  const std::string& what() const { return explanation_; }
+ private:
+  std::string explanation_;
+};
 
-// Time conversions.
-std::string ToString(const std::chrono::system_clock::time_point& t);
-std::chrono::system_clock::time_point FromString(const std::string& s);
+// Format string substitution.
+// Placeholder format is '{{name}}'.
+std::string Substitute(const std::string& format,
+                       const std::map<std::string, std::string>&& params)
+    throw(Exception);
 
-}
+}  // format
 
-// Thread-safe versions of std:: functions.
-std::tm safe_localtime(const std::time_t* t);
-std::tm safe_gmtime(const std::time_t* t);
-
-}
-
-#endif  // TIME_H_
+#endif  // FORMAT_H_

@@ -55,3 +55,19 @@ This is the Stackdriver metadata agent.
 
        $ cd src
        $ make -j10
+
+# Running
+
+1. Run the agent with default settings:
+
+       $ cd src
+       $ ./metadatad
+
+   The agent will use the default credentials locations or the metadata server.
+
+2. Run the agent with modified configuration:
+
+       $ cd src
+       $ ./metadatad sample_agent_config.yaml
+
+   The default credentials location in the sample configuration is `/tmp/token.json`.
