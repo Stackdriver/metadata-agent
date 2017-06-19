@@ -14,12 +14,22 @@
  * limitations under the License.
  **/
 
+#include <vector>
+
 #include "api_server.h"
 #include "configuration.h"
+#include "updater.h"
 
 int main(int ac, char** av) {
   google::MetadataAgentConfiguration config(ac > 1 ? av[1] : "");
   google::MetadataAgent server(config);
+  google::PollingMetadataUpdater dummy_updater(
+      config.DockerUpdaterIntervalSeconds(), &server,
+      []() {
+        LOG(INFO) << "Updater called";
+        return std::vector<google::PollingMetadataUpdater::ResourceMetadata>{};
+      });
 
+  dummy_updater.start();
   server.start();
 }
