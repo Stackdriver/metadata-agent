@@ -14,9 +14,11 @@ SRCS=\
      metadatad.cc \
      configuration.cc \
      resource.cc \
+     oauth2.cc \
      logging.cc \
      json.cc \
      time.cc \
+     base64.cc \
      environment.cc
 OBJS=$(SRCS:%.cc=%.o)
 
