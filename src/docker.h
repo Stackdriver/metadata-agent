@@ -13,24 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  **/
+#ifndef DOCKER_H_
+#define DOCKER_H_
 
 //#include "config.h"
 
-#include <functional>
+#include <vector>
 
-#include "api_server.h"
 #include "configuration.h"
-#include "docker.h"
+#include "environment.h"
 #include "updater.h"
 
-int main(int ac, char** av) {
-  google::MetadataAgentConfiguration config(ac > 1 ? av[1] : "");
-  google::MetadataAgent server(config);
-  google::DockerReader docker(config);
-  google::PollingMetadataUpdater docker_updater(
-      config.DockerUpdaterIntervalSeconds(), &server,
-      std::bind(&google::DockerReader::MetadataQuery, &docker));
+namespace google {
 
-  docker_updater.start();
-  server.start();
+class DockerReader {
+ public:
+  DockerReader(const MetadataAgentConfiguration& config);
+  // A Docker metadata query function.
+  std::vector<PollingMetadataUpdater::ResourceMetadata> MetadataQuery() const;
+
+ private:
+  const MetadataAgentConfiguration& config_;
+  Environment environment_;
+};
+
 }
+
+#endif  // DOCKER_H_

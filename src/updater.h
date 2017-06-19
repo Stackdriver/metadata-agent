@@ -25,13 +25,12 @@
 #include <vector>
 
 #include "api_server.h"
-#include "environment.h"
 #include "resource.h"
 
 namespace google {
 
-// A base class for all periodic updates of the metadata mapping.
-// All specific metadata updaters inherit from this.
+// A class for all periodic updates of the metadata mapping.
+// Specific metadata updaters will be instances of this class.
 class PollingMetadataUpdater {
  public:
   struct ResourceMetadata {
@@ -74,17 +73,6 @@ class PollingMetadataUpdater {
 
   // The thread that polls for new metadata.
   std::thread reporter_thread_;
-};
-
-class DockerReader {
- public:
-  DockerReader(const MetadataAgentConfiguration& config);
-  // A Docker metadata query function.
-  std::vector<PollingMetadataUpdater::ResourceMetadata> MetadataQuery() const;
-
- private:
-  const MetadataAgentConfiguration& config_;
-  Environment environment_;
 };
 
 }
