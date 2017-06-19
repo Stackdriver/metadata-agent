@@ -58,6 +58,7 @@ PKG_MAINTAINER=Stackdriver Engineering <engineering@stackdriver.com>
 PKG_TMPDIR=$$(mktemp -d --tmpdir metadata-build.XXXXXXXXXX)
 
 DEB_PKG=$(PKG_NAME)_$(PKG_VERSION)-$(PKG_RELEASE)$(if $(DISTRO),.$(DISTRO),).deb
+RPM_PKG=$(PKG_NAME)_$(PKG_VERSION)-$(PKG_RELEASE)$(if $(DISTRO),.$(DISTRO),).x86_64.rpm
 
 $(DEB_PKG): metadatad $(wildcard ../pkg/deb/debian/*) Makefile
 	export TMPDIR=$(PKG_TMPDIR) && \
@@ -79,6 +80,16 @@ $(DEB_PKG): metadatad $(wildcard ../pkg/deb/debian/*) Makefile
 	$(RM) -r $$TMPDIR
 
 deb: $(DEB_PKG)
+
+$(RPM_PKG): metadatad $(wildcard ../pkg/rpm/*) Makefile
+	export TMPDIR=$(PKG_TMPDIR) && \
+	export RPM_DIR=$$TMPDIR/rpm && \
+	mkdir -p $$RPM_DIR/package && \
+	$(MAKE) DESTDIR=$$RPM_DIR/package install && \
+	(rpmbuild -bb --target=x86_64 -D"%_topdir $$RPM_DIR/rpmbuild" -D"%_rpmdir $(dir $@)" -D"%_rpmfilename $(notdir $@)" -D"%version $(PKG_VERSION)" -D"%release $(PKG_RELEASE)" --buildroot=$$RPM_DIR/package --noclean ../pkg/rpm/stackdriver-metadata.spec > $$RPM_DIR/rpmbuild.log 2>&1) && \
+	$(RM) -r $$TMPDIR
+
+rpm: $(RPM_PKG)
 
 clean:
 	$(RM) metadatad $(OBJS)
@@ -129,4 +140,4 @@ submodules: cpp-netlib yaml-cpp
 
 all: submodules metadatad
 
-.PHONY: all submodules cpp-netlib yaml-cpp purge clean install deb
+.PHONY: all submodules cpp-netlib yaml-cpp purge clean install deb rpm
