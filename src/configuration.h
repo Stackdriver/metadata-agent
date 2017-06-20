@@ -74,6 +74,20 @@ class MetadataAgentConfiguration {
     std::lock_guard<std::mutex> lock(mutex_);
     return docker_container_filter_;
   }
+  // GKE metadata updater options.
+  const std::string& KubernetesPodLabelSelector() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return kubernetes_pod_label_selector_;
+  }
+  const std::string& KubernetesClusterName() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return kubernetes_cluster_name_;
+  }
+  // Common metadata updater options.
+  const std::string& InstanceId() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return instance_id_;
+  }
   const std::string& InstanceZone() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return instance_zone_;
@@ -92,6 +106,9 @@ class MetadataAgentConfiguration {
   std::string docker_endpoint_host_;
   std::string docker_api_version_;
   std::string docker_container_filter_;
+  std::string kubernetes_pod_label_selector_;
+  std::string kubernetes_cluster_name_;
+  std::string instance_id_;
   std::string instance_zone_;
 };
 

@@ -1,0 +1,137 @@
+/*
+ * Copyright 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ **/
+
+#include "kubernetes.h"
+
+#include <boost/network/protocol/http/client.hpp>
+#include <chrono>
+
+#include "json.h"
+#include "local_stream_http.h"
+#include "logging.h"
+#include "resource.h"
+#include "time.h"
+
+namespace http = boost::network::http;
+
+namespace google {
+
+namespace {
+
+#if 0
+constexpr const char docker_endpoint_host[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
+constexpr const char docker_api_version[] = "1.23";
+#endif
+constexpr const char docker_endpoint_path[] = "/containers";
+constexpr const char resource_type_separator[] = ".";
+
+}
+
+KubernetesReader::KubernetesReader(const MetadataAgentConfiguration& config)
+    : config_(config), environment_(config) {}
+
+std::vector<PollingMetadataUpdater::ResourceMetadata>
+    KubernetesReader::MetadataQuery() const {
+  LOG(INFO) << "Kubernetes Query called";
+  const std::string instance_id = environment_.InstanceId();
+  const std::string zone = environment_.InstanceZone();
+  const std::string cluster_name = environment_.KubernetesClusterName();
+  const std::string docker_endpoint(config_.DockerEndpointHost() +
+                                    "v" + config_.DockerApiVersion() +
+                                    docker_endpoint_path);
+  const std::string pod_label_selector(
+      config_.KubernetesPodLabelSelector().empty()
+      ? "" : "?" + config_.KubernetesPodLabelSelector());
+
+  http::local_client client;
+  http::local_client::request list_request(
+      docker_endpoint + "/pods" + pod_label_selector);
+  http::local_client::response list_response = client.get(list_request);
+  Timestamp collected_at = std::chrono::system_clock::now();
+  LOG(ERROR) << "List response: " << body(list_response);
+  json::value parsed_list = json::Parser::FromString(body(list_response));
+  LOG(ERROR) << "Parsed list: " << *parsed_list;
+  std::vector<PollingMetadataUpdater::ResourceMetadata> result;
+  try {
+    const json::Object* podlist_object = parsed_list->As<json::Object>();
+    const std::string kind = podlist_object->Get<json::String>("kind");
+    const std::string api_version = podlist_object->Get<json::String>("apiVersion");
+    const json::Array* pod_list = podlist_object->Get<json::Array>("items");
+    for (const json::value& element : *pod_list) {
+      try {
+        LOG(ERROR) << "Pod: " << *element;
+        const json::Object* pod = element->As<json::Object>();
+
+        const json::Object* metadata = pod->Get<json::Object>("metadata");
+        const std::string namespace_id =
+            metadata->Get<json::String>("namespace");
+        const std::string pod_name = metadata->Get<json::String>("name");
+        const std::string pod_id = metadata->Get<json::String>("uid");
+        const std::string created_str =
+            metadata->Get<json::String>("creationTimestamp");
+        Timestamp created_at = rfc3339::FromString(created_str);
+
+        const json::Object* status = pod->Get<json::Object>("status");
+        const std::string started_str = status->Get<json::String>("startTime");
+        Timestamp started_at = rfc3339::FromString(started_str);
+
+        //const json::Object* spec = pod->Get<json::Object>("spec");
+        //const json::Array* container_list = pod->Get<json::Array>("containers");
+        const json::Array* container_list =
+            status->Get<json::Array>("containerStatuses");
+        for (const json::value& c_element : *container_list) {
+          LOG(ERROR) << "Container: " << *c_element;
+          const json::Object* container = c_element->As<json::Object>();
+          const std::string container_name =
+              container->Get<json::String>("Name");
+          const std::string container_id =
+              container->Get<json::String>("containerID");
+          // TODO: find is_deleted.
+          //const json::Object* state = container->Get<json::Object>("state");
+          bool is_deleted = false;
+
+          const MonitoredResource resource("gke_container", {
+            {"cluster_name", cluster_name},
+            {"namespace_id", namespace_id},
+            {"instance_id", instance_id},
+            {"pod_id", pod_id},
+            {"container_name", container_name},
+            {"zone", zone},
+          });
+
+          const std::string resource_id =
+              std::string("container") + resource_type_separator + pod_id;
+          // The container name reported by Docker will always have a leading '/'.
+          const std::string resource_name =
+              std::string("containerName") + resource_type_separator + container_name.substr(1);
+          result.emplace_back(std::vector<std::string>{resource_id, resource_name},
+                              resource,
+                              MetadataAgent::Metadata(config_.DockerApiVersion(),
+                                                      is_deleted, created_at, collected_at,
+                                                      std::move(element->Clone())));
+        }
+      } catch (const json::Exception& e) {
+        LOG(ERROR) << e.what();
+        continue;
+      }
+    }
+  } catch (const json::Exception& e) {
+    LOG(ERROR) << e.what();
+  }
+  return result;
+}
+
+}

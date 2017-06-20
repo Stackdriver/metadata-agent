@@ -131,6 +131,38 @@ const std::string& Environment::InstanceZone() const {
   return zone_;
 }
 
+const std::string& Environment::InstanceId() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (instance_id_.empty()) {
+    if (!config_.InstanceId().empty()) {
+      instance_id_ = config_.InstanceId();
+    } else {
+      // Query the metadata server.
+      // TODO: Other sources?
+      instance_id_ = GetMetadataString("instance/id");
+    }
+    if (instance_id_.empty()) {
+      instance_id_ = "1234567890";
+    }
+  }
+  return instance_id_;
+}
+
+const std::string& Environment::KubernetesClusterName() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (kubernetes_cluster_name_.empty()) {
+    if (!config_.KubernetesClusterName().empty()) {
+      kubernetes_cluster_name_ = config_.KubernetesClusterName();
+    } else {
+      // Query the metadata server.
+      // TODO: Other sources? kube-env?
+      kubernetes_cluster_name_ =
+          GetMetadataString("instance/attributes/cluster-name");
+    }
+  }
+  return kubernetes_cluster_name_;
+}
+
 const std::string& Environment::CredentialsClientEmail() const {
   std::lock_guard<std::mutex> lock(mutex_);
   ReadApplicationDefaultCredentials();
