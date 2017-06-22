@@ -138,6 +138,7 @@ double SecondsSinceEpoch(
       t.time_since_epoch()).count();
 }
 
+}
 
 // To allow logging headers. TODO: move to a common location.
 std::ostream& operator<<(
@@ -148,10 +149,9 @@ std::ostream& operator<<(
     o << " " << h.first << ": " << h.second;
   }
   o << " ]";
+  return o;
 }
 
-
-}
 
 json::value OAuth2::ComputeTokenFromCredentials() const {
   const std::string service_account_email =

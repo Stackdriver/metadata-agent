@@ -72,7 +72,8 @@ std::chrono::system_clock::time_point FromString(const std::string& s) {
   const std::time_t utc_time = local_time + kUtcOffset;
   std::chrono::system_clock::time_point sec =
       std::chrono::system_clock::from_time_t(utc_time);
-  return sec + std::chrono::nanoseconds(ns);
+  return std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+      sec + std::chrono::nanoseconds(ns));
 }
 
 }

@@ -26,6 +26,7 @@ std::ostream& operator<<(std::ostream& o, const MonitoredResource& r) {
     o << " " << label.first << ": '" << label.second << "'";
   }
   o << " } }";
+  return o;
 }
 
 json::value MonitoredResource::ToJSON() const {

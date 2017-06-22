@@ -57,7 +57,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
   http::local_client::request list_request(
       docker_endpoint + "/json?all=true" + container_filter);
   http::local_client::response list_response = client.get(list_request);
-  Timestamp collected_at = std::chrono::high_resolution_clock::now();
+  Timestamp collected_at = std::chrono::system_clock::now();
   LOG(ERROR) << "List response: " << body(list_response);
   json::value parsed_list = json::Parser::FromString(body(list_response));
   LOG(ERROR) << "Parsed list: " << *parsed_list;

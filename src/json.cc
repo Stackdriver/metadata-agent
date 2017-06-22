@@ -207,6 +207,7 @@ class Context {
  public:
   virtual void AddValue(std::unique_ptr<Value> value) = 0;
   Context* parent() { return parent_; }
+  virtual ~Context() = default;
  protected:
   Context(Context* parent) : parent_(parent) {}
  private:
