@@ -163,6 +163,21 @@ const std::string& Environment::KubernetesClusterName() const {
   return kubernetes_cluster_name_;
 }
 
+const std::string& Environment::KubernetesApiToken() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (kubernetes_api_token_.empty()) {
+    std::string filename = "/var/run/secrets/kubernetes.io/serviceaccount/token";
+    std::ifstream input(filename);
+    if (!input.good()) {
+      LOG(ERROR) << "Missing Kubernetes API token " << filename;
+      return kubernetes_api_token_;
+    }
+    LOG(INFO) << "Reading token from " << filename;
+    std::getline(input, kubernetes_api_token_);
+  }
+  return kubernetes_api_token_;
+}
+
 const std::string& Environment::CredentialsClientEmail() const {
   std::lock_guard<std::mutex> lock(mutex_);
   ReadApplicationDefaultCredentials();

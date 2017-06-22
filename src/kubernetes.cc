@@ -32,10 +32,10 @@ namespace google {
 namespace {
 
 #if 0
-constexpr const char docker_endpoint_host[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
-constexpr const char docker_api_version[] = "1.23";
+constexpr const char kubernetes_endpoint_host[] = "https://kubernetes";
 #endif
-constexpr const char docker_endpoint_path[] = "/containers";
+constexpr const char kubernetes_api_version[] = "1.6";
+constexpr const char kubernetes_endpoint_path[] = "/api/v1";
 constexpr const char resource_type_separator[] = ".";
 
 }
@@ -49,16 +49,17 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
   const std::string instance_id = environment_.InstanceId();
   const std::string zone = environment_.InstanceZone();
   const std::string cluster_name = environment_.KubernetesClusterName();
-  const std::string docker_endpoint(config_.DockerEndpointHost() +
-                                    "v" + config_.DockerApiVersion() +
-                                    docker_endpoint_path);
+  const std::string kubernetes_endpoint(config_.KubernetesEndpointHost() +
+                                        kubernetes_endpoint_path);
   const std::string pod_label_selector(
       config_.KubernetesPodLabelSelector().empty()
       ? "" : "?" + config_.KubernetesPodLabelSelector());
 
   http::local_client client;
   http::local_client::request list_request(
-      docker_endpoint + "/pods" + pod_label_selector);
+      kubernetes_endpoint + "/pods" + pod_label_selector);
+  list_request << boost::network::header(
+      "Authorization", "Bearer " + environment_.KubernetesApiToken());
   http::local_client::response list_response = client.get(list_request);
   Timestamp collected_at = std::chrono::system_clock::now();
   LOG(ERROR) << "List response: " << body(list_response);
@@ -113,13 +114,13 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
           });
 
           const std::string resource_id =
-              std::string("container") + resource_type_separator + pod_id;
-          // The container name reported by Docker will always have a leading '/'.
-          const std::string resource_name =
-              std::string("containerName") + resource_type_separator + container_name.substr(1);
-          result.emplace_back(std::vector<std::string>{resource_id, resource_name},
+              std::string("gke_container") + resource_type_separator +
+	      namespace_id + resource_type_separator +
+	      pod_id + resource_type_separator +
+	      container_name;
+          result.emplace_back(std::vector<std::string>{resource_id},
                               resource,
-                              MetadataAgent::Metadata(config_.DockerApiVersion(),
+                              MetadataAgent::Metadata(kubernetes_api_version,
                                                       is_deleted, created_at, collected_at,
                                                       std::move(element->Clone())));
         }
