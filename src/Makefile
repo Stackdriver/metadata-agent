@@ -4,12 +4,22 @@ CPP_NETLIB_LIBDIR=$(CPP_NETLIB_DIR)/libs/network/src
 YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
 YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
 
-SED=/usr/bin/env sed
+SED_I=/usr/bin/env sed -i
 CMAKE=cmake
 CXXFLAGS=-std=c++11 -g -DENABLE_KUBERNETES_METADATA -I$(CPP_NETLIB_DIR) -I$(YAML_CPP_DIR)/include
 LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(YAML_CPP_LIBDIR)
 LDLIBS=-lcppnetlib-uri -lcppnetlib-client-connections -lboost_system \
     -lboost_thread -lpthread -lyajl -lssl -lcrypto -lyaml-cpp
+SED_EXTRA=
+
+UNAME_S=$(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+  CXXFLAGS+= -Wno-deprecated-declarations -I/usr/local/include
+  LDFLAGS+= -L/usr/local/lib
+  SED_I+= ''
+  SED_EXTRA+=-e \
+      's/-Wall/-Wall -Wno-deprecated-declarations -Wno-unused-local-typedef/'
+endif
 
 SRCS=\
      metadatad.cc \
@@ -109,7 +119,7 @@ init-submodules:
 
 $(CPP_NETLIB_DIR)/Makefile: init-submodules
 	cd $(CPP_NETLIB_DIR) && \
-	$(SED) -i -e 's/unit_test_framework //' CMakeLists.txt && \
+	$(SED_I) -e 's/unit_test_framework //' $(SED_EXTRA) CMakeLists.txt && \
 	$(CMAKE) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
 	    -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
 	    -DCPP-NETLIB_BUILD_TESTS=OFF -DCPP-NETLIB_BUILD_EXAMPLES=OFF
