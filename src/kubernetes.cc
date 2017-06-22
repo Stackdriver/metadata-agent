@@ -120,9 +120,14 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
 	      container_name;
           result.emplace_back(std::vector<std::string>{resource_id},
                               resource,
+#ifdef ENABLE_KUBERNETES_METADATA
                               MetadataAgent::Metadata(kubernetes_api_version,
                                                       is_deleted, created_at, collected_at,
-                                                      std::move(element->Clone())));
+                                                      std::move(element->Clone()))
+#else
+                              MetadataAgent::Metadata::IGNORED()
+#endif
+          );
         }
       } catch (const json::Exception& e) {
         LOG(ERROR) << e.what();
