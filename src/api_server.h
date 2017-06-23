@@ -57,8 +57,10 @@ class MetadataAgent {
           metadata(std::move(other.metadata)), ignore(other.ignore) {}
 
     Metadata Clone() const {
-      return {version, is_deleted, created_at, collected_at,
-              metadata ? metadata->Clone() : nullptr};
+      if (ignore) {
+        return {};
+      }
+      return {version, is_deleted, created_at, collected_at, metadata->Clone()};
     }
 
     static Metadata IGNORED();
@@ -73,7 +75,7 @@ class MetadataAgent {
    private:
     Metadata()
         : version(), is_deleted(false), created_at(), collected_at(),
-	  metadata(), ignore(false) {}
+          metadata(json::object({})), ignore(false) {}
   };
 
   MetadataAgent(const MetadataAgentConfiguration& config);
