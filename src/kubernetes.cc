@@ -20,7 +20,6 @@
 #include <chrono>
 
 #include "json.h"
-#include "local_stream_http.h"
 #include "logging.h"
 #include "resource.h"
 #include "time.h"
@@ -55,12 +54,12 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
       config_.KubernetesPodLabelSelector().empty()
       ? "" : "?" + config_.KubernetesPodLabelSelector());
 
-  http::local_client client;
-  http::local_client::request list_request(
+  http::client client;
+  http::client::request list_request(
       kubernetes_endpoint + "/pods" + pod_label_selector);
   list_request << boost::network::header(
       "Authorization", "Bearer " + environment_.KubernetesApiToken());
-  http::local_client::response list_response = client.get(list_request);
+  http::client::response list_response = client.get(list_request);
   Timestamp collected_at = std::chrono::system_clock::now();
   LOG(ERROR) << "List response: " << body(list_response);
   json::value parsed_list = json::Parser::FromString(body(list_response));
