@@ -96,7 +96,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
           LOG(ERROR) << "Container: " << *c_element;
           const json::Object* container = c_element->As<json::Object>();
           const std::string container_name =
-              container->Get<json::String>("Name");
+              container->Get<json::String>("name");
           const std::string container_id =
               container->Get<json::String>("containerID");
           // TODO: find is_deleted.
