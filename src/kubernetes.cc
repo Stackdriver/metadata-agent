@@ -114,9 +114,9 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
 
           const std::string resource_id =
               std::string("gke_container") + resource_type_separator +
-	      namespace_id + resource_type_separator +
-	      pod_id + resource_type_separator +
-	      container_name;
+              namespace_id + resource_type_separator +
+              pod_id + resource_type_separator +
+              container_name;
           result.emplace_back(std::vector<std::string>{resource_id},
                               resource,
 #ifdef ENABLE_KUBERNETES_METADATA
