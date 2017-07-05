@@ -54,7 +54,7 @@ build-yaml-cpp: $(YAML_CPP_DIR)/Makefile
 
 yaml-cpp: $(YAML_CPP_LIBS)
 
-submodules: cpp-netlib yaml-cpp
+submodules: yaml-cpp
 
 all: submodules metadatad
 
