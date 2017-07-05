@@ -49,9 +49,9 @@ Logger& Logger::flush() {
   return *this;
 }
 
-//constexpr char Logger::kSeverities_[] = "DIWE";
-
 LogStream default_log_stream(std::cerr);
+
+//constexpr char Logger::kSeverities_[] = "DIWE";
 
 constexpr char Logger::kSeverities_[];
 
