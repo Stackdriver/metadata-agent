@@ -84,13 +84,14 @@ void JSONSerializer::clear() {
 }
 
 void JSONSerializer::ToStream(std::ostream& stream) {
-  const auto buf_len = buf();
-  stream.write(reinterpret_cast<const char*>(buf_len.first), buf_len.second);
+  const auto buf_and_len = buf();
+  stream.write(reinterpret_cast<const char*>(buf_and_len.first),
+               buf_and_len.second);
 }
 
 std::string JSONSerializer::ToString() {
-  const auto buf_len = buf();
-  return {reinterpret_cast<const char*>(buf_len.first), buf_len.second};
+  const auto buf_and_len = buf();
+  return {reinterpret_cast<const char*>(buf_and_len.first), buf_and_len.second};
 }
 
 }  // internal
@@ -133,7 +134,9 @@ std::unique_ptr<Value> Number::Clone() const {
 }
 
 void String::Serialize(internal::JSONSerializer* serializer) const {
-  yajl_gen_string(serializer->gen(), reinterpret_cast<const unsigned char*>(value_.data()), value_.size());
+  yajl_gen_string(serializer->gen(),
+                  reinterpret_cast<const unsigned char*>(value_.data()),
+                  value_.size());
 }
 
 std::unique_ptr<Value> String::Clone() const {
@@ -152,7 +155,8 @@ Array::Array(std::vector<std::unique_ptr<Value>>&& elements) {
   }
 }
 
-Array::Array(std::initializer_list<rref_capture<std::unique_ptr<Value>>> elements) {
+Array::Array(
+    std::initializer_list<rref_capture<std::unique_ptr<Value>>> elements) {
   for (auto& e : elements) {
     emplace_back(std::move(e));
   }
@@ -182,7 +186,9 @@ Object::Object(std::map<std::string, std::unique_ptr<Value>>&& fields) {
   }
 }
 
-Object::Object(std::initializer_list<std::pair<std::string, rref_capture<std::unique_ptr<Value>>>> fields) {
+Object::Object(
+    std::initializer_list<std::pair<std::string,
+                          rref_capture<std::unique_ptr<Value>>>> fields) {
   for (auto& kv : fields) {
     emplace(kv.first, std::move(kv.second));
   }
@@ -191,7 +197,9 @@ Object::Object(std::initializer_list<std::pair<std::string, rref_capture<std::un
 void Object::Serialize(internal::JSONSerializer* serializer) const {
   yajl_gen_map_open(serializer->gen());
   for (const auto& e : *this) {
-    yajl_gen_string(serializer->gen(), reinterpret_cast<const unsigned char*>(e.first.data()), e.first.size());
+    yajl_gen_string(serializer->gen(),
+                    reinterpret_cast<const unsigned char*>(e.first.data()),
+                    e.first.size());
     e.second->Serialize(serializer);
   }
   yajl_gen_map_close(serializer->gen());
@@ -275,6 +283,7 @@ class JSONBuilder {
   void PushArray() {
     context_ = new ArrayContext(context_);
   }
+
   void PushObject() {
     context_ = new ObjectContext(context_);
   }
@@ -289,6 +298,7 @@ class JSONBuilder {
     context_ = context_->parent();
     return array_context;
   }
+
   std::unique_ptr<ObjectContext> PopObject() {
     std::unique_ptr<ObjectContext> object_context(
         dynamic_cast<ObjectContext*>(context_));
@@ -347,6 +357,8 @@ int handle_string(void* arg, const unsigned char* val, size_t length) {
 
 int handle_integer(void* arg, long long value) {
   JSONBuilder* builder = reinterpret_cast<JSONBuilder*>(arg);
+  // Careful: converting a long long into a double is lossy.
+  // I doubt it'll matter in practice, though.
   builder->AddValue(
       std::unique_ptr<Value>(new Number(static_cast<double>(value))));
   return 1;
@@ -356,10 +368,6 @@ int handle_double(void* arg, double value) {
   JSONBuilder* builder = reinterpret_cast<JSONBuilder*>(arg);
   builder->AddValue(std::unique_ptr<Value>(new Number(value)));
   return 1;
-}
-
-int handle_number(void* arg, const char* data, size_t length) {
-  return handle_string(arg, (const unsigned char*)data, length);
 }
 
 int handle_start_array(void* arg) {
@@ -407,7 +415,6 @@ yajl_callbacks callbacks = {
     .yajl_boolean = &handle_bool,
     .yajl_integer = &handle_integer,
     .yajl_double = &handle_double,
-    //.yajl_number = &handle_number,
     .yajl_number = nullptr,
     .yajl_string = &handle_string,
     .yajl_start_map = &handle_start_map,
