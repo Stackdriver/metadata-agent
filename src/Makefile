@@ -8,7 +8,8 @@ SED=/usr/bin/env sed
 CMAKE=cmake
 CXXFLAGS=-std=c++11 -g -I$(CPP_NETLIB_DIR) -I$(YAML_CPP_DIR)/include
 LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(YAML_CPP_LIBDIR)
-LDLIBS=-lcppnetlib-uri -lcppnetlib-client-connections -lboost_system -lboost_thread -lpthread -lyajl -lssl -lcrypto -lyaml-cpp
+LDLIBS=-lcppnetlib-uri -lcppnetlib-client-connections -lboost_system \
+    -lboost_thread -lpthread -lyajl -lssl -lcrypto -lyaml-cpp
 
 SRCS=\
      metadatad.cc \

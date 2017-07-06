@@ -27,7 +27,7 @@ namespace google {
 
 namespace {
 
-json::value ReadCredentials(const std::string& credentials_file) {
+json::value ReadCredentials(const std::string& credentials_file) throw(json::Exception) {
   std::string filename = credentials_file;
   if (filename.empty()) {
     const char* creds_env_var = std::getenv("GOOGLE_APPLICATION_CREDENTIALS");
@@ -46,8 +46,7 @@ json::value ReadCredentials(const std::string& credentials_file) {
   LOG(INFO) << "Reading credentials from " << filename;
   json::value creds_json = json::Parser::FromStream(input);
   if (creds_json == nullptr) {
-    LOG(ERROR) << "Could not parse credentials from " << filename;
-    return nullptr;
+    throw json::Exception("Could not parse credentials from " + filename);
   }
   LOG(INFO) << "Retrieved credentials from " << filename << ": " << *creds_json;
   return std::move(creds_json);
@@ -127,9 +126,6 @@ const std::string& Environment::InstanceZone() const {
       zone_ = GetMetadataString("instance/zone");
       zone_ = zone_.substr(zone_.rfind('/') + 1);
     }
-    if (zone_.empty()) {
-      zone_ = "1234567890";
-    }
   }
   return zone_;
 }
@@ -140,9 +136,6 @@ void Environment::ReadApplicationDefaultCredentials() const {
   }
   try {
     json::value creds_json = ReadCredentials(config_.CredentialsFile());
-    if (creds_json == nullptr) {
-      return;
-    }
 
     const json::Object* creds = creds_json->As<json::Object>();
 
