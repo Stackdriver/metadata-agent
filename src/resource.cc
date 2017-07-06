@@ -21,8 +21,8 @@
 namespace google {
 
 std::ostream& operator<<(std::ostream& o, const MonitoredResource& r) {
-  o << "{ type: '" << r.type_ << "' labels: {";
-  for (const auto& label : r.labels_) {
+  o << "{ type: '" << r.type() << "' labels: {";
+  for (const auto& label : r.labels()) {
     o << " " << label.first << ": '" << label.second << "'";
   }
   o << " } }";

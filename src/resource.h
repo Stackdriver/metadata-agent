@@ -31,8 +31,8 @@ class MonitoredResource {
   MonitoredResource(const std::string& type,
                     const std::map<std::string, std::string> labels)
       : type_(type), labels_(labels) {}
-  const std::string& type() { return type_; }
-  const std::map<std::string, std::string>& labels() { return labels_; }
+  const std::string& type() const { return type_; }
+  const std::map<std::string, std::string>& labels() const { return labels_; }
   bool operator==(const MonitoredResource& other) const {
     return other.type_ == type_ && other.labels_ == labels_;
   }
@@ -43,8 +43,6 @@ class MonitoredResource {
 
   json::value ToJSON() const;
   static MonitoredResource FromJSON(const json::Object* json);
-
-  friend std::ostream& operator<<(std::ostream&, const MonitoredResource&);
 
  private:
   std::string type_;
