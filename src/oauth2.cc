@@ -43,7 +43,8 @@ struct Deleter {
 };
 
 class PKey {
-  using PKCS8_Deleter = Deleter<PKCS8_PRIV_KEY_INFO, void, PKCS8_PRIV_KEY_INFO_free>;
+  using PKCS8_Deleter =
+      Deleter<PKCS8_PRIV_KEY_INFO, void, PKCS8_PRIV_KEY_INFO_free>;
   using BIO_Deleter = Deleter<BIO, int, BIO_free>;
   using EVP_PKEY_Deleter = Deleter<EVP_PKEY, void, EVP_PKEY_free>;
  public:
@@ -68,6 +69,7 @@ class PKey {
   }
 
   std::string ToString() const {
+    // TODO: Check for NULL and add exceptions.
     std::unique_ptr<BIO, BIO_Deleter> mem(BIO_new(BIO_s_mem()));
     EVP_PKEY_print_private(mem.get(), private_key_.get(), 0, NULL);
     char* pp;
@@ -119,19 +121,22 @@ std::string Sign(const std::string& data, const PKey& pkey) {
   }
 
   unsigned int actual_result_size = 0;
-  if (EVP_SignFinal(&ctx, result.get(), &actual_result_size, pkey.private_key()) == 0) {
+  if (EVP_SignFinal(&ctx, result.get(), &actual_result_size,
+                    pkey.private_key()) == 0) {
     ERR_error_string_n(ERR_get_error(), error, sizeof(error));
     LOG(ERROR) << "EVP_SignFinal failed: " << error;
     return "";
   }
 #if 0
   for (int i = 0; i < actual_result_size; ++i) {
-    LOG(ERROR) << "Signature char '" << static_cast<int>(result.get()[i]) << "'";
+    LOG(ERROR) << "Signature char '" << static_cast<int>(result.get()[i])
+               << "'";
   }
 #endif
   return std::string(reinterpret_cast<char*>(result.get()), actual_result_size);
 }
 
+// TODO: Move this to the time library?
 double SecondsSinceEpoch(
     const std::chrono::time_point<std::chrono::system_clock>& t) {
   return std::chrono::duration_cast<std::chrono::seconds>(
@@ -169,19 +174,21 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
     // with the body
     // grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=$JWT_HEADER.$CLAIM_SET.$SIGNATURE
     //
-    // The trailing part of that body has three variables that need to be expanded.
+    // The trailing part of that body has three variables that need to be
+    // expanded.
     // Namely, $JWT_HEADER, $CLAIM_SET, and $SIGNATURE, separated by periods.
     //
     // $CLAIM_SET is a base64url encoding of a JSON object with five fields:
     // iss, scope, aud, exp, and iat.
     // iss: Service account email. We get this from user in the config file.
-    // scope: Basically the requested scope (e.g. "permissions") for the token. For
-    //   our purposes, this is the constant string
+    // scope: Basically the requested scope (e.g. "permissions") for the token.
+    //   For our purposes, this is the constant string
     //   "https://www.googleapis.com/auth/monitoring".
-    // aud: Assertion target. Since we are asking for an access token, this is the
-    //   constant string "https://www.googleapis.com/oauth2/v3/token". This is the
-    //   same as the URL we are posting to.
-    // iat: Time of the assertion (i.e. now) in units of "seconds from Unix epoch".
+    // aud: Assertion target. Since we are asking for an access token, this is
+    //   the constant string "https://www.googleapis.com/oauth2/v3/token". This
+    //   is the same as the URL we are posting to.
+    // iat: Time of the assertion (i.e. now) in units of "seconds from Unix
+    //   epoch".
     // exp: Expiration of assertion. For us this is 'iat' + 3600 seconds.
     //
     // $SIGNATURE is the base64url encoding of the signature of the string
@@ -198,7 +205,8 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
     std::string grant_type = boost::network::uri::encoded(
         "urn:ietf:params:oauth:grant-type:jwt-bearer");
     //std::string jwt_header = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9";
-    //std::string jwt_header = base64::Encode("{\"alg\":\"RS256\",\"typ\":\"JWT\"}");
+    //std::string jwt_header =
+    //    base64::Encode("{\"alg\":\"RS256\",\"typ\":\"JWT\"}");
     json::value jwt_object = json::object({
       {"alg", json::string("RS256")},
       {"typ", json::string("JWT")},
@@ -231,9 +239,9 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
               << " headers: " << request.headers()
               << " body: " << request.body();
     http::client::response response = client.post(request);
-    LOG(ERROR) << "Token response: " << body(response);
+    LOG(INFO) << "Token response: " << body(response);
     json::value parsed_token = json::Parser::FromString(body(response));
-    LOG(ERROR) << "Parsed token: " << *parsed_token;
+    LOG(INFO) << "Parsed token: " << *parsed_token;
 
     return parsed_token;
   } catch (const json::Exception& e) {
@@ -248,9 +256,9 @@ json::value OAuth2::GetMetadataToken() const {
   if (token_response.empty()) {
     return nullptr;
   }
-  LOG(ERROR) << "Token response: " << token_response;
+  LOG(INFO) << "Token response: " << token_response;
   json::value parsed_token = json::Parser::FromString(token_response);
-  LOG(ERROR) << "Parsed token: " << *parsed_token;
+  LOG(INFO) << "Parsed token: " << *parsed_token;
   return parsed_token;
 }
 
