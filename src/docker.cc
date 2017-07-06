@@ -57,15 +57,15 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
   http::local_client::request list_request(
       docker_endpoint + "/json?all=true" + container_filter);
   std::vector<PollingMetadataUpdater::ResourceMetadata> result;
-  Timestamp collected_at;
+  http::local_client::response list_response;
   try {
-    http::local_client::response list_response = client.get(list_request);
-    collected_at = std::chrono::high_resolution_clock::now();
+    list_response = client.get(list_request);
     LOG(ERROR) << "List response: " << body(list_response);
   } catch (const boost::system::system_error& e) {
     LOG(ERROR) << "Failed to communicate with docker: " << e.what();
     return result;
   }
+  Timestamp collected_at = std::chrono::high_resolution_clock::now();
   json::value parsed_list = json::Parser::FromString(body(list_response));
   LOG(ERROR) << "Parsed list: " << *parsed_list;
   try {
