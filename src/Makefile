@@ -66,7 +66,7 @@ $(DEB_PKG): metadatad $(wildcard ../pkg/deb/debian/*) Makefile
 	$(MAKE) DESTDIR=$$DEB_DIR/package install && \
 	$(INSTALL) -d $$DEB_DIR/package/DEBIAN && \
 	touch $$DEB_DIR/package/DEBIAN/files && \
-	(echo "$(PKG_NAME) ($(PKG_VERSION)-$(PKG_RELEASE)) trusty xenial squeeze wheezy jessie; urgency=low" >> $$DEB_DIR/changelog) && \
+	(echo "$(PKG_NAME) ($(PKG_VERSION)-$(PKG_RELEASE)) trusty xenial wheezy jessie; urgency=low" >> $$DEB_DIR/changelog) && \
 	(echo >> $$DEB_DIR/changelog) && \
 	(echo "  * automated build" >> $$DEB_DIR/changelog) && \
 	(echo >> $$DEB_DIR/changelog) && \
