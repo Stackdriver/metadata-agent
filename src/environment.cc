@@ -60,7 +60,8 @@ Environment::Environment(const MetadataAgentConfiguration& config)
     : config_(config), application_default_credentials_read_(false) {}
 
 std::string Environment::GetMetadataString(const std::string& path) const {
-  http::client client;
+  http::client::options options;
+  http::client client(options.timeout(1));
   http::client::request request(kGceMetadataServerAddress + path);
   request << boost::network::header("Metadata-Flavor", "Google");
   try {
