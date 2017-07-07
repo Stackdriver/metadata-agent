@@ -32,7 +32,9 @@ PollingMetadataUpdater::PollingMetadataUpdater(
       reporter_thread_() {}
 
 PollingMetadataUpdater::~PollingMetadataUpdater() {
-  reporter_thread_.join();
+  if (reporter_thread_.joinable()) {
+    reporter_thread_.join();
+  }
 }
 
 void PollingMetadataUpdater::start() {
