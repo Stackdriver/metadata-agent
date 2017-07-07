@@ -162,6 +162,8 @@ MetadataReporter::~MetadataReporter() {
 
 void MetadataReporter::ReportMetadata() {
   LOG(INFO) << "Metadata reporter started";
+  // Wait for the first collection to complete.
+  // TODO: Come up with a more robust synchronization mechanism.
   std::this_thread::sleep_for(std::chrono::seconds(3));
   // TODO: Do we need to be able to stop this?
   while (true) {
@@ -170,7 +172,7 @@ void MetadataReporter::ReportMetadata() {
     LOG(INFO) << "Metadata request sent successfully";
     std::this_thread::sleep_for(period_);
   }
-  LOG(INFO) << "Metadata reporter exiting";
+  //LOG(INFO) << "Metadata reporter exiting";
 }
 
 namespace {
@@ -251,7 +253,9 @@ void MetadataReporter::SendMetadata(
     entries.emplace_back(std::move(metadata_entry));
     total_size += size;
   }
-  SendMetadataRequest(std::move(entries), endpoint, auth_header);
+  if (!entries.empty()) {
+    SendMetadataRequest(std::move(entries), endpoint, auth_header);
+  }
 }
 
 MetadataAgent::MetadataAgent(const MetadataAgentConfiguration& config)

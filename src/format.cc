@@ -16,6 +16,7 @@
 
 #include "format.h"
 
+#include <cstring>
 #include <sstream>
 
 namespace format {
@@ -24,7 +25,9 @@ std::string Substitute(const std::string& format,
                        const std::map<std::string, std::string>&& params)
     throw(Exception) {
   static constexpr const char kStart[] = "{{";
+  static constexpr const std::size_t kStartLen = std::strlen(kStart);
   static constexpr const char kEnd[] = "}}";
+  static constexpr const std::size_t kEndLen = std::strlen(kEnd);
   std::stringstream result;
 
   std::string::size_type pos = 0;
@@ -32,10 +35,10 @@ std::string Substitute(const std::string& format,
        brace != std::string::npos;
        brace = format.find(kStart, pos)) {
     result << format.substr(pos, brace - pos);
-    std::string::size_type open = brace + 2;
+    std::string::size_type open = brace + kStartLen;
     std::string::size_type close = format.find(kEnd, open);
     if (close == std::string::npos) {
-      throw Exception("Unterminated placeholder at " + std::to_string(pos));
+      throw Exception("Unterminated placeholder at " + std::to_string(brace));
     }
     std::string param = format.substr(open, close - open);
     auto value_it = params.find(param);
@@ -45,7 +48,7 @@ std::string Substitute(const std::string& format,
     }
     const std::string& value = value_it->second;
     result << value;
-    pos = close + 2;
+    pos = close + kEndLen;
   }
   result << format.substr(pos);
   return result.str();
