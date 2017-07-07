@@ -213,7 +213,7 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
     });
     std::string jwt_header = base64::Encode(jwt_object->ToString());
     auto now = std::chrono::system_clock::now();
-    auto exp = now + std::chrono::hours(1);
+    auto exp = now + std::chrono::seconds(3600);
     json::value claim_set_object = json::object({
       {"iss", json::string(service_account_email)},
       {"scope", json::string("https://www.googleapis.com/auth/monitoring")},
