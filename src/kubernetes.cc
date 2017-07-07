@@ -61,9 +61,9 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
       "Authorization", "Bearer " + environment_.KubernetesApiToken());
   http::client::response list_response = client.get(list_request);
   Timestamp collected_at = std::chrono::system_clock::now();
-  LOG(ERROR) << "List response: " << body(list_response);
+  LOG(INFO) << "List response: " << body(list_response);
   json::value parsed_list = json::Parser::FromString(body(list_response));
-  LOG(ERROR) << "Parsed list: " << *parsed_list;
+  LOG(INFO) << "Parsed list: " << *parsed_list;
   std::vector<PollingMetadataUpdater::ResourceMetadata> result;
   try {
     const json::Object* podlist_object = parsed_list->As<json::Object>();
@@ -72,7 +72,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
     const json::Array* pod_list = podlist_object->Get<json::Array>("items");
     for (const json::value& element : *pod_list) {
       try {
-        LOG(ERROR) << "Pod: " << *element;
+        LOG(INFO) << "Pod: " << *element;
         const json::Object* pod = element->As<json::Object>();
 
         const json::Object* metadata = pod->Get<json::Object>("metadata");
@@ -93,7 +93,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
         const json::Array* container_list =
             status->Get<json::Array>("containerStatuses");
         for (const json::value& c_element : *container_list) {
-          LOG(ERROR) << "Container: " << *c_element;
+          LOG(INFO) << "Container: " << *c_element;
           const json::Object* container = c_element->As<json::Object>();
           const std::string container_name =
               container->Get<json::String>("name");

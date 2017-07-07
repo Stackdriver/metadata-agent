@@ -141,9 +141,6 @@ const std::string& Environment::InstanceId() const {
       // TODO: Other sources?
       instance_id_ = GetMetadataString("instance/id");
     }
-    if (instance_id_.empty()) {
-      instance_id_ = "1234567890";
-    }
   }
   return instance_id_;
 }
