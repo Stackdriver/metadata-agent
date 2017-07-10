@@ -58,7 +58,7 @@ PKG_MAINTAINER=Stackdriver Engineering <engineering@stackdriver.com>
 PKG_TMPDIR=$$(mktemp -d --tmpdir metadata-build.XXXXXXXXXX)
 
 DEB_PKG=$(PKG_NAME)_$(PKG_VERSION)-$(PKG_RELEASE)$(if $(DISTRO),.$(DISTRO),).deb
-RPM_PKG=$(PKG_NAME)_$(PKG_VERSION)-$(PKG_RELEASE)$(if $(DISTRO),.$(DISTRO),).x86_64.rpm
+RPM_PKG=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_RELEASE)$(if $(DISTRO),.$(DISTRO),).x86_64.rpm
 
 $(DEB_PKG): metadatad $(wildcard ../pkg/deb/debian/*) Makefile
 	export TMPDIR=$(PKG_TMPDIR) && \
