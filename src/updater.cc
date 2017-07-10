@@ -60,18 +60,20 @@ void PollingMetadataUpdater::PollForMetadata() {
     // An unlocked timer means we should stop updating.
     LOG(INFO) << "Trying to unlock the timer";
     auto start = std::chrono::high_resolution_clock::now();
+    auto wakeup = start + period_;
     done = true;
-    while (!timer_.try_lock_for(period_)) {
+    while (done && !timer_.try_lock_until(wakeup)) {
       auto now = std::chrono::high_resolution_clock::now();
       // Detect spurious wakeups.
-      if (now - start >= period_) {
-        LOG(INFO) << " Timer unlock timed out after "
-                  << std::chrono::duration_cast<seconds>(now - start).count()
-                  << "s (good)";
-        start = now;
-        done = false;
-        break;
-      };
+      if (now < wakeup) {
+        continue;
+      }
+      LOG(INFO) << " Timer unlock timed out after "
+                << std::chrono::duration_cast<seconds>(now - start).count()
+                << "s (good)";
+      start = now;
+      wakeup = start + period_;
+      done = false;
     }
   } while (!done);
   LOG(INFO) << "Timer unlocked (stop polling)";
