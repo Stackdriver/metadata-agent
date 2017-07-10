@@ -29,9 +29,6 @@
 //# include <yajl/yajl_version.h>
 //#endif
 
-#include <yajl/yajl_parse.h>
-#include <yajl/yajl_gen.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
