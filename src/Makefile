@@ -3,6 +3,7 @@ LDLIBS=-lyajl
 
 SRCS=\
      metadatad.cc \
+     resource.cc \
      logging.cc \
      json.cc \
      time.cc
