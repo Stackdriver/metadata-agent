@@ -277,6 +277,9 @@ void MetadataAgent::UpdateResource(const std::vector<std::string>& resource_ids,
             << "collected_at: " << rfc3339::ToString(entry.collected_at) << ", "
             << "metadata: " << *entry.metadata
             << "}";
+  // Force value update. The repeated search is inefficient, but shouldn't
+  // be a huge deal.
+  metadata_map_.erase(resource);
   metadata_map_.emplace(resource, std::move(entry));
 }
 
