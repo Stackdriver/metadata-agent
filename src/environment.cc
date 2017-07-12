@@ -131,6 +131,18 @@ const std::string& Environment::InstanceZone() const {
   return zone_;
 }
 
+const std::string& Environment::CredentialsClientEmail() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  ReadApplicationDefaultCredentials();
+  return client_email_;
+}
+
+const std::string& Environment::CredentialsPrivateKey() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  ReadApplicationDefaultCredentials();
+  return private_key_;
+}
+
 void Environment::ReadApplicationDefaultCredentials() const {
   if (application_default_credentials_read_) {
     return;
@@ -148,18 +160,6 @@ void Environment::ReadApplicationDefaultCredentials() const {
     LOG(ERROR) << e.what();
   }
   application_default_credentials_read_ = true;
-}
-
-const std::string& Environment::CredentialsClientEmail() const {
-  std::lock_guard<std::mutex> lock(mutex_);
-  ReadApplicationDefaultCredentials();
-  return client_email_;
-}
-
-const std::string& Environment::CredentialsPrivateKey() const {
-  std::lock_guard<std::mutex> lock(mutex_);
-  ReadApplicationDefaultCredentials();
-  return private_key_;
 }
 
 }  // google
