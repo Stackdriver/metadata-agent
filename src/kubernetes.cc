@@ -59,13 +59,13 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
       kubernetes_endpoint + "/pods" + pod_label_selector);
   list_request << boost::network::header(
       "Authorization", "Bearer " + environment_.KubernetesApiToken());
-  http::client::response list_response = client.get(list_request);
-  Timestamp collected_at = std::chrono::system_clock::now();
-  LOG(INFO) << "List response: " << body(list_response);
-  json::value parsed_list = json::Parser::FromString(body(list_response));
-  LOG(INFO) << "Parsed list: " << *parsed_list;
   std::vector<PollingMetadataUpdater::ResourceMetadata> result;
   try {
+    http::client::response list_response = client.get(list_request);
+    Timestamp collected_at = std::chrono::system_clock::now();
+    LOG(INFO) << "List response: " << body(list_response);
+    json::value parsed_list = json::Parser::FromString(body(list_response));
+    LOG(INFO) << "Parsed list: " << *parsed_list;
     const json::Object* podlist_object = parsed_list->As<json::Object>();
     const std::string kind = podlist_object->Get<json::String>("kind");
     const std::string api_version = podlist_object->Get<json::String>("apiVersion");
@@ -140,6 +140,8 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
     }
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
+  } catch (const boost::system::system_error& e) {
+    LOG(ERROR) << "Failed to communicate with " << kubernetes_endpoint << ": " << e.what();
   }
   return result;
 }
