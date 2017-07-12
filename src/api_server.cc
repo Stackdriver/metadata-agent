@@ -92,6 +92,7 @@ std::ostream& operator<<(
     o << " " << h.name << ": " << h.value;
   }
   o << " ]";
+  return o;
 }
 
 
