@@ -56,13 +56,13 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
   http::local_client client;
   http::local_client::request list_request(
       docker_endpoint + "/json?all=true" + container_filter);
-  http::local_client::response list_response = client.get(list_request);
-  Timestamp collected_at = std::chrono::system_clock::now();
-  LOG(INFO) << "List response: " << body(list_response);
-  json::value parsed_list = json::Parser::FromString(body(list_response));
-  LOG(INFO) << "Parsed list: " << *parsed_list;
   std::vector<PollingMetadataUpdater::ResourceMetadata> result;
   try {
+    http::local_client::response list_response = client.get(list_request);
+    Timestamp collected_at = std::chrono::system_clock::now();
+    LOG(INFO) << "List response: " << body(list_response);
+    json::value parsed_list = json::Parser::FromString(body(list_response));
+    LOG(INFO) << "Parsed list: " << *parsed_list;
     const json::Array* container_list = parsed_list->As<json::Array>();
     for (const json::value& element : *container_list) {
       try {
@@ -107,6 +107,8 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
     }
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
+  } catch (const boost::system::system_error& e) {
+    LOG(ERROR) << "Failed to communicate with " << docker_endpoint << ": " << e.what();
   }
   return result;
 }
