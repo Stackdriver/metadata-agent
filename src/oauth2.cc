@@ -229,6 +229,7 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
     std::string request_body =
         "grant_type=" + grant_type + "&assertion=" +
         jwt_header + "." + claim_set + "." + signature;
+    // TODO: Investigate whether we need this header.
     //request << boost::network::header("Connection", "close");
     request << boost::network::header("Content-Length",
                                       std::to_string(request_body.size()));
@@ -263,7 +264,7 @@ json::value OAuth2::GetMetadataToken() const {
 }
 
 std::string OAuth2::GetAuthHeaderValue() {
-  // Build in a 60 second slack.
+  // Build in a 60 second slack to avoid timing problems (clock skew, races).
   if (auth_header_value_.empty() ||
       token_expiration_ <
           std::chrono::system_clock::now() + std::chrono::seconds(60)) {
