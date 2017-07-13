@@ -112,7 +112,10 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
     std::string id = request.destination.substr(kPrefix.size());
     const auto result = agent_.resource_map_.find(id);
     if (result == agent_.resource_map_.end()) {
-      LOG(ERROR) << "No matching resource for " << id;
+      // TODO: This could be considered log spam.
+      // As we add more resource mappings, these will become less and less
+      // frequent, and could be promoted to ERROR.
+      LOG(WARNING) << "No matching resource for " << id;
       response = HttpServer::response::stock_reply(
           HttpServer::response::not_found, "");
     } else {

@@ -31,7 +31,9 @@ class Exception {
 };
 
 // Format string substitution.
-// Placeholder format is '{{name}}'.
+// Placeholder format is '{{param}}'.
+// All instances of each placeholder will be substituted by the value of the
+// corresponding parameter.
 std::string Substitute(const std::string& format,
                        const std::map<std::string, std::string>&& params)
     throw(Exception);
