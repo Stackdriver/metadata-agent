@@ -32,7 +32,7 @@ constexpr const int kMetadataReporterDefaultIntervalSeconds = 60;
 constexpr const int kDockerUpdaterDefaultIntervalSeconds = 60;
 constexpr const char kMetadataIngestionDefaultEndpointFormat[] =
     "https://stackdriver.googleapis.com/v1beta2/projects/{{project_id}}"
-    "/monitoredResourceMetadata:batchUpdate";
+    "/resourceMetadata:batchUpdate";
 constexpr const int kMetadataIngestionDefaultRequestSizeLimitBytes =
     8*1024*1024;
 constexpr const char kDockerDefaultEndpointHost[] =
