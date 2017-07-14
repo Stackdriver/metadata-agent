@@ -15,6 +15,7 @@ SRCS=\
      metadatad.cc \
      api_server.cc \
      configuration.cc \
+     updater.cc \
      resource.cc \
      oauth2.cc \
      logging.cc \
