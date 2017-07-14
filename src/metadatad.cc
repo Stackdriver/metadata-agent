@@ -14,8 +14,12 @@
  * limitations under the License.
  **/
 
+#include "api_server.h"
 #include "configuration.h"
 
 int main(int ac, char** av) {
   google::MetadataAgentConfiguration config(ac > 1 ? av[1] : "");
+  google::MetadataAgent server(config);
+
+  server.start();
 }
