@@ -1,6 +1,6 @@
 FROM ubuntu:xenial
 
-ARG version=0.0.10-k8s-1
+ARG version=0.0.10-k8s-2
 ADD https://storage.googleapis.com/stackdriver-container-alpha/deb/xenial/stackdriver-metadata_${version}.xenial.deb /stackdriver-metadata_${version}.xenial.deb
 RUN apt-get update \
     && (dpkg -i /stackdriver-metadata_${version}.xenial.deb || true) \
