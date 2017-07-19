@@ -75,7 +75,7 @@ class MetadataAgent {
    private:
     Metadata()
         : version(), is_deleted(false), created_at(), collected_at(),
-          metadata(json::object({})), ignore(false) {}
+          metadata(json::object({})), ignore(true) {}
   };
 
   MetadataAgent(const MetadataAgentConfiguration& config);

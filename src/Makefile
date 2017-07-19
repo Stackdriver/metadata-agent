@@ -54,7 +54,7 @@ install: metadatad
 export DISTRO
 PKG_NAME=stackdriver-metadata
 PKG_VERSION=0.0.10-k8s
-PKG_RELEASE=1
+PKG_RELEASE=2
 PKG_MAINTAINER=Stackdriver Engineering <engineering@stackdriver.com>
 
 PKG_TMPDIR=$$(mktemp -d --tmpdir metadata-build.XXXXXXXXXX)
