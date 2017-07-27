@@ -1,15 +1,17 @@
 //
-// detail/resolve_op.hpp
+// detail/local_resolve_op.hpp
 // ~~~~~~~~~~~~~~~~~~~~~
 //
 // Copyright (c) 2003-2013 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright 2017 Igor Peshansky (igorp@google.com).
+// Copyright 2017 Google, Inc.
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_ASIO_DETAIL_RESOLVE_OP_HPP
-#define BOOST_ASIO_DETAIL_RESOLVE_OP_HPP
+#ifndef BOOST_ASIO_DETAIL_LOCAL_RESOLVE_OP_HPP
+#define BOOST_ASIO_DETAIL_LOCAL_RESOLVE_OP_HPP
 
 #if defined(_MSC_VER) && (_MSC_VER >= 1200)
 # pragma once
@@ -20,6 +22,7 @@
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/basic_resolver_iterator.hpp>
 #include <boost/asio/ip/basic_resolver_query.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
 #include <boost/asio/detail/addressof.hpp>
 #include <boost/asio/detail/bind_handler.hpp>
 #include <boost/asio/detail/fenced_block.hpp>
@@ -27,6 +30,10 @@
 #include <boost/asio/detail/handler_invoke_helpers.hpp>
 #include <boost/asio/detail/operation.hpp>
 #include <boost/asio/detail/socket_ops.hpp>
+#include <boost/network/uri.hpp>
+#include <sys/stat.h>
+
+#include "../logging.h"
 
 #include <boost/asio/detail/push_options.hpp>
 
@@ -34,8 +41,10 @@ namespace boost {
 namespace asio {
 namespace detail {
 
-template <typename Protocol, typename Handler>
-class resolve_op : public operation
+#define Protocol boost::asio::local::stream_protocol
+
+template<typename Handler>
+class resolve_op<Protocol, Handler> : public operation
 {
 public:
   BOOST_ASIO_DEFINE_HANDLER_PTR(resolve_op);
@@ -49,15 +58,12 @@ public:
       cancel_token_(cancel_token),
       query_(query),
       io_service_impl_(ios),
-      handler_(BOOST_ASIO_MOVE_CAST(Handler)(handler)),
-      addrinfo_(0)
+      handler_(BOOST_ASIO_MOVE_CAST(Handler)(handler))
   {
   }
 
   ~resolve_op()
   {
-    if (addrinfo_)
-      socket_ops::freeaddrinfo(addrinfo_);
   }
 
   static void do_complete(io_service_impl* owner, operation* base,
@@ -74,9 +80,22 @@ public:
       // the resolver operation.
     
       // Perform the blocking host resolution operation.
-      socket_ops::background_getaddrinfo(o->cancel_token_,
-          o->query_.host_name().c_str(), o->query_.service_name().c_str(),
-          o->query_.hints(), &o->addrinfo_, o->ec_);
+      if (o->cancel_token_.expired())
+        o->ec_ = boost::asio::error::operation_aborted;
+      else {
+        //LOG(ERROR) << "async_resolve() " << o->query_.host_name();
+        std::string path = boost::network::uri::decoded(o->query_.host_name());
+        //LOG(ERROR) << "decoded " << path;
+        struct stat buffer;
+        int result = stat(path.c_str(), &buffer);
+        if (result || !S_ISSOCK(buffer.st_mode)) {
+          LOG(ERROR) << "resolve: unable to stat or not a socket " << path;
+          o->ec_ = boost::asio::error::host_not_found;
+        } else {
+          //LOG(ERROR) << "resolve: everything ok with " << path;
+          o->ec_ = boost::system::error_code();
+        }
+      }
 
       // Pass operation back to main io_service for completion.
       o->io_service_impl_.post_deferred_completion(o);
@@ -98,10 +117,12 @@ public:
       detail::binder2<Handler, boost::system::error_code, iterator_type>
         handler(o->handler_, o->ec_, iterator_type());
       p.h = boost::asio::detail::addressof(handler.handler_);
-      if (o->addrinfo_)
+      if (!o->ec_)
       {
-        handler.arg2_ = iterator_type::create(o->addrinfo_,
-            o->query_.host_name(), o->query_.service_name());
+        std::string path = boost::network::uri::decoded(o->query_.host_name());
+        handler.arg2_ = iterator_type::create(
+            Protocol::endpoint(path),
+            path, o->query_.service_name());
       }
       p.reset();
 
@@ -121,8 +142,9 @@ private:
   io_service_impl& io_service_impl_;
   Handler handler_;
   boost::system::error_code ec_;
-  boost::asio::detail::addrinfo_type* addrinfo_;
 };
+
+#undef Protocol
 
 } // namespace detail
 } // namespace asio
@@ -130,4 +152,4 @@ private:
 
 #include <boost/asio/detail/pop_options.hpp>
 
-#endif // BOOST_ASIO_DETAIL_RESOLVE_OP_HPP
+#endif // BOOST_ASIO_DETAIL_LOCAL_RESOLVE_OP_HPP

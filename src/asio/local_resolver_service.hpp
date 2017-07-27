@@ -1,15 +1,17 @@
 //
-// detail/resolver_service.hpp
+// detail/local_resolver_service.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 // Copyright (c) 2003-2013 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright 2017 Igor Peshansky (igorp@google.com).
+// Copyright 2017 Google, Inc.
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_ASIO_DETAIL_RESOLVER_SERVICE_HPP
-#define BOOST_ASIO_DETAIL_RESOLVER_SERVICE_HPP
+#ifndef BOOST_ASIO_DETAIL_LOCAL_RESOLVER_SERVICE_HPP
+#define BOOST_ASIO_DETAIL_LOCAL_RESOLVER_SERVICE_HPP
 
 #if defined(_MSC_VER) && (_MSC_VER >= 1200)
 # pragma once
@@ -21,10 +23,16 @@
 
 #include <boost/asio/ip/basic_resolver_iterator.hpp>
 #include <boost/asio/ip/basic_resolver_query.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
 #include <boost/asio/detail/addressof.hpp>
 #include <boost/asio/detail/resolve_endpoint_op.hpp>
 #include <boost/asio/detail/resolve_op.hpp>
 #include <boost/asio/detail/resolver_service_base.hpp>
+#include <boost/asio/detail/socket_ops.hpp>
+#include <boost/network/uri.hpp>
+#include <sys/stat.h>
+
+#include "../logging.h"
 
 #include <boost/asio/detail/push_options.hpp>
 
@@ -32,8 +40,10 @@ namespace boost {
 namespace asio {
 namespace detail {
 
-template <typename Protocol>
-class resolver_service : public resolver_service_base
+#define Protocol boost::asio::local::stream_protocol
+
+template<>
+class resolver_service<Protocol> : public resolver_service_base
 {
 public:
   // The implementation type of the resolver. A cancellation token is used to
@@ -53,20 +63,27 @@ public:
   resolver_service(boost::asio::io_service& io_service)
     : resolver_service_base(io_service)
   {
+    //LOG(ERROR) << "Constructing resolver_service()";
   }
 
   // Resolve a query to a list of entries.
   iterator_type resolve(implementation_type&, const query_type& query,
       boost::system::error_code& ec)
   {
-    boost::asio::detail::addrinfo_type* address_info = 0;
-
-    socket_ops::getaddrinfo(query.host_name().c_str(),
-        query.service_name().c_str(), query.hints(), &address_info, ec);
-    auto_addrinfo auto_address_info(address_info);
-
+    //LOG(ERROR) << "resolve() " << query.host_name();
+    std::string path = boost::network::uri::decoded(query.host_name());
+    //LOG(ERROR) << "decoded " << path;
+    struct stat buffer;
+    int result = stat(path.c_str(), &buffer);
+    if (result || !S_ISSOCK(buffer.st_mode)) {
+      LOG(ERROR) << "resolve: unable to stat or not a socket " << path;
+      ec = boost::asio::error::host_not_found;
+    } else {
+      //LOG(ERROR) << "resolve: everything ok with " << path;
+      ec = boost::system::error_code();
+    }
     return ec ? iterator_type() : iterator_type::create(
-        address_info, query.host_name(), query.service_name());
+        endpoint_type(path), path, query.service_name());
   }
 
   // Asynchronously resolve a query to a list of entries.
@@ -91,14 +108,8 @@ public:
   iterator_type resolve(implementation_type&,
       const endpoint_type& endpoint, boost::system::error_code& ec)
   {
-    char host_name[NI_MAXHOST];
-    char service_name[NI_MAXSERV];
-    socket_ops::sync_getnameinfo(endpoint.data(), endpoint.size(),
-        host_name, NI_MAXHOST, service_name, NI_MAXSERV,
-        endpoint.protocol().type(), ec);
-
-    return ec ? iterator_type() : iterator_type::create(
-        endpoint, host_name, service_name);
+    // An existing endpoint always resolves.
+    return iterator_type::create(endpoint, "", "");
   }
 
   // Asynchronously resolve an endpoint to a list of entries.
@@ -120,6 +131,8 @@ public:
   }
 };
 
+#undef Protocol
+
 } // namespace detail
 } // namespace asio
 } // namespace boost
@@ -128,4 +141,4 @@ public:
 
 #endif // !defined(BOOST_ASIO_WINDOWS_RUNTIME)
 
-#endif // BOOST_ASIO_DETAIL_RESOLVER_SERVICE_HPP
+#endif // BOOST_ASIO_DETAIL_LOCAL_RESOLVER_SERVICE_HPP

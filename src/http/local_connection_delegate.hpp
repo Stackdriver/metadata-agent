@@ -1,28 +1,34 @@
-#ifndef BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_CONNECTION_CONNECTION_DELEGATE_HPP_
-#define BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_CONNECTION_CONNECTION_DELEGATE_HPP_
+#ifndef BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_CONNECTION_LOCAL_CONNECTION_DELEGATE_HPP_
+#define BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_CONNECTION_LOCAL_CONNECTION_DELEGATE_HPP_
 
 // Copyright 2011 Dean Michael Berris (dberris@google.com).
-// Copyright 2011 Google, Inc.
+// Copyright 2017 Igor Peshansky (igorp@google.com).
+// Copyright 2011-2017 Google, Inc.
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
+
+#include <functional>
+
+#include <boost/asio/local/stream_protocol.hpp>
 
 namespace boost {
 namespace network {
 namespace http {
 namespace impl {
 
-struct connection_delegate {
-  virtual void connect(asio::ip::tcp::endpoint &endpoint, std::string host, boost::uint16_t source_port,
-                       function<void(system::error_code const &)> handler) = 0;
+struct local_connection_delegate {
+  // TODO: this is similar enough to connection_delegate that it may be possible to refactor.
+  virtual void connect(boost::asio::local::stream_protocol::endpoint &endpoint,
+                       std::function<void(system::error_code const &)> handler) = 0;
   virtual void write(
       asio::streambuf &command_streambuf,
-      function<void(system::error_code const &, size_t)> handler) = 0;
+      std::function<void(system::error_code const &, size_t)> handler) = 0;
   virtual void read_some(
       asio::mutable_buffers_1 const &read_buffer,
-      function<void(system::error_code const &, size_t)> handler) = 0;
+      std::function<void(system::error_code const &, size_t)> handler) = 0;
   virtual void disconnect() = 0;
-  virtual ~connection_delegate() {}
+  virtual ~local_connection_delegate() {}
 };
 
 } /* impl */
@@ -33,5 +39,5 @@ struct connection_delegate {
 
 } /* boost */
 
-#endif /* BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_CONNECTION_CONNECTION_DELEGATE_HPP_ \
+#endif /* BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_CONNECTION_LOCAL_CONNECTION_DELEGATE_HPP_ \
           */
