@@ -1,10 +1,11 @@
-#ifndef BOOST_NETWORK_PROTOCOL_HTTP_IMPL_HTTP_ASYNC_CONNECTION_HPP_20100601
-#define BOOST_NETWORK_PROTOCOL_HTTP_IMPL_HTTP_ASYNC_CONNECTION_HPP_20100601
+#ifndef BOOST_NETWORK_PROTOCOL_HTTP_IMPL_HTTP_LOCAL_ASYNC_CONNECTION_HPP_20170307
+#define BOOST_NETWORK_PROTOCOL_HTTP_IMPL_HTTP_LOCAL_ASYNC_CONNECTION_HPP_20170307
 
 // Copyright 2010 (C) Dean Michael Berris
 // Copyright 2010 (C) Sinefunc, Inc.
 // Copyright 2011 Dean Michael Berris (dberris@google.com).
-// Copyright 2011 Google,Inc.
+// Copyright 2017 Igor Peshansky (igorp@google.com).
+// Copyright 2011-2017 Google, Inc.
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -29,6 +30,14 @@
 #include <boost/bind/protect.hpp>
 #include <iterator>
 
+#include "../asio/local_resolver_service.hpp"
+#include "traits/local_resolver.hpp"
+#include "local_normal_delegate.hpp"
+#include "local_connection_delegate_factory.hpp"
+#include "local_tags.hpp"
+
+#include "../logging.h"
+
 #include <boost/network/protocol/http/traits/delegate_factory.hpp>
 
 namespace boost {
@@ -41,8 +50,12 @@ struct async_connection_base;
 
 namespace placeholders = boost::asio::placeholders;
 
-template <class Tag, unsigned version_major, unsigned version_minor>
-struct http_async_connection
+#define Tag tags::http_async_8bit_local_resolve
+#define version_major 1
+#define version_minor 1
+
+template<>
+struct http_async_connection<Tag, version_major, version_minor>
     : async_connection_base<Tag, version_major, version_minor>,
       protected http_async_protocol_handler<Tag, version_major, version_minor>,
       boost::enable_shared_from_this<
@@ -92,6 +105,9 @@ struct http_async_connection
     linearize(request, method, version_major, version_minor,
               std::ostreambuf_iterator<typename char_<Tag>::type>(
                   &command_streambuf));
+    //LOG(ERROR) << "Full request: "
+    //           << std::string(boost::asio::buffers_begin(command_streambuf.data()),
+    //                          boost::asio::buffers_end(command_streambuf.data()));
     this->method = method;
     boost::uint16_t port_ = port(request);
 	string_type host_ = host(request);
@@ -141,12 +157,12 @@ struct http_async_connection
       // and
       // that there's still more endpoints to try connecting to.
       resolver_iterator iter = boost::begin(endpoint_range);
-      asio::ip::tcp::endpoint endpoint(iter->endpoint().address(), port);
+      resolver_type::endpoint_type endpoint(iter->endpoint().path());
       delegate_->connect(
-          endpoint, host, source_port,
+          endpoint,
           request_strand_.wrap(boost::bind(
-              &this_type::handle_connected, this_type::shared_from_this(), host,
-              port, source_port, get_body, callback, generator,
+              &this_type::handle_connected, this_type::shared_from_this(),
+              port, get_body, callback, generator,
               std::make_pair(++iter, resolver_iterator()),
               placeholders::error)));
     } else {
@@ -156,7 +172,7 @@ struct http_async_connection
     }
   }
 
-  void handle_connected(string_type host, boost::uint16_t port, boost::uint16_t source_port, bool get_body,
+  void handle_connected(boost::uint16_t port, bool get_body,
                         body_callback_function_type callback,
                         body_generator_function_type generator,
                         resolver_iterator_pair endpoint_range,
@@ -174,12 +190,12 @@ struct http_async_connection
     } else {
       if (!boost::empty(endpoint_range)) {
         resolver_iterator iter = boost::begin(endpoint_range);
-        asio::ip::tcp::endpoint endpoint(iter->endpoint().address(), port);
+        resolver_type::endpoint_type endpoint(iter->endpoint().path());
         delegate_->connect(
-            endpoint, host, source_port,
+            endpoint,
             request_strand_.wrap(boost::bind(
                 &this_type::handle_connected, this_type::shared_from_this(),
-                host, port, source_port, get_body, callback, generator,
+                port, get_body, callback, generator,
                 std::make_pair(++iter, resolver_iterator()),
                 placeholders::error)));
       } else {
@@ -235,7 +251,7 @@ struct http_async_connection
               version, get_body, callback, placeholders::error,
               placeholders::bytes_transferred)));
     } else {
-      set_errors(is_timedout_ ? asio::error::timed_out : ec);
+      set_errors(is_timedout_ ? boost::asio::error::timed_out : ec);
     }
   }
 
@@ -501,9 +517,13 @@ struct http_async_connection
   string_type method;
 };
 
+#undef version_minor
+#undef version_major
+#undef Tag
+
 }  // namespace impl
 }  // namespace http
 }  // namespace network
 }  // namespace boost
 
-#endif  // BOOST_NETWORK_PROTOCOL_HTTP_IMPL_HTTP_ASYNC_CONNECTION_HPP_20100601
+#endif  // BOOST_NETWORK_PROTOCOL_HTTP_IMPL_HTTP_LOCAL_ASYNC_CONNECTION_HPP_20170307
