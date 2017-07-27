@@ -8,6 +8,8 @@
 // (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 
+#include <boost/optional.hpp>
+#include <boost/network/traits/string.hpp>
 #include "local_connection_delegate.hpp"
 #include "local_normal_delegate.hpp"
 #include "local_tags.hpp"
@@ -17,13 +19,14 @@ namespace network {
 namespace http {
 namespace impl {
 
+template<class Tag> struct connection_delegate_factory;
 struct local_normal_delegate;
 
 #define Tag tags::http_async_8bit_local_resolve
 
 template<> struct connection_delegate_factory<Tag> {
   typedef std::shared_ptr<local_connection_delegate> connection_delegate_ptr;
-  typedef typename string<Tag>::type string_type;
+  typedef string<Tag>::type string_type;
 
   // This is the factory method that actually returns the delegate
   // instance.

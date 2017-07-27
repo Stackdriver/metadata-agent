@@ -16,11 +16,11 @@
 
 #include "docker.h"
 
+#include "local_stream_http.h"
 #include <boost/network/protocol/http/client.hpp>
 #include <chrono>
 
 #include "json.h"
-#include "local_stream_http.h"
 #include "logging.h"
 #include "resource.h"
 #include "time.h"
