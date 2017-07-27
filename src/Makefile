@@ -16,6 +16,7 @@ SRCS=\
      api_server.cc \
      configuration.cc \
      updater.cc \
+     docker.cc \
      resource.cc \
      oauth2.cc \
      logging.cc \
