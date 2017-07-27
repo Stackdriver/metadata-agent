@@ -20,6 +20,7 @@ SRCS=\
      resource.cc \
      oauth2.cc \
      logging.cc \
+     local_stream_http.cc \
      local_stream_delegate.cc \
      json.cc \
      time.cc \

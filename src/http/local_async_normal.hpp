@@ -10,43 +10,26 @@
 // (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 
-#include <boost/network/version.hpp>
-#include <boost/network/detail/debug.hpp>
-#include <boost/thread/future.hpp>
-#include <boost/throw_exception.hpp>
-#include <boost/cstdint.hpp>
-#include <boost/range/algorithm/transform.hpp>
-#include <boost/algorithm/string/trim.hpp>
-#include <boost/network/constants.hpp>
-#include <boost/network/traits/ostream_iterator.hpp>
-#include <boost/network/traits/istream.hpp>
-#include <boost/logic/tribool.hpp>
-#include <boost/network/protocol/http/parser/incremental.hpp>
-#include <boost/network/protocol/http/message/wrappers/uri.hpp>
-#include <boost/network/protocol/http/client/connection/async_protocol_handler.hpp>
-#include <boost/network/protocol/http/algorithms/linearize.hpp>
-#include <boost/array.hpp>
-#include <boost/assert.hpp>
-#include <boost/bind/protect.hpp>
-#include <iterator>
-
-#include "../asio/local_resolver_service.hpp"
-#include "traits/local_resolver.hpp"
 #include "local_normal_delegate.hpp"
 #include "local_connection_delegate_factory.hpp"
-#include "local_tags.hpp"
+#include "../asio/local_resolve_op.hpp"
+#include "../asio/local_resolver_service.hpp"
+#include "local_async_connection_base.hpp"
+// Needed by async_protocol_handler.
+#include <boost/network/protocol/http/request.hpp>
+#include <boost/logic/tribool.hpp>
+#include <boost/network/protocol/http/parser/incremental.hpp>
+#include <boost/network/protocol/http/client/connection/async_protocol_handler.hpp>
 
 #include "../logging.h"
-
-#include <boost/network/protocol/http/traits/delegate_factory.hpp>
 
 namespace boost {
 namespace network {
 namespace http {
 namespace impl {
 
-template <class Tag, unsigned version_major, unsigned version_minor>
-struct async_connection_base;
+template<class Tag, unsigned int version_major, unsigned int version_minor>
+struct http_async_connection;
 
 namespace placeholders = boost::asio::placeholders;
 

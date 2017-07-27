@@ -28,6 +28,7 @@
 #include <boost/asio/detail/resolve_endpoint_op.hpp>
 #include <boost/asio/detail/resolve_op.hpp>
 #include <boost/asio/detail/resolver_service_base.hpp>
+#include <boost/asio/detail/resolver_service.hpp>
 #include <boost/asio/detail/socket_ops.hpp>
 #include <boost/network/uri.hpp>
 #include <sys/stat.h>

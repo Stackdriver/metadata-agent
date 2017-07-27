@@ -30,6 +30,7 @@
 #include <boost/asio/detail/handler_invoke_helpers.hpp>
 #include <boost/asio/detail/operation.hpp>
 #include <boost/asio/detail/socket_ops.hpp>
+#include <boost/asio/detail/resolve_op.hpp>
 #include <boost/network/uri.hpp>
 #include <sys/stat.h>
 
