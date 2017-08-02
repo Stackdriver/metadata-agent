@@ -8,7 +8,7 @@ This is the Stackdriver metadata agent.
 
 2. Install build dependencies:
 
-       $ sudo apt-get install g++ cmake libyajl-dev libssl-dev \
+       $ sudo apt-get install g++ cmake dpkg-dev libyajl-dev libssl-dev \
          libboost1.55-dev libboost-system1.55-dev libboost-atomic1.55-dev \
          libboost-chrono1.55-dev libboost-date-time1.55-dev \
          libboost-filesystem1.55-dev libboost-program-options1.55-dev \
@@ -23,7 +23,7 @@ This is the Stackdriver metadata agent.
 
 2. Install build dependencies (Ubuntu 16.04 special edition):
 
-       $ sudo apt-get install g++ cmake libyajl-dev libssl-dev \
+       $ sudo apt-get install g++ cmake dpkg-dev libyajl-dev libssl-dev \
          libboost1.58-dev libboost-system1.58-dev libboost-atomic1.58-dev \
          libboost-chrono1.58-dev libboost-date-time1.58-dev \
          libboost-filesystem1.58-dev libboost-program-options1.58-dev \
@@ -55,6 +55,19 @@ This is the Stackdriver metadata agent.
 
        $ cd src
        $ make -j10
+
+# Packaging
+
+1. Build the DEB package:
+
+       $ cd src
+       $ make deb
+
+   If you want to embed the distro name (e.g., "xenial") into the package
+   filename, use:
+
+       $ cd src
+       $ make DISTRO=xenial deb
 
 # Running
 
