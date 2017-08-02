@@ -42,7 +42,7 @@ This is the Stackdriver metadata agent.
 
 2. Install build dependencies (CentOS 7 special edition):
 
-       $ sudo yum install -y gcc-c++ cmake yajl-devel openssl-devel
+       $ sudo yum install -y gcc-c++ cmake rpm-build yajl-devel openssl-devel
        $ (cd /tmp && \
           VENDOR_URL=http://testrepo.stackdriver.com/vendor/boost/x86_64 && \
           curl -O ${VENDOR_URL}/boost-devel-1.54.0-1.el7.x86_64.rpm && \
@@ -68,6 +68,17 @@ This is the Stackdriver metadata agent.
 
        $ cd src
        $ make DISTRO=xenial deb
+
+2. Build the RPM package:
+
+       $ cd src
+       $ make rpm
+
+   If you want to embed the distro name (e.g., "el7") into the package
+   filename, use:
+
+       $ cd src
+       $ make DISTRO=el7 rpm
 
 # Running
 
