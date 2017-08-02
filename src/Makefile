@@ -35,10 +35,19 @@ YAML_CPP_LIBS=\
     $(YAML_CPP_LIBDIR)/libyaml-cpp.a
 LIBS=$(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 
+sbindir=/opt/stackdriver/metadata/sbin
+INSTALL=/usr/bin/install
+INSTALL_PROGRAM=$(INSTALL)
+INSTALL_DATA=$(INSTALL) -m 644
+
 metadatad: $(LIBS) $(OBJS)
 	$(CXX) -o $@ $(LDFLAGS) $^ $(LDLIBS)
 
 $(OBJS): init-submodules
+
+install: metadatad
+	$(INSTALL) -d $(DESTDIR)$(sbindir) && \
+	$(INSTALL_PROGRAM) -t $(DESTDIR)$(sbindir) $^
 
 clean:
 	$(RM) metadatad $(OBJS)
@@ -89,4 +98,4 @@ submodules: cpp-netlib yaml-cpp
 
 all: submodules metadatad
 
-.PHONY: all submodules cpp-netlib yaml-cpp purge clean
+.PHONY: all submodules cpp-netlib yaml-cpp purge clean install
