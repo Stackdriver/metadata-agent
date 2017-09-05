@@ -18,12 +18,15 @@
 
 //#include "config.h"
 
+#include <map>
 #include <mutex>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "configuration.h"
 #include "environment.h"
+#include "json.h"
 #include "updater.h"
 
 namespace google {
@@ -35,13 +38,53 @@ class KubernetesReader {
   std::vector<PollingMetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
  private:
+  // A representation of all query-related errors.
+  class QueryException {
+   public:
+    QueryException(const std::string& what) : explanation_(what) {}
+    const std::string& what() const { return explanation_; }
+   private:
+    std::string explanation_;
+  };
+
+  // Issues a Kubernetes master API query at a given path and
+  // returns a parsed JSON response. The path has to start with "/".
+  json::value QueryMaster(const std::string& path) const
+      throw(QueryException, json::Exception);
+
+  // Gets the name of the node the agent is running on.
+  // Returns an empty string if unable to find the current node.
+  const std::string& CurrentNode() const;
+
   // Gets the Kubernetes master API token.
   // Returns an empty string if unable to find the token.
   const std::string& KubernetesApiToken() const;
 
+  // Gets the Kubernetes namespace for the current container.
+  // Returns an empty string if unable to find the namespace.
+  const std::string& KubernetesNamespace() const;
+
+  // Given a version string, returns the path and name for a given kind.
+  std::pair<std::string, std::string> KindPath(const std::string& version,
+                                               const std::string& kind) const;
+
+  // Follows the owner reference to get the corresponding object.
+  json::value GetOwner(const std::string& ns, const json::Object* owner_ref)
+      const throw(QueryException, json::Exception);
+
+  // For a given object, returns the top-level owner object.
+  // When there are multiple owner references, follows the first one.
+  json::value FindTopLevelOwner(const std::string& ns, json::value object) const
+      throw(QueryException, json::Exception);
+
   // Cached data.
-  mutable std::mutex mutex_;
+  mutable std::recursive_mutex mutex_;
+  mutable std::string current_node_;
   mutable std::string kubernetes_api_token_;
+  mutable std::string kubernetes_namespace_;
+  // A memoized map from version to a map from kind to name.
+  mutable std::map<std::string, std::map<std::string, std::string>>
+      version_to_kind_to_name_;
 
   const MetadataAgentConfiguration& config_;
   Environment environment_;
