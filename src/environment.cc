@@ -131,6 +131,50 @@ const std::string& Environment::InstanceZone() const {
   return zone_;
 }
 
+const std::string& Environment::InstanceId() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (instance_id_.empty()) {
+    if (!config_.InstanceId().empty()) {
+      instance_id_ = config_.InstanceId();
+    } else {
+      // Query the metadata server.
+      // TODO: Other sources?
+      instance_id_ = GetMetadataString("instance/id");
+    }
+  }
+  return instance_id_;
+}
+
+const std::string& Environment::KubernetesClusterName() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (kubernetes_cluster_name_.empty()) {
+    if (!config_.KubernetesClusterName().empty()) {
+      kubernetes_cluster_name_ = config_.KubernetesClusterName();
+    } else {
+      // Query the metadata server.
+      // TODO: Other sources? kube-env?
+      kubernetes_cluster_name_ =
+          GetMetadataString("instance/attributes/cluster-name");
+    }
+  }
+  return kubernetes_cluster_name_;
+}
+
+const std::string& Environment::KubernetesApiToken() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (kubernetes_api_token_.empty()) {
+    std::string filename = "/var/run/secrets/kubernetes.io/serviceaccount/token";
+    std::ifstream input(filename);
+    if (!input.good()) {
+      LOG(ERROR) << "Missing Kubernetes API token " << filename;
+      return kubernetes_api_token_;
+    }
+    LOG(INFO) << "Reading token from " << filename;
+    std::getline(input, kubernetes_api_token_);
+  }
+  return kubernetes_api_token_;
+}
+
 const std::string& Environment::CredentialsClientEmail() const {
   std::lock_guard<std::mutex> lock(mutex_);
   ReadApplicationDefaultCredentials();

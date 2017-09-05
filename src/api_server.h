@@ -49,21 +49,33 @@ class MetadataAgent {
              const Timestamp& collected_at_,
              json::value metadata_)
         : version(version_), is_deleted(is_deleted_), created_at(created_at_),
-          collected_at(collected_at_), metadata(std::move(metadata_)) {}
+          collected_at(collected_at_), metadata(std::move(metadata_)),
+          ignore(false) {}
     Metadata(Metadata&& other)
         : version(other.version), is_deleted(other.is_deleted),
           created_at(other.created_at), collected_at(other.collected_at),
-          metadata(std::move(other.metadata)) {}
+          metadata(std::move(other.metadata)), ignore(other.ignore) {}
 
     Metadata Clone() const {
+      if (ignore) {
+        return {};
+      }
       return {version, is_deleted, created_at, collected_at, metadata->Clone()};
     }
 
-    std::string version;
-    bool is_deleted;
-    Timestamp created_at;
-    Timestamp collected_at;
+    static Metadata IGNORED();
+
+    const std::string version;
+    const bool is_deleted;
+    const Timestamp created_at;
+    const Timestamp collected_at;
     json::value metadata;
+    const bool ignore;
+
+   private:
+    Metadata()
+        : version(), is_deleted(false), created_at(), collected_at(),
+          metadata(json::object({})), ignore(true) {}
   };
 
   MetadataAgent(const MetadataAgentConfiguration& config);

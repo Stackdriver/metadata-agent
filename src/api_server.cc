@@ -34,6 +34,11 @@ namespace http = boost::network::http;
 
 namespace google {
 
+MetadataAgent::Metadata MetadataAgent::Metadata::IGNORED() {
+  return MetadataAgent::Metadata();
+}
+
+
 class MetadataApiServer {
  public:
   MetadataApiServer(const MetadataAgent& agent, int server_threads,
@@ -234,6 +239,9 @@ void MetadataReporter::SendMetadata(
   for (auto& entry : metadata) {
     const MonitoredResource& resource = entry.first;
     MetadataAgent::Metadata& metadata = entry.second;
+    if (metadata.ignore) {
+      continue;
+    }
     json::value metadata_entry =
         json::object({  // MonitoredResourceMetadata
           {"resource", resource.ToJSON()},
