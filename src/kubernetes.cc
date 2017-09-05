@@ -16,6 +16,7 @@
 
 #include "kubernetes.h"
 
+#include <boost/algorithm/string/join.hpp>
 #include <boost/network/protocol/http/client.hpp>
 #include <chrono>
 
@@ -31,11 +32,14 @@ namespace google {
 namespace {
 
 #if 0
-constexpr const char kubernetes_endpoint_host[] = "https://kubernetes";
+constexpr const char kKubernetesEndpointHost[] = "https://kubernetes";
 #endif
-constexpr const char kubernetes_api_version[] = "1.6";
-constexpr const char kubernetes_endpoint_path[] = "/api/v1";
-constexpr const char resource_type_separator[] = ".";
+constexpr const char kKubernetesApiVersion[] = "1.6";
+constexpr const char kKubernetesEndpointPath[] = "/api/v1";
+constexpr const char kResourceTypeSeparator[] = ".";
+
+constexpr const char kGkeContainerResourcePrefix[] = "gke_container";
+constexpr const char kGkeContainerNameResourcePrefix[] = "gke_containerName";
 
 }
 
@@ -49,7 +53,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
   const std::string zone = environment_.InstanceZone();
   const std::string cluster_name = environment_.KubernetesClusterName();
   const std::string kubernetes_endpoint(config_.KubernetesEndpointHost() +
-                                        kubernetes_endpoint_path);
+                                        kKubernetesEndpointPath);
   const std::string pod_label_selector(
       config_.KubernetesPodLabelSelector().empty()
       ? "" : "?" + config_.KubernetesPodLabelSelector());
@@ -112,20 +116,16 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
             {"zone", zone},
           });
 
-          const std::string resource_id =
-              std::string("gke_container") + resource_type_separator +
-              namespace_id + resource_type_separator +
-              pod_id + resource_type_separator +
-              container_name;
-          const std::string resource_name =
-              std::string("gke_containerName") + resource_type_separator +
-              namespace_id + resource_type_separator +
-              pod_name + resource_type_separator +
-              container_name;
+          const std::string resource_id = boost::algorithm::join(
+              std::vector<std::string>{kGkeContainerResourcePrefix, namespace_id, pod_id, container_name},
+              kResourceTypeSeparator);
+          const std::string resource_name = boost::algorithm::join(
+              std::vector<std::string>{kGkeContainerNameResourcePrefix, namespace_id, pod_name, container_name},
+              kResourceTypeSeparator);
           result.emplace_back(std::vector<std::string>{resource_id, resource_name},
                               resource,
 #ifdef ENABLE_KUBERNETES_METADATA
-                              MetadataAgent::Metadata(kubernetes_api_version,
+                              MetadataAgent::Metadata(kKubernetesApiVersion,
                                                       is_deleted, created_at, collected_at,
                                                       std::move(element->Clone()))
 #else
