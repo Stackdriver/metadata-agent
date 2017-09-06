@@ -145,9 +145,10 @@ class Null : public Value {
 
   Type type() const override { return NullType; }
 
+  std::unique_ptr<Value> Clone() const override;
+
  protected:
   void Serialize(internal::JSONSerializer*) const override;
-  std::unique_ptr<Value> Clone() const override;
 };
 
 class Boolean : public Value {
@@ -157,11 +158,12 @@ class Boolean : public Value {
 
   Type type() const override { return BooleanType; }
 
+  std::unique_ptr<Value> Clone() const override;
+
   bool value() const { return value_; }
 
  protected:
   void Serialize(internal::JSONSerializer*) const override;
-  std::unique_ptr<Value> Clone() const override;
 
  private:
   bool value_;
@@ -174,11 +176,12 @@ class Number : public Value {
 
   Type type() const override { return NumberType; }
 
+  std::unique_ptr<Value> Clone() const override;
+
   double value() const { return value_; }
 
  protected:
   void Serialize(internal::JSONSerializer*) const override;
-  std::unique_ptr<Value> Clone() const override;
 
  private:
   double value_;
@@ -191,11 +194,12 @@ class String : public Value {
 
   Type type() const override { return StringType; }
 
+  std::unique_ptr<Value> Clone() const override;
+
   const std::string& value() const { return value_; }
 
  protected:
   void Serialize(internal::JSONSerializer*) const override;
-  std::unique_ptr<Value> Clone() const override;
 
  private:
   std::string value_;
@@ -220,9 +224,10 @@ class Array : public Value, public std::vector<std::unique_ptr<Value>> {
 
   Type type() const override { return ArrayType; }
 
+  std::unique_ptr<Value> Clone() const override;
+
  protected:
   void Serialize(internal::JSONSerializer*) const override;
-  std::unique_ptr<Value> Clone() const override;
 };
 
 class Object : public Value, public std::map<std::string, std::unique_ptr<Value>> {
@@ -233,6 +238,8 @@ class Object : public Value, public std::map<std::string, std::unique_ptr<Value>
   Object(const Object& other);
 
   Type type() const override { return ObjectType; }
+
+  std::unique_ptr<Value> Clone() const override;
 
  private:
   // Field accessor common functionality.
@@ -276,6 +283,8 @@ class Object : public Value, public std::map<std::string, std::unique_ptr<Value>
   };
 
  public:
+  bool Has(const std::string& field) const { return find(field) != end(); }
+
   // Field accessors.
   template<class T>
   typename FieldGetter<T>::return_type Get(const std::string& field) const
@@ -285,7 +294,6 @@ class Object : public Value, public std::map<std::string, std::unique_ptr<Value>
 
  protected:
   void Serialize(internal::JSONSerializer*) const override;
-  std::unique_ptr<Value> Clone() const override;
 };
 
 // Factory functions.
