@@ -293,7 +293,8 @@ void MetadataAgent::UpdateResource(const std::vector<std::string>& resource_ids,
             << "is_deleted: " << entry.is_deleted << ", "
             << "created_at: " << rfc3339::ToString(entry.created_at) << ", "
             << "collected_at: " << rfc3339::ToString(entry.collected_at) << ", "
-            << "metadata: " << *entry.metadata
+            << "metadata: " << *entry.metadata << ", "
+            << "ignore: " << entry.ignore
             << "}";
   // Force value update. The repeated search is inefficient, but shouldn't
   // be a huge deal.
