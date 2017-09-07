@@ -193,7 +193,8 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
     {"entries", json::array(std::move(entries))},
   });
 
-  LOG(INFO) << "About to send request: " << *update_metadata_request;
+  LOG(INFO) << "About to send request: POST " << endpoint
+            << " " << *update_metadata_request;
 
   http::client client;
   http::client::request request(endpoint);
