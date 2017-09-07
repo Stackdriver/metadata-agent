@@ -16,7 +16,6 @@
 
 #include "format.h"
 
-#include <cstring>
 #include <sstream>
 
 namespace format {
@@ -25,9 +24,9 @@ std::string Substitute(const std::string& format,
                        const std::map<std::string, std::string>&& params)
     throw(Exception) {
   static constexpr const char kStart[] = "{{";
-  static constexpr const std::size_t kStartLen = std::strlen(kStart);
+  static constexpr const std::size_t kStartLen = sizeof(kStart) - 1;
   static constexpr const char kEnd[] = "}}";
-  static constexpr const std::size_t kEndLen = std::strlen(kEnd);
+  static constexpr const std::size_t kEndLen = sizeof(kEnd) - 1;
   std::stringstream result;
 
   std::string::size_type pos = 0;
