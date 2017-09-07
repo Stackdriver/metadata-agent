@@ -19,6 +19,7 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/network/protocol/http/client.hpp>
 #include <chrono>
+#include <fstream>
 
 #include "json.h"
 #include "logging.h"
@@ -62,7 +63,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
   http::client::request list_request(
       kubernetes_endpoint + "/pods" + pod_label_selector);
   list_request << boost::network::header(
-      "Authorization", "Bearer " + environment_.KubernetesApiToken());
+      "Authorization", "Bearer " + KubernetesApiToken());
   std::vector<PollingMetadataUpdater::ResourceMetadata> result;
   try {
     http::client::response list_response = client.get(list_request);
@@ -144,6 +145,22 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
     LOG(ERROR) << "Failed to communicate with " << kubernetes_endpoint << ": " << e.what();
   }
   return result;
+}
+
+const std::string& KubernetesReader::KubernetesApiToken() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (kubernetes_api_token_.empty()) {
+    std::string filename =
+        "/var/run/secrets/kubernetes.io/serviceaccount/token";
+    std::ifstream input(filename);
+    if (!input.good()) {
+      LOG(ERROR) << "Missing Kubernetes API token " << filename;
+      return kubernetes_api_token_;
+    }
+    LOG(INFO) << "Reading token from " << filename;
+    std::getline(input, kubernetes_api_token_);
+  }
+  return kubernetes_api_token_;
 }
 
 }
