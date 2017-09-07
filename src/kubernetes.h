@@ -18,6 +18,8 @@
 
 //#include "config.h"
 
+#include <mutex>
+#include <string>
 #include <vector>
 
 #include "configuration.h"
@@ -33,6 +35,14 @@ class KubernetesReader {
   std::vector<PollingMetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
  private:
+  // Gets the Kubernetes master API token.
+  // Returns an empty string if unable to find the token.
+  const std::string& KubernetesApiToken() const;
+
+  // Cached data.
+  mutable std::mutex mutex_;
+  mutable std::string kubernetes_api_token_;
+
   const MetadataAgentConfiguration& config_;
   Environment environment_;
 };
