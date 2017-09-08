@@ -53,7 +53,7 @@ install: metadatad
 
 export DISTRO
 PKG_NAME=stackdriver-metadata
-PKG_VERSION=0.0.11
+PKG_VERSION=0.0.12
 PKG_RELEASE=1
 PKG_MAINTAINER=Stackdriver Engineering <engineering@stackdriver.com>
 
