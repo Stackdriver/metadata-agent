@@ -334,13 +334,16 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
           LOG(INFO) << "Raw container metadata: " << *container_raw_metadata;
 
           const std::string k8s_container_id = boost::algorithm::join(
-              std::vector<std::string>{kK8sContainerResourcePrefix, namespace_name, pod_id, container_name},
+              std::vector<std::string>{kK8sContainerResourcePrefix, container_id},
+              kResourceTypeSeparator);
+          const std::string k8s_container_pod = boost::algorithm::join(
+              std::vector<std::string>{kK8sContainerResourcePrefix, pod_id, container_name},
               kResourceTypeSeparator);
           const std::string k8s_container_name = boost::algorithm::join(
               std::vector<std::string>{kK8sContainerNameResourcePrefix, namespace_name, pod_name, container_name},
               kResourceTypeSeparator);
           result.emplace_back(
-              std::vector<std::string>{k8s_container_id, k8s_container_name},
+              std::vector<std::string>{k8s_container_id, k8s_container_pod, k8s_container_name},
               k8s_container,
 #ifdef ENABLE_KUBERNETES_METADATA
               MetadataAgent::Metadata(kKubernetesApiVersion,
