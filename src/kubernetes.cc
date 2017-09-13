@@ -117,8 +117,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
           {"version", json::string(kRawContentVersion)},
           {"raw", json::object({
             {"providerPlatform", json::string(platform)},
-            // TODO: change this to instanceId when the API supports it.
-            {"instance_id", json::string(instance_id)},
+            {"instanceId", json::string(instance_id)},
           })},
         })},
         {"api", json::object({
