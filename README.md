@@ -49,6 +49,19 @@ This is the Stackdriver metadata agent.
           curl -O ${VENDOR_URL}/boost-static-1.54.0-1.el7.x86_64.rpm)
        $ sudo rpm --nodeps -ivp /tmp/boost-{devel,static}-1.54.0-1.el7.x86_64.rpm
 
+## MacOS 10.12 special edition
+
+1. Install runtime dependencies (MacOS 10.12 special edition):
+
+       $ brew install boost -c++11 && \
+         (cd /usr/local/lib && ln -s libboost_thread-mt.a libboost_thread.a && \
+          ln -s libboost_thread-mt.dylib libboost_thread.dylib)
+       $ brew install yajl
+
+2. Install build dependencies (MacOS 10.12 special edition):
+
+       $ brew install cmake
+
 # Building
 
 1. Build the metadata agent:
