@@ -5,7 +5,8 @@ ADD https://storage.googleapis.com/stackdriver-container-alpha/deb/xenial/stackd
 RUN apt-get update \
     && (dpkg -i /stackdriver-metadata_${version}.xenial.deb || true) \
     && apt-get install -f -y \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /stackdriver-metadata_${version}.xenial.deb
 
 CMD /opt/stackdriver/metadata/sbin/metadatad
 

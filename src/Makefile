@@ -67,6 +67,10 @@ PKG_VERSION=0.0.13
 PKG_RELEASE=1
 PKG_MAINTAINER=Stackdriver Engineering <engineering@stackdriver.com>
 
+DOCKER_VERSION=0.2
+DOCKER_IMAGE=us.gcr.io/container-monitoring-storage/stackdriver-metadata-agent
+DOCKER_TAG=$(DOCKER_VERSION)-$(PKG_VERSION)-$(PKG_RELEASE)
+
 PKG_TMPDIR=$$(mktemp -d --tmpdir metadata-build.XXXXXXXXXX)
 
 DEB_PKG=$(PKG_NAME)_$(PKG_VERSION)-$(PKG_RELEASE)$(if $(DISTRO),.$(DISTRO),).deb
@@ -102,6 +106,20 @@ $(RPM_PKG): metadatad $(wildcard ../pkg/rpm/*) Makefile
 	$(RM) -r $$TMPDIR
 
 rpm: $(RPM_PKG)
+
+ifeq ($(findstring |$(DISTRO)|,|trusty|xenial|),)
+docker:
+	/bin/false Missing or unknown distro "$(DISTRO)"
+else
+docker: $(DEB_PKG) ../pkg/docker/Dockerfile-$(DISTRO)
+	export TMPDIR=$(PKG_TMPDIR) && \
+	export DOCKER_DIR=$$TMPDIR/docker && \
+	mkdir -p $$DOCKER_DIR && \
+	cp ../pkg/docker/Dockerfile-$(DISTRO) $$DOCKER_DIR/Dockerfile && \
+	cp $(DEB_PKG) $$DOCKER_DIR/ && \
+	docker build --build-arg package="$(DEB_PKG)" -t $(DOCKER_IMAGE):$(DOCKER_TAG) $$DOCKER_DIR && \
+	$(RM) -r $$TMPDIR
+endif
 
 clean:
 	$(RM) metadatad $(OBJS)

@@ -1,0 +1,13 @@
+FROM ubuntu:trusty
+
+ARG package
+COPY ${package} /
+RUN apt-get update \
+    && (dpkg -i /${package} || true) \
+    && apt-get install -f -y \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /${package}
+
+CMD /opt/stackdriver/metadata/sbin/metadatad
+
+EXPOSE 8000
