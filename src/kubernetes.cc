@@ -399,7 +399,7 @@ const std::string& KubernetesReader::KubernetesApiToken() const {
 const std::string& KubernetesReader::KubernetesNamespace() const {
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   if (kubernetes_namespace_.empty()) {
-    if (!ReadServiceAccountSecret("namespace", kubernetes_api_token_)) {
+    if (!ReadServiceAccountSecret("namespace", kubernetes_namespace_)) {
       LOG(ERROR) << "Failed to read Kubernetes namespace";
     }
   }
