@@ -27,7 +27,16 @@ namespace google {
 
 namespace {
 
-json::value ReadCredentials(const std::string& credentials_file) throw(json::Exception) {
+class NoCredentials {
+ public:
+  NoCredentials(const std::string& filename) : filename_(filename) {}
+  const std::string& filename() const { return filename_; }
+ private:
+  std::string filename_;
+};
+
+json::value ReadCredentials(const std::string& credentials_file)
+    throw(json::Exception, NoCredentials) {
   std::string filename = credentials_file;
   if (filename.empty()) {
     const char* creds_env_var = std::getenv("GOOGLE_APPLICATION_CREDENTIALS");
@@ -41,7 +50,7 @@ json::value ReadCredentials(const std::string& credentials_file) throw(json::Exc
   std::ifstream input(filename);
   if (!input.good()) {
     LOG(INFO) << "Missing credentials file " << filename;
-    return nullptr;
+    throw NoCredentials(filename);
   }
   LOG(INFO) << "Reading credentials from " << filename;
   json::value creds_json = json::Parser::FromStream(input);
@@ -187,6 +196,8 @@ void Environment::ReadApplicationDefaultCredentials() const {
     LOG(INFO) << "Retrieved private key from application default credentials";
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
+  } catch (const NoCredentials& e) {
+    LOG(INFO) << "No credentials found at " << e.filename();
   }
   application_default_credentials_read_ = true;
 }
