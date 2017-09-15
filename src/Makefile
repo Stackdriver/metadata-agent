@@ -107,10 +107,6 @@ $(RPM_PKG): metadatad $(wildcard ../pkg/rpm/*) Makefile
 
 rpm: $(RPM_PKG)
 
-ifeq ($(findstring |$(DISTRO)|,|trusty|xenial|),)
-docker:
-	/bin/false Missing or unknown distro "$(DISTRO)"
-else
 docker: $(DEB_PKG) ../pkg/docker/Dockerfile-$(DISTRO)
 	export TMPDIR=$(PKG_TMPDIR) && \
 	export DOCKER_DIR=$$TMPDIR/docker && \
@@ -119,7 +115,6 @@ docker: $(DEB_PKG) ../pkg/docker/Dockerfile-$(DISTRO)
 	cp $(DEB_PKG) $$DOCKER_DIR/ && \
 	docker build --build-arg package="$(DEB_PKG)" -t $(DOCKER_IMAGE):$(DOCKER_TAG) $$DOCKER_DIR && \
 	$(RM) -r $$TMPDIR
-endif
 
 clean:
 	$(RM) metadatad $(OBJS)
