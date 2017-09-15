@@ -2,12 +2,12 @@
 FROM ubuntu:trusty
 
 ARG package
-COPY ${package} /
+COPY ${package} /stackdriver-metadata.deb
 RUN apt-get update \
-    && (dpkg -i /${package} || true) \
+    && (dpkg -i /stackdriver-metadata.deb || true) \
     && apt-get install -f -y \
     && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /${package}
+    && rm -rf /stackdriver-metadata.deb
 
 CMD /opt/stackdriver/metadata/sbin/metadatad
 

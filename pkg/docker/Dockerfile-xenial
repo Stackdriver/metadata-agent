@@ -1,13 +1,14 @@
 # To use directly, run: docker build --build-arg package=<pkg>.xenial.deb -t <tag> -f Dockerfile-xenial
 FROM ubuntu:xenial
 
-ARG package
-COPY ${package} /
+ARG version=0.0.13-1
+ARG package=https://storage.googleapis.com/stackdriver-container-alpha/deb/xenial/stackdriver-metadata_${version}.xenial.deb
+ADD ${package} /stackdriver-metadata.deb
 RUN apt-get update \
-    && (dpkg -i /${package} || true) \
+    && (dpkg -i /stackdriver-metadata.deb || true) \
     && apt-get install -f -y \
     && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /${package}
+    && rm -rf /stackdriver-metadata.deb
 
 CMD /opt/stackdriver/metadata/sbin/metadatad
 
