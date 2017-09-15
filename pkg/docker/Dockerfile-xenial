@@ -1,3 +1,4 @@
+# To use directly, run: docker build --build-arg package=<pkg>.xenial.deb -t <tag> -f Dockerfile-xenial
 FROM ubuntu:xenial
 
 ARG package
