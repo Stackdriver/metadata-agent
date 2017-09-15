@@ -2,7 +2,7 @@
 FROM ubuntu:trusty
 
 ARG package
-COPY ${package} /stackdriver-metadata.deb
+ADD ${package} /stackdriver-metadata.deb
 RUN apt-get update \
     && (dpkg -i /stackdriver-metadata.deb || true) \
     && apt-get install -f -y \
