@@ -195,15 +195,16 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
                      << " not the same as agent node " << node_name;
         }
 
-        const json::value primary =
+        const json::value top_level =
             FindTopLevelOwner(namespace_name, pod->Clone());
-        const json::Object* primary_controller = primary->As<json::Object>();
-        const std::string primary_kind =
-            primary_controller->Get<json::String>("kind");
-        const json::Object* primary_metadata =
-            primary_controller->Get<json::Object>("metadata");
-        const std::string primary_name =
-            primary_metadata->Get<json::String>("name");
+        const json::Object* top_level_controller =
+            top_level->As<json::Object>();
+        const std::string top_level_kind =
+            top_level_controller->Get<json::String>("kind");
+        const json::Object* top_level_metadata =
+            top_level_controller->Get<json::Object>("metadata");
+        const std::string top_level_name =
+            top_level_metadata->Get<json::String>("name");
 
         const MonitoredResource k8s_pod("k8s_pod", {
           {"cluster_name", cluster_name},
@@ -222,8 +223,8 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
           {"raw", json::object({
             {"providerPlatform", json::string(platform)},
             {"controllers", json::object({
-              {"primaryControllerType", json::string(primary_kind)},
-              {"primaryControllerName", json::string(primary_name)},
+              {"topLevelControllerType", json::string(top_level_kind)},
+              {"topLevelControllerName", json::string(top_level_name)},
             })},
           })},
         });
