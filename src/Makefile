@@ -67,13 +67,17 @@ PKG_VERSION=0.0.13
 PKG_RELEASE=1
 PKG_MAINTAINER=Stackdriver Engineering <engineering@stackdriver.com>
 
+DOCKER_VERSION=0.2
+DOCKER_IMAGE=us.gcr.io/container-monitoring-storage/stackdriver-metadata-agent
+DOCKER_TAG=$(DOCKER_VERSION)-$(PKG_VERSION)-$(PKG_RELEASE)
+
 PKG_TMPDIR=$$(mktemp -d --tmpdir metadata-build.XXXXXXXXXX)
 
 DEB_PKG=$(PKG_NAME)_$(PKG_VERSION)-$(PKG_RELEASE)$(if $(DISTRO),.$(DISTRO),).deb
 RPM_PKG=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_RELEASE)$(if $(DISTRO),.$(DISTRO),).x86_64.rpm
 
 $(DEB_PKG): metadatad $(wildcard ../pkg/deb/debian/*) Makefile
-	export TMPDIR=$(PKG_TMPDIR) && \
+	TMPDIR=$(PKG_TMPDIR) && export TMPDIR && \
 	export DEB_DIR=$$TMPDIR/deb && \
 	mkdir -p $$DEB_DIR/package && \
 	$(MAKE) DESTDIR=$$DEB_DIR/package install && \
@@ -94,7 +98,7 @@ $(DEB_PKG): metadatad $(wildcard ../pkg/deb/debian/*) Makefile
 deb: $(DEB_PKG)
 
 $(RPM_PKG): metadatad $(wildcard ../pkg/rpm/*) Makefile
-	export TMPDIR=$(PKG_TMPDIR) && \
+	TMPDIR=$(PKG_TMPDIR) && export TMPDIR && \
 	export RPM_DIR=$$TMPDIR/rpm && \
 	mkdir -p $$RPM_DIR/package && \
 	$(MAKE) DESTDIR=$$RPM_DIR/package install && \
@@ -102,6 +106,15 @@ $(RPM_PKG): metadatad $(wildcard ../pkg/rpm/*) Makefile
 	$(RM) -r $$TMPDIR
 
 rpm: $(RPM_PKG)
+
+docker: $(DEB_PKG) ../pkg/docker/Dockerfile-$(DISTRO)
+	TMPDIR=$(PKG_TMPDIR) && export TMPDIR && \
+	export DOCKER_DIR=$$TMPDIR/docker && \
+	mkdir -p $$DOCKER_DIR && \
+	cp ../pkg/docker/Dockerfile-$(DISTRO) $$DOCKER_DIR/Dockerfile && \
+	cp $(DEB_PKG) $$DOCKER_DIR/ && \
+	docker build --build-arg package="$(DEB_PKG)" -t $(DOCKER_IMAGE):$(DOCKER_TAG) $$DOCKER_DIR && \
+	$(RM) -r $$TMPDIR
 
 clean:
 	$(RM) metadatad $(OBJS)
