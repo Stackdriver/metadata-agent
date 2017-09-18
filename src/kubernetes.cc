@@ -56,6 +56,8 @@ constexpr const char kK8sNodeNameResourcePrefix[] = "k8s_nodeName";
 
 constexpr const char kNodeSelectorPrefix[] = "?fieldSelector=spec.nodeName%3D";
 
+constexpr const char kDockerIdPrefix[] = "docker://";
+
 constexpr const char kServiceAccountDirectory[] =
     "/var/run/secrets/kubernetes.io/serviceaccount";
 
@@ -279,8 +281,18 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
           const json::Object* container_spec = c_spec->As<json::Object>();
           const std::string container_name =
               container->Get<json::String>("name");
+          std::size_t docker_prefix_end = sizeof(kDockerIdPrefix) - 1;
+          if (container->Get<json::String>("containerID").compare(
+                  0, docker_prefix_end, kDockerIdPrefix) != 0) {
+            LOG(ERROR) << "ContainerID "
+                       << container->Get<json::String>("containerID")
+                       << " does not start with " << kDockerIdPrefix
+                       << " (" << docker_prefix_end << " chars)";
+            docker_prefix_end = 0;
+          }
           const std::string container_id =
-              container->Get<json::String>("containerID");
+              container->Get<json::String>("containerID").substr(
+                  docker_prefix_end);
           // TODO: find is_deleted.
           //const json::Object* state = container->Get<json::Object>("state");
           bool is_deleted = false;
