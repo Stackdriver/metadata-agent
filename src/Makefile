@@ -116,6 +116,9 @@ docker: $(DEB_PKG) ../pkg/docker/Dockerfile-$(DISTRO)
 	docker build --build-arg package="$(DEB_PKG)" -t $(DOCKER_IMAGE):$(DOCKER_TAG) $$DOCKER_DIR && \
 	$(RM) -r $$TMPDIR
 
+docker-publish: docker
+	gcloud docker -- push $(DOCKER_IMAGE):$(DOCKER_TAG)
+
 clean:
 	$(RM) metadatad $(OBJS)
 
