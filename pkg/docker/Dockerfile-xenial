@@ -1,7 +1,7 @@
 # To use directly, run: docker build --build-arg package=<pkg>.xenial.deb -t <tag> -f Dockerfile-xenial
 FROM ubuntu:xenial
 
-ARG version=0.0.13-3
+ARG version=0.0.13-4
 ARG package=https://storage.googleapis.com/stackdriver-container-alpha/deb/xenial/stackdriver-metadata_${version}.xenial.deb
 ADD ${package} /stackdriver-metadata.deb
 RUN apt-get update \
