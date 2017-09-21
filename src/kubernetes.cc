@@ -201,12 +201,20 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
             FindTopLevelOwner(namespace_name, pod->Clone());
         const json::Object* top_level_controller =
             top_level->As<json::Object>();
-        const std::string top_level_kind =
-            top_level_controller->Get<json::String>("kind");
         const json::Object* top_level_metadata =
             top_level_controller->Get<json::Object>("metadata");
         const std::string top_level_name =
             top_level_metadata->Get<json::String>("name");
+        if (!top_level_controller->Has("kind") &&
+            top_level_metadata->Get<json::String>("uid") != pod_id) {
+          LOG(ERROR) << "Internal error; top-level controller without 'kind' "
+                     << *top_level_controller
+                     << " not the same as pod " << *pod;
+        }
+        const std::string top_level_kind =
+            top_level_controller->Has("kind")
+                ? top_level_controller->Get<json::String>("kind")
+                : "Pod";
 
         const MonitoredResource k8s_pod("k8s_pod", {
           {"cluster_name", cluster_name},
