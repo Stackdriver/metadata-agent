@@ -24,7 +24,7 @@ namespace google {
 class MetadataAgentConfiguration {
  public:
   MetadataAgentConfiguration();
-  MetadataAgentConfiguration(const std::string& filename);
+  int ParseArguments(int ac, char** av);
 
   // Shared configuration.
   const std::string& ProjectId() const {
@@ -34,6 +34,10 @@ class MetadataAgentConfiguration {
   const std::string& CredentialsFile() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return credentials_file_;
+  }
+  bool VerboseLogging() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return verbose_logging_;
   }
   // Metadata API server configuration options.
   int MetadataApiNumThreads() const {
@@ -102,9 +106,12 @@ class MetadataAgentConfiguration {
   }
 
  private:
+  void ParseConfigFile(const std::string& filename);
+
   mutable std::mutex mutex_;
   std::string project_id_;
   std::string credentials_file_;
+  bool verbose_logging_;
   int metadata_api_num_threads_;
   int metadata_api_port_;
   int metadata_reporter_interval_seconds_;
