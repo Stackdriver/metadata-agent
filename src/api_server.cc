@@ -109,10 +109,12 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
   static const std::string kPrefix = "/monitoredResource/";
   // The format for the local metadata API request is:
   //   {host}:{port}/monitoredResource/{id}
-  LOG(INFO) << "Handler called: " << request.method
-            << " " << request.destination
-            << " headers: " << request.headers
-            << " body: " << request.body;
+  if (agent_.config_.VerboseLogging()) {
+    LOG(INFO) << "Handler called: " << request.method
+              << " " << request.destination
+              << " headers: " << request.headers
+              << " body: " << request.body;
+  }
   if (request.method == "GET" && request.destination.find(kPrefix) == 0) {
     std::string id = request.destination.substr(kPrefix.size());
     const auto result = agent_.resource_map_.find(id);
@@ -120,12 +122,16 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
       // TODO: This could be considered log spam.
       // As we add more resource mappings, these will become less and less
       // frequent, and could be promoted to ERROR.
-      LOG(WARNING) << "No matching resource for " << id;
+      if (agent_.config_.VerboseLogging()) {
+        LOG(WARNING) << "No matching resource for " << id;
+      }
       response = HttpServer::response::stock_reply(
           HttpServer::response::not_found, "");
     } else {
       const MonitoredResource& resource = result->second;
-      LOG(INFO) << "Found resource for " << id << ": " << resource;
+      if (agent_.config_.VerboseLogging()) {
+        LOG(INFO) << "Found resource for " << id << ": " << resource;
+      }
       response = HttpServer::response::stock_reply(
           HttpServer::response::ok, resource.ToJSON()->ToString());
     }
@@ -176,9 +182,13 @@ void MetadataReporter::ReportMetadata() {
   std::this_thread::sleep_for(std::chrono::seconds(3));
   // TODO: Do we need to be able to stop this?
   while (true) {
-    LOG(INFO) << "Sending metadata request to server";
+    if (agent_.config_.VerboseLogging()) {
+      LOG(INFO) << "Sending metadata request to server";
+    }
     SendMetadata(agent_.GetMetadataMap());
-    LOG(INFO) << "Metadata request sent successfully";
+    if (agent_.config_.VerboseLogging()) {
+      LOG(INFO) << "Metadata request sent successfully";
+    }
     std::this_thread::sleep_for(period_);
   }
   //LOG(INFO) << "Metadata reporter exiting";
@@ -188,13 +198,16 @@ namespace {
 
 void SendMetadataRequest(std::vector<json::value>&& entries,
                          const std::string& endpoint,
-                         const std::string& auth_header) {
+                         const std::string& auth_header,
+                         bool verbose_logging) {
   json::value update_metadata_request = json::object({
     {"entries", json::array(std::move(entries))},
   });
 
-  LOG(INFO) << "About to send request: POST " << endpoint
-            << " " << *update_metadata_request;
+  if (verbose_logging) {
+    LOG(INFO) << "About to send request: POST " << endpoint
+              << " " << *update_metadata_request;
+  }
 
   http::client client;
   http::client::request request(endpoint);
@@ -205,7 +218,9 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
   request << boost::network::header("Authorization", auth_header);
   request << boost::network::body(request_body);
   http::client::response response = client.post(request);
-  LOG(INFO) << "Server responded with " << body(response);
+  if (verbose_logging) {
+    LOG(INFO) << "Server responded with " << body(response);
+  }
   // TODO: process response.
 }
 
@@ -214,11 +229,15 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 void MetadataReporter::SendMetadata(
     std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata) {
   if (metadata.empty()) {
-    LOG(INFO) << "No data to send";
+    if (agent_.config_.VerboseLogging()) {
+      LOG(INFO) << "No data to send";
+    }
     return;
   }
 
-  LOG(INFO) << "Sending request to the server";
+  if (agent_.config_.VerboseLogging()) {
+    LOG(INFO) << "Sending request to the server";
+  }
   const std::string project_id = environment_.NumericProjectId();
   // The endpoint template is expected to be of the form
   // "https://stackdriver.googleapis.com/.../projects/{{project_id}}/...".
@@ -261,7 +280,8 @@ void MetadataReporter::SendMetadata(
       continue;
     }
     if (total_size + size > limit_bytes) {
-      SendMetadataRequest(std::move(entries), endpoint, auth_header);
+      SendMetadataRequest(std::move(entries), endpoint, auth_header,
+                          agent_.config_.VerboseLogging());
       entries.clear();
       total_size = empty_size;
     }
@@ -269,7 +289,8 @@ void MetadataReporter::SendMetadata(
     total_size += size;
   }
   if (!entries.empty()) {
-    SendMetadataRequest(std::move(entries), endpoint, auth_header);
+    SendMetadataRequest(std::move(entries), endpoint, auth_header,
+                        agent_.config_.VerboseLogging());
   }
 }
 
@@ -285,17 +306,22 @@ void MetadataAgent::UpdateResource(const std::vector<std::string>& resource_ids,
   // TODO: How do we handle deleted resources?
   // TODO: Do we care if the value was already there?
   for (const std::string& id : resource_ids) {
-    LOG(INFO) << "Updating resource map '" << id << "'->" << resource;
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "Updating resource map '" << id << "'->" << resource;
+    }
     resource_map_.emplace(id, resource);
   }
-  LOG(INFO) << "Updating metadata map " << resource << "->{"
-            << "version: " << entry.version << ", "
-            << "is_deleted: " << entry.is_deleted << ", "
-            << "created_at: " << rfc3339::ToString(entry.created_at) << ", "
-            << "collected_at: " << rfc3339::ToString(entry.collected_at) << ", "
-            << "metadata: " << *entry.metadata << ", "
-            << "ignore: " << entry.ignore
-            << "}";
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Updating metadata map " << resource << "->{"
+              << "version: " << entry.version << ", "
+              << "is_deleted: " << entry.is_deleted << ", "
+              << "created_at: " << rfc3339::ToString(entry.created_at) << ", "
+              << "collected_at: " << rfc3339::ToString(entry.collected_at)
+              << ", "
+              << "metadata: " << *entry.metadata << ", "
+              << "ignore: " << entry.ignore
+              << "}";
+  }
   // Force value update. The repeated search is inefficient, but shouldn't
   // be a huge deal.
   metadata_map_.erase(resource);

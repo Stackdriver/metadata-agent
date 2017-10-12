@@ -35,7 +35,7 @@ class NoCredentials {
   std::string filename_;
 };
 
-json::value ReadCredentials(const std::string& credentials_file)
+json::value ReadCredentials(const std::string& credentials_file, bool verbose)
     throw(json::Exception, NoCredentials) {
   std::string filename = credentials_file;
   if (filename.empty()) {
@@ -49,15 +49,21 @@ json::value ReadCredentials(const std::string& credentials_file)
   }
   std::ifstream input(filename);
   if (!input.good()) {
-    LOG(INFO) << "Missing credentials file " << filename;
+    if (verbose) {
+      LOG(INFO) << "Missing credentials file " << filename;
+    }
     throw NoCredentials(filename);
   }
-  LOG(INFO) << "Reading credentials from " << filename;
+  if (verbose) {
+    LOG(INFO) << "Reading credentials from " << filename;
+  }
   json::value creds_json = json::Parser::FromStream(input);
   if (creds_json == nullptr) {
     throw json::Exception("Could not parse credentials from " + filename);
   }
-  LOG(INFO) << "Retrieved credentials from " << filename << ": " << *creds_json;
+  if (verbose) {
+    LOG(INFO) << "Retrieved credentials from " << filename << ": " << *creds_json;
+  }
   return std::move(creds_json);
 }
 
@@ -117,8 +123,11 @@ const std::string& Environment::NumericProjectId() const {
       if (project_id_.empty()) {
         // Query the metadata server.
         // TODO: Other sources.
-        LOG(INFO) << "Getting project id from metadata server";
+        if (config_.VerboseLogging()) {
+          LOG(INFO) << "Getting project id from metadata server";
+        }
         project_id_ = GetMetadataString("project/numeric-project-id");
+        LOG(INFO) << "Got project id from metadata server: " << project_id_;
       }
     }
   }
@@ -186,7 +195,8 @@ void Environment::ReadApplicationDefaultCredentials() const {
     return;
   }
   try {
-    json::value creds_json = ReadCredentials(config_.CredentialsFile());
+    json::value creds_json = ReadCredentials(config_.CredentialsFile(),
+                                             config_.VerboseLogging());
 
     const json::Object* creds = creds_json->As<json::Object>();
 

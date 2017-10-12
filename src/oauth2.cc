@@ -199,7 +199,9 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
     // private key to use is the one associated with the service account email
     // address (i.e. the email address specified in the 'iss' field above).
 
-    LOG(INFO) << "Getting an OAuth2 token";
+    if (environment_.config().VerboseLogging()) {
+      LOG(INFO) << "Getting an OAuth2 token";
+    }
     http::client client;
     http::client::request request("https://www.googleapis.com/oauth2/v3/token");
     std::string grant_type = boost::network::uri::encoded(
@@ -221,9 +223,13 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
       {"iat", json::number(SecondsSinceEpoch(now))},
       {"exp", json::number(SecondsSinceEpoch(exp))},
     });
-    LOG(INFO) << "claim_set = " << claim_set_object->ToString();
+    if (environment_.config().VerboseLogging()) {
+      LOG(INFO) << "claim_set = " << claim_set_object->ToString();
+    }
     std::string claim_set = base64::Encode(claim_set_object->ToString());
-    LOG(INFO) << "encoded claim_set = " << claim_set;
+    if (environment_.config().VerboseLogging()) {
+      LOG(INFO) << "encoded claim_set = " << claim_set;
+    }
     std::string signature = base64::Encode(
         Sign(jwt_header + "." + claim_set, private_key));
     std::string request_body =
@@ -236,13 +242,19 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
     request << boost::network::header("Content-Type",
                                       "application/x-www-form-urlencoded");
     request << boost::network::body(request_body);
-    LOG(INFO) << "About to send request: " << request.uri().string()
-              << " headers: " << request.headers()
-              << " body: " << request.body();
+    if (environment_.config().VerboseLogging()) {
+      LOG(INFO) << "About to send request: " << request.uri().string()
+                << " headers: " << request.headers()
+                << " body: " << request.body();
+    }
     http::client::response response = client.post(request);
-    LOG(INFO) << "Token response: " << body(response);
+    if (environment_.config().VerboseLogging()) {
+      LOG(INFO) << "Token response: " << body(response);
+    }
     json::value parsed_token = json::Parser::FromString(body(response));
-    LOG(INFO) << "Parsed token: " << *parsed_token;
+    if (environment_.config().VerboseLogging()) {
+      LOG(INFO) << "Parsed token: " << *parsed_token;
+    }
 
     return parsed_token;
   } catch (const json::Exception& e) {
@@ -257,9 +269,13 @@ json::value OAuth2::GetMetadataToken() const {
   if (token_response.empty()) {
     return nullptr;
   }
-  LOG(INFO) << "Token response: " << token_response;
+  if (environment_.config().VerboseLogging()) {
+    LOG(INFO) << "Token response: " << token_response;
+  }
   json::value parsed_token = json::Parser::FromString(token_response);
-  LOG(INFO) << "Parsed token: " << *parsed_token;
+  if (environment_.config().VerboseLogging()) {
+    LOG(INFO) << "Parsed token: " << *parsed_token;
+  }
   return parsed_token;
 }
 

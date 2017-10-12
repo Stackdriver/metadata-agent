@@ -92,6 +92,10 @@ class MetadataAgent {
   // Starts serving.
   void start();
 
+  const MetadataAgentConfiguration& config() const {
+    return config_;
+  }
+
  private:
   friend class MetadataApiServer;
   friend class MetadataReporter;

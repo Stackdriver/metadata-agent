@@ -37,6 +37,10 @@ class Environment {
 
   std::string GetMetadataString(const std::string& path) const;
 
+  const MetadataAgentConfiguration& config() const {
+    return config_;
+  }
+
  private:
   void ReadApplicationDefaultCredentials() const;
 
