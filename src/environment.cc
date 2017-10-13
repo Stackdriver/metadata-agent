@@ -35,7 +35,8 @@ class NoCredentials {
   std::string filename_;
 };
 
-json::value ReadCredentials(const std::string& credentials_file, bool verbose)
+json::value ReadCredentials(
+    const std::string& credentials_file, bool verbose_logging)
     throw(json::Exception, NoCredentials) {
   std::string filename = credentials_file;
   if (filename.empty()) {
@@ -49,19 +50,19 @@ json::value ReadCredentials(const std::string& credentials_file, bool verbose)
   }
   std::ifstream input(filename);
   if (!input.good()) {
-    if (verbose) {
+    if (verbose_logging) {
       LOG(INFO) << "Missing credentials file " << filename;
     }
     throw NoCredentials(filename);
   }
-  if (verbose) {
+  if (verbose_logging) {
     LOG(INFO) << "Reading credentials from " << filename;
   }
   json::value creds_json = json::Parser::FromStream(input);
   if (creds_json == nullptr) {
     throw json::Exception("Could not parse credentials from " + filename);
   }
-  if (verbose) {
+  if (verbose_logging) {
     LOG(INFO) << "Retrieved credentials from " << filename << ": " << *creds_json;
   }
   return std::move(creds_json);

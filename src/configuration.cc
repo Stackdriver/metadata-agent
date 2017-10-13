@@ -78,8 +78,8 @@ int MetadataAgentConfiguration::ParseArguments(int ac, char** av) {
   std::string config_file;
   boost::program_options::options_description flags_desc;
   flags_desc.add_options()
-      ("help", "Print help message")
-      ("verbose", boost::program_options::value<bool>(&verbose_logging_),
+      ("help,h", "Print help message")
+      ("verbose,v", boost::program_options::bool_switch(&verbose_logging_),
            "Enable verbose logging")
       ;
   boost::program_options::options_description hidden_desc;
