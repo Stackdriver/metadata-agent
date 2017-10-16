@@ -115,6 +115,7 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
             << " body: " << request.body;
   if (request.method == "GET" && request.destination.find(kPrefix) == 0) {
     std::string id = request.destination.substr(kPrefix.size());
+    std::lock_guard<std::mutex> lock(agent_.mu_);
     const auto result = agent_.resource_map_.find(id);
     if (result == agent_.resource_map_.end()) {
       // TODO: This could be considered log spam.
