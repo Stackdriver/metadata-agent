@@ -17,6 +17,7 @@
 #include "configuration.h"
 
 #include <boost/program_options.hpp>
+#include <iostream>
 #include <map>
 
 #include <yaml-cpp/yaml.h>
