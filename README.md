@@ -4,7 +4,7 @@ This is the Stackdriver metadata agent.
 
 1. Install runtime dependencies:
 
-       $ sudo apt-get install libyajl2 libboost-program-options-1.55.0 \
+       $ sudo apt-get install libyajl2 libboost-program-options1.55.0 \
          libboost-system1.55.0 libboost-thread1.55.0
 
 2. Install build dependencies:

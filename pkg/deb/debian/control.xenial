@@ -6,7 +6,7 @@ Build-Depends: g++, cmake, dpkg-dev, libyajl-dev (>= 2.0), libssl-dev, libboost1
 
 Package: stackdriver-metadata
 Architecture: amd64
-Depends: libssl1.0.0, libyajl2, libboost-system1.58.0, libboost-thread1.58.0
+Depends: libssl1.0.0, libyajl2, libboost-program-options1.58.0, libboost-system1.58.0, libboost-thread1.58.0
 Description: Stackdriver metadata collection daemon
   The Stackdriver metadata daemon collects resource metadata and
   sends it to the Stackdriver service.
