@@ -25,7 +25,12 @@
 #include "updater.h"
 
 int main(int ac, char** av) {
-  google::MetadataAgentConfiguration config(ac > 1 ? av[1] : "");
+  google::MetadataAgentConfiguration config;
+  int parse_result = config.ParseArguments(ac, av);
+  if (parse_result) {
+    return parse_result;
+  }
+
   google::MetadataAgent server(config);
 
   google::DockerReader docker(config);

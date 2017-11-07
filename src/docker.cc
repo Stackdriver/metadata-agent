@@ -45,7 +45,9 @@ DockerReader::DockerReader(const MetadataAgentConfiguration& config)
 
 std::vector<PollingMetadataUpdater::ResourceMetadata>
     DockerReader::MetadataQuery() const {
-  LOG(INFO) << "Docker Query called";
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Docker Query called";
+  }
   const std::string zone = environment_.InstanceZone();
   const std::string docker_endpoint(config_.DockerEndpointHost() +
                                     "v" + config_.DockerApiVersion() +
@@ -60,9 +62,13 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
   try {
     http::local_client::response list_response = client.get(list_request);
     Timestamp collected_at = std::chrono::system_clock::now();
-    LOG(INFO) << "List response: " << body(list_response);
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "List response: " << body(list_response);
+    }
     json::value parsed_list = json::Parser::FromString(body(list_response));
-    LOG(INFO) << "Parsed list: " << *parsed_list;
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "Parsed list: " << *parsed_list;
+    }
     const json::Array* container_list = parsed_list->As<json::Array>();
     for (const json::value& element : *container_list) {
       try {
@@ -71,10 +77,14 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
         // Inspect the container.
         http::local_client::request inspect_request(docker_endpoint + "/" + id + "/json");
         http::local_client::response inspect_response = client.get(inspect_request);
-        LOG(INFO) << "Inspect response: " << body(inspect_response);
+        if (config_.VerboseLogging()) {
+          LOG(INFO) << "Inspect response: " << body(inspect_response);
+        }
         json::value parsed_metadata =
             json::Parser::FromString(body(inspect_response));
-        LOG(INFO) << "Parsed metadata: " << *parsed_metadata;
+        if (config_.VerboseLogging()) {
+          LOG(INFO) << "Parsed metadata: " << *parsed_metadata;
+        }
         const MonitoredResource resource("docker_container", {
           {"location", zone},
           {"container_id", id},

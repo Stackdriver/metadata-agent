@@ -16,6 +16,8 @@
 
 #include "configuration.h"
 
+#include <boost/program_options.hpp>
+#include <iostream>
 #include <map>
 
 #include <yaml-cpp/yaml.h>
@@ -23,6 +25,7 @@
 namespace google {
 
 namespace {
+constexpr const char kConfigFileFlag[] = "config-file";
 
 constexpr const char kDefaultProjectId[] = "";
 constexpr const char kDefaultCredentialsFile[] = "";
@@ -51,6 +54,7 @@ constexpr const char kDefaultInstanceZone[] = "";
 MetadataAgentConfiguration::MetadataAgentConfiguration()
     : project_id_(kDefaultProjectId),
       credentials_file_(kDefaultCredentialsFile),
+      verbose_logging_(false),
       metadata_api_num_threads_(kMetadataApiDefaultNumThreads),
       metadata_api_port_(kMetadataApiDefaultPort),
       metadata_reporter_interval_seconds_(
@@ -71,9 +75,41 @@ MetadataAgentConfiguration::MetadataAgentConfiguration()
       instance_id_(kDefaultInstanceId),
       instance_zone_(kDefaultInstanceZone) {}
 
-MetadataAgentConfiguration::MetadataAgentConfiguration(
-    const std::string& filename) : MetadataAgentConfiguration()
-{
+int MetadataAgentConfiguration::ParseArguments(int ac, char** av) {
+  std::string config_file;
+  boost::program_options::options_description flags_desc;
+  flags_desc.add_options()
+      ("help,h", "Print help message")
+      ("verbose,v", boost::program_options::bool_switch(&verbose_logging_),
+           "Enable verbose logging")
+      ;
+  boost::program_options::options_description hidden_desc;
+  hidden_desc.add_options()
+      (kConfigFileFlag,
+           boost::program_options::value<std::string>(&config_file)
+               ->default_value(""),
+           "Configuration file location")
+      ;
+  boost::program_options::options_description all_desc;
+  all_desc.add(flags_desc).add(hidden_desc);
+  boost::program_options::positional_options_description positional_desc;
+  positional_desc.add(kConfigFileFlag, 1);
+  boost::program_options::variables_map flags;
+  boost::program_options::store(
+      boost::program_options::command_line_parser(ac, av)
+          .options(all_desc).positional(positional_desc).run(), flags);
+  boost::program_options::notify(flags);
+
+  if (flags.count("help")) {
+    std::cout << flags_desc << std::endl;
+    return 1;
+  }
+
+  ParseConfigFile(config_file);
+  return 0;
+}
+
+void MetadataAgentConfiguration::ParseConfigFile(const std::string& filename) {
   std::lock_guard<std::mutex> lock(mutex_);
   if (filename.empty()) return;
 

@@ -64,14 +64,18 @@ constexpr const char kServiceAccountDirectory[] =
 // Reads a Kubernetes service account secret file into the provided string.
 // Returns true if the file was read successfully.
 bool ReadServiceAccountSecret(
-    const std::string& secret, std::string& destination) {
+    const std::string& secret, std::string& destination, bool verbose) {
   std::string filename(std::string(kServiceAccountDirectory) + "/" + secret);
   std::ifstream input(filename);
   if (!input.good()) {
-    LOG(ERROR) << "Missing " << filename;
+    if (verbose) {
+      LOG(ERROR) << "Missing " << filename;
+    }
     return false;
   }
-  LOG(INFO) << "Reading from " << filename;
+  if (verbose) {
+    LOG(INFO) << "Reading from " << filename;
+  }
   std::getline(input, destination);
   return !input.fail();
 }
@@ -83,7 +87,9 @@ KubernetesReader::KubernetesReader(const MetadataAgentConfiguration& config)
 
 std::vector<PollingMetadataUpdater::ResourceMetadata>
     KubernetesReader::MetadataQuery() const {
-  LOG(INFO) << "Kubernetes Query called";
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Kubernetes Query called";
+  }
   std::vector<PollingMetadataUpdater::ResourceMetadata> result;
 
   const std::string platform = "gce";  // TODO: detect other platforms.
@@ -92,7 +98,9 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
   const std::string cluster_name = environment_.KubernetesClusterName();
   const std::string node_name = CurrentNode();
 
-  LOG(INFO) << "Current node is " << node_name;
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Current node is " << node_name;
+  }
 
   const MonitoredResource k8s_node("k8s_node", {
     {"cluster_name", cluster_name},
@@ -128,7 +136,9 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
         })},
       })},
     });
-    LOG(INFO) << "Raw node metadata: " << *node_raw_metadata;
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "Raw node metadata: " << *node_raw_metadata;
+    }
 
 #if 0
     // TODO: do we need this?
@@ -166,14 +176,18 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
         std::string(kKubernetesEndpointPath) + "/pods" + node_selector +
         pod_label_selector);
     Timestamp collected_at = std::chrono::system_clock::now();
-    LOG(INFO) << "Parsed pod list: " << *podlist_response;
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "Parsed pod list: " << *podlist_response;
+    }
     const json::Object* podlist_object = podlist_response->As<json::Object>();
     const std::string api_version =
         podlist_object->Get<json::String>("apiVersion");
     const json::Array* pod_list = podlist_object->Get<json::Array>("items");
     for (const json::value& element : *pod_list) {
       try {
-        LOG(INFO) << "Pod: " << *element;
+        if (config_.VerboseLogging()) {
+          LOG(INFO) << "Pod: " << *element;
+        }
         const json::Object* pod = element->As<json::Object>();
 
         const json::Object* metadata = pod->Get<json::Object>("metadata");
@@ -247,7 +261,9 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
             })},
           })},
         });
-        LOG(INFO) << "Raw pod metadata: " << *pod_raw_metadata;
+        if (config_.VerboseLogging()) {
+          LOG(INFO) << "Raw pod metadata: " << *pod_raw_metadata;
+        }
 
         const std::string k8s_pod_id = boost::algorithm::join(
             std::vector<std::string>{kK8sPodResourcePrefix, namespace_name, pod_id},
@@ -284,7 +300,9 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
         for (int i = 0; i < num_containers; ++i) {
           const json::value& c_element = (*container_list)[i];
           const json::value& c_spec = (*container_specs)[i];
-          LOG(INFO) << "Container: " << *c_element;
+          if (config_.VerboseLogging()) {
+            LOG(INFO) << "Container: " << *c_element;
+          }
           const json::Object* container = c_element->As<json::Object>();
           const json::Object* container_spec = c_spec->As<json::Object>();
           const std::string container_name =
@@ -351,7 +369,9 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
               })},
             })},
           });
-          LOG(INFO) << "Raw container metadata: " << *container_raw_metadata;
+          if (config_.VerboseLogging()) {
+            LOG(INFO) << "Raw container metadata: " << *container_raw_metadata;
+          }
 
           const std::string k8s_container_id = boost::algorithm::join(
               std::vector<std::string>{kK8sContainerResourcePrefix, container_id},
@@ -394,7 +414,9 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
   http::client::request request(endpoint);
   request << boost::network::header(
       "Authorization", "Bearer " + KubernetesApiToken());
-  LOG(INFO) << "QueryMaster: Contacting " << endpoint;
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "QueryMaster: Contacting " << endpoint;
+  }
   try {
     http::client::response response = client.get(request);
 #ifdef VERBOSE
@@ -410,7 +432,8 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
 const std::string& KubernetesReader::KubernetesApiToken() const {
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   if (kubernetes_api_token_.empty()) {
-    if (!ReadServiceAccountSecret("token", kubernetes_api_token_)) {
+    if (!ReadServiceAccountSecret("token", kubernetes_api_token_,
+                                  config_.VerboseLogging())) {
       LOG(ERROR) << "Failed to read Kubernetes API token";
     }
   }
@@ -420,7 +443,8 @@ const std::string& KubernetesReader::KubernetesApiToken() const {
 const std::string& KubernetesReader::KubernetesNamespace() const {
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   if (kubernetes_namespace_.empty()) {
-    if (!ReadServiceAccountSecret("namespace", kubernetes_namespace_)) {
+    if (!ReadServiceAccountSecret("namespace", kubernetes_namespace_,
+                                  config_.VerboseLogging())) {
       LOG(ERROR) << "Failed to read Kubernetes namespace";
     }
   }
@@ -464,7 +488,9 @@ std::pair<std::string, std::string> KubernetesReader::KindPath(
   if (found.second) {  // Not found, inserted new.
     try {
       json::value apilist_response = QueryMaster(query_path);
-      LOG(INFO) << "Parsed API list: " << *apilist_response;
+      if (config_.VerboseLogging()) {
+        LOG(INFO) << "Parsed API list: " << *apilist_response;
+      }
 
       const json::Object* apilist_object = apilist_response->As<json::Object>();
       const json::Array* api_list = apilist_object->Get<json::Array>("resources");
