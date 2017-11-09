@@ -44,7 +44,7 @@ class PollingMetadataUpdater {
   };
 
   PollingMetadataUpdater(
-      double period_s, MetadataAgent* store,
+      MetadataAgent* store, double period_s,
       std::function<std::vector<ResourceMetadata>()> query_metadata);
   ~PollingMetadataUpdater();
 
@@ -59,11 +59,11 @@ class PollingMetadataUpdater {
   // Metadata poller.
   void PollForMetadata();
 
-  // The polling period in seconds.
-  seconds period_;
-
   // The store for the metadata.
   MetadataAgent* store_;
+
+  // The polling period in seconds.
+  seconds period_;
 
   // The function to actually query for metadata.
   std::function<std::vector<ResourceMetadata>()> query_metadata_;

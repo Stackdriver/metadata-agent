@@ -23,10 +23,10 @@
 namespace google {
 
 PollingMetadataUpdater::PollingMetadataUpdater(
-    double period_s, MetadataAgent* store,
+    MetadataAgent* store, double period_s,
     std::function<std::vector<ResourceMetadata>()> query_metadata)
-    : period_(period_s),
-      store_(store),
+    : store_(store),
+      period_(period_s),
       query_metadata_(query_metadata),
       timer_(),
       reporter_thread_() {}
@@ -42,8 +42,10 @@ void PollingMetadataUpdater::start() {
   if (store_->config().VerboseLogging()) {
     LOG(INFO) << "Timer locked";
   }
-  reporter_thread_ =
-      std::thread(&PollingMetadataUpdater::PollForMetadata, this);
+  if (period_ > seconds::zero()) {
+    reporter_thread_ =
+        std::thread(&PollingMetadataUpdater::PollForMetadata, this);
+  }
 }
 
 void PollingMetadataUpdater::stop() {

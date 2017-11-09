@@ -37,6 +37,16 @@ class DockerReader {
   Environment environment_;
 };
 
+class DockerUpdater : public PollingMetadataUpdater {
+ public:
+  DockerUpdater(MetadataAgent* server)
+      : reader_(server->config()), PollingMetadataUpdater(
+          server, server->config().DockerUpdaterIntervalSeconds(),
+          std::bind(&google::DockerReader::MetadataQuery, &reader_)) { }
+ private:
+  DockerReader reader_;
+};
+
 }
 
 #endif  // DOCKER_H_

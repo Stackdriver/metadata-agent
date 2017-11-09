@@ -90,6 +90,16 @@ class KubernetesReader {
   Environment environment_;
 };
 
+class KubernetesUpdater : public PollingMetadataUpdater {
+ public:
+  KubernetesUpdater(MetadataAgent* server)
+      : reader_(server->config()), PollingMetadataUpdater(
+          server, server->config().KubernetesUpdaterIntervalSeconds(),
+          std::bind(&google::KubernetesReader::MetadataQuery, &reader_)) { }
+ private:
+  KubernetesReader reader_;
+};
+
 }
 
 #endif  // KUBERNETES_H_
