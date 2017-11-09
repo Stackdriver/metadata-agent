@@ -65,7 +65,8 @@ void PollingMetadataUpdater::PollForMetadata() {
   do {
     std::vector<ResourceMetadata> result_vector = query_metadata_();
     for (ResourceMetadata& result : result_vector) {
-      UpdateMetadataCallback(result);
+      UpdateResourceCallback(result);
+      UpdateMetadataCallback(std::move(result));
     }
     // An unlocked timer means we should stop updating.
     if (config().VerboseLogging()) {

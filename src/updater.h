@@ -56,10 +56,14 @@ class MetadataUpdater {
   virtual void stop() = 0;
 
  protected:
+  // Updates the resource map in the store.
+  void UpdateResourceCallback(const ResourceMetadata& result) {
+    store_->UpdateResource(result.ids, result.resource);
+  }
+
   // Updates the metadata in the store. Consumes result.
-  void UpdateMetadataCallback(ResourceMetadata& result) {
-    store_->UpdateResource(
-        result.ids, result.resource, std::move(result.metadata));
+  void UpdateMetadataCallback(ResourceMetadata&& result) {
+    store_->UpdateMetadata(result.resource, std::move(result.metadata));
   }
 
  private:
