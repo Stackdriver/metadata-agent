@@ -85,12 +85,12 @@ bool ReadServiceAccountSecret(
 KubernetesReader::KubernetesReader(const MetadataAgentConfiguration& config)
     : config_(config), environment_(config) {}
 
-std::vector<PollingMetadataUpdater::ResourceMetadata>
+std::vector<MetadataUpdater::ResourceMetadata>
     KubernetesReader::MetadataQuery() const {
   if (config_.VerboseLogging()) {
     LOG(INFO) << "Kubernetes Query called";
   }
-  std::vector<PollingMetadataUpdater::ResourceMetadata> result;
+  std::vector<MetadataUpdater::ResourceMetadata> result;
 
   const std::string platform = "gce";  // TODO: detect other platforms.
   const std::string instance_id = environment_.InstanceId();

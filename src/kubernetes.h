@@ -35,7 +35,7 @@ class KubernetesReader {
  public:
   KubernetesReader(const MetadataAgentConfiguration& config);
   // A Kubernetes metadata query function.
-  std::vector<PollingMetadataUpdater::ResourceMetadata> MetadataQuery() const;
+  std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
  private:
   // A representation of all query-related errors.
