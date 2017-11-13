@@ -25,6 +25,7 @@
 
 #include "environment.h"
 #include "format.h"
+#include "http_common.h"
 #include "json.h"
 #include "logging.h"
 #include "oauth2.h"
@@ -57,8 +58,6 @@ class MetadataApiServer {
    private:
     const MetadataAgent& agent_;
   };
-  friend std::ostream& operator<<(
-      std::ostream& o, const HttpServer::request::headers_container_type& hv);
 
   Handler handler_;
   HttpServer server_;
@@ -86,20 +85,6 @@ class MetadataReporter {
   seconds period_;
   std::thread reporter_thread_;
 };
-
-
-// To allow logging headers. TODO: move to a common location.
-std::ostream& operator<<(
-    std::ostream& o,
-    const MetadataApiServer::HttpServer::request::headers_container_type& hv) {
-  o << "[";
-  for (const auto& h : hv) {
-    o << " " << h.name << ": " << h.value;
-  }
-  o << " ]";
-  return o;
-}
-
 
 MetadataApiServer::Handler::Handler(const MetadataAgent& agent)
     : agent_(agent) {}
