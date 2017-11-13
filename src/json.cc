@@ -424,7 +424,9 @@ yajl_callbacks callbacks = {
 
 }
 
-std::unique_ptr<Value> Parser::FromStream(std::istream& stream) {
+std::unique_ptr<Value> Parser::FromStream(std::istream& stream)
+    throw(Exception)
+{
   JSONBuilder builder;
 
   const int kMax = 65536;
@@ -446,16 +448,18 @@ std::unique_ptr<Value> Parser::FromStream(std::istream& stream) {
 
   if (stat != yajl_status_ok) {
     unsigned char* str = yajl_get_error(handle, 1, data, kMax);
-    // TODO cerr << str << endl;
+    std::string error_str((const char*)str);
     yajl_free_error(handle, str);
-    return nullptr;
+    throw json::Exception(error_str);
   }
 
   yajl_free(handle);
   return builder.value();
 }
 
-std::unique_ptr<Value> Parser::FromString(const std::string& input) {
+std::unique_ptr<Value> Parser::FromString(const std::string& input)
+    throw(Exception)
+{
   std::stringstream stream(input);
   return FromStream(stream);
 }

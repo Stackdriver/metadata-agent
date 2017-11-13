@@ -267,7 +267,8 @@ class Object : public Value, public std::map<std::string, std::unique_ptr<Value>
   struct FieldGetter {
     using return_type = const T*;
     static const T* GetField(const Object* obj, const std::string& field)
-        throw(Exception) {
+        throw(Exception)
+    {
       return obj->GetField<T>(field);
     }
   };
@@ -277,7 +278,8 @@ class Object : public Value, public std::map<std::string, std::unique_ptr<Value>
     using value_type = typename std::result_of<decltype(&T::value)(T)>::type;
     using return_type = typename std::remove_reference<value_type>::type;
     static return_type GetField(const Object* obj, const std::string& field)
-        throw(Exception) {
+        throw(Exception)
+    {
       return obj->GetField<T>(field)->value();
     }
   };
@@ -288,7 +290,8 @@ class Object : public Value, public std::map<std::string, std::unique_ptr<Value>
   // Field accessors.
   template<class T>
   typename FieldGetter<T>::return_type Get(const std::string& field) const
-      throw(Exception) {
+      throw(Exception)
+  {
     return FieldGetter<T>::GetField(this, field);
   }
 
@@ -328,8 +331,10 @@ inline std::unique_ptr<Value> object(
 
 class Parser {
  public:
-  static std::unique_ptr<Value> FromStream(std::istream& stream);
-  static std::unique_ptr<Value> FromString(const std::string& input);
+  static std::unique_ptr<Value> FromStream(std::istream& stream)
+      throw(Exception);
+  static std::unique_ptr<Value> FromString(const std::string& input)
+      throw(Exception);
 };
 
 }
