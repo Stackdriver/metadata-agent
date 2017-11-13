@@ -556,26 +556,39 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
 
 namespace {
 struct Watcher {
-  Watcher(std::function<void(json::value)> callback) : callback_(callback) {}
-  void operator()(const boost::iterator_range<char const *>& range,
-                  const boost::system::error_code& error)
-      throw(boost::system::system_error, json::Exception) {
+  Watcher(std::function<void(json::value)> callback,
+          std::unique_lock<std::mutex>&& completion)
+      : completion_(std::move(completion)), callback_(callback) {}
+  ~Watcher() {}  // Unlocks the completion_ lock.
+  void operator()(const boost::iterator_range<const char*>& range,
+                  const boost::system::error_code& error) {
     if (!error) {
+      if (std::begin(range) == std::end(range)) {
+        LOG(INFO) << "Skipping empty watch notification";
+        return;
+      }
       std::string body(std::begin(range), std::end(range));
 //#ifdef VERBOSE
       LOG(DEBUG) << "Watch notification: " << body;
 //#endif
-      callback_(json::Parser::FromString(body));
+      try {
+        callback_(json::Parser::FromString(body));
+      } catch (const json::Exception& e) {
+        LOG(ERROR) << e.what();
+      }
     } else {
       if (error == boost::asio::error::eof) {
         LOG(DEBUG) << "Watch callback: EOF";
       } else {
         LOG(ERROR) << "Callback got error " << error;
-        throw boost::system::system_error(error);
       }
+      LOG(ERROR) << "Unlocking completion mutex";
+      completion_.unlock();
     }
   }
+
  private:
+  std::unique_lock<std::mutex> completion_;
   std::function<void(json::value)> callback_;
 };
 }
@@ -595,8 +608,15 @@ void KubernetesReader::WatchMaster(
     LOG(INFO) << "WatchMaster: Contacting " << endpoint;
 //  }
   try {
-    http::client::response response = client.get(request, Watcher(callback));
-    LOG(DEBUG) << "WatchMaster: Response: " << body(response);
+    LOG(ERROR) << "Locking completion mutex";
+    // A notification for watch completion.
+    std::mutex completion_mutex;
+    std::unique_lock<std::mutex> watch_completion(completion_mutex);
+    Watcher watcher(callback, std::move(watch_completion));
+    http::client::response response = client.get(request, boost::ref(watcher));
+    LOG(ERROR) << "Waiting for completion";
+    std::lock_guard<std::mutex> await_completion(completion_mutex);
+    LOG(DEBUG) << "WatchMaster completed " << body(response);
   } catch (const boost::system::system_error& e) {
     LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
     throw QueryException(endpoint + " -> " + e.what());
@@ -773,6 +793,7 @@ json::value KubernetesReader::FindTopLevelOwner(
 
 namespace {
 void WatchCallback(json::value result) throw(json::Exception) {
+  LOG(ERROR) << "Watch callback: " << *result;
   const json::Object* watch = result->As<json::Object>();
   const std::string type = watch->Get<json::String>("type");
   const json::Object* object = watch->Get<json::Object>("object");
@@ -781,6 +802,7 @@ void WatchCallback(json::value result) throw(json::Exception) {
 }
 
 void KubernetesReader::WatchPods() const {
+  LOG(ERROR) << "Watch thread started";
   try {
     WatchMaster(std::string(kKubernetesEndpointPath) + "/pods", WatchCallback);
   } catch (const json::Exception& e) {
@@ -788,6 +810,7 @@ void KubernetesReader::WatchPods() const {
   } catch (const KubernetesReader::QueryException& e) {
     // Already logged.
   }
+  LOG(ERROR) << "Watch thread exiting";
 }
 
 }
