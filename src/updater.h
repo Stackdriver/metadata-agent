@@ -59,6 +59,9 @@ class MetadataUpdater {
   // Stops updating.
   virtual void stop() = 0;
 
+  using UpdateCallback =
+      std::function<void(std::vector<MetadataUpdater::ResourceMetadata>&&)>;
+
  protected:
   // Updates the resource map in the store.
   void UpdateResourceCallback(const ResourceMetadata& result) {

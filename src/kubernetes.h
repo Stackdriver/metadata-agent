@@ -39,7 +39,7 @@ class KubernetesReader {
   std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
   // Pod watcher.
-  void WatchPods() const;
+  void WatchPods(MetadataUpdater::UpdateCallback callback) const;
 
  private:
   // A representation of all query-related errors.
@@ -64,7 +64,9 @@ class KubernetesReader {
     throw(QueryException, json::Exception);
 
   // Pod watcher callback.
-  void PodCallback(json::value result) const throw(json::Exception);
+  void PodCallback(
+      MetadataUpdater::UpdateCallback callback, json::value result) const
+      throw(json::Exception);
 
   // Compute the associations for a given pod.
   json::value ComputePodAssociations(const json::Object* pod) const
@@ -145,10 +147,16 @@ class KubernetesUpdater : public PollingMetadataUpdater {
 
   void start() {
     PollingMetadataUpdater::start();
-    watch_thread_ = std::thread(&KubernetesReader::WatchPods, &reader_);
+    // Wrap the bind expression into a function to use as a bind argument.
+    UpdateCallback cb = std::bind(&KubernetesUpdater::MetadataCallback, this,
+                                  std::placeholders::_1);
+    watch_thread_ = std::thread(&KubernetesReader::WatchPods, &reader_, cb);
   }
 
  private:
+  // Metadata watcher callback.
+  void MetadataCallback(std::vector<ResourceMetadata>&& result_vector);
+
   KubernetesReader reader_;
   std::thread watch_thread_;
 };
