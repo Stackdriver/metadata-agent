@@ -331,6 +331,10 @@ inline std::unique_ptr<Value> object(
 
 class Parser {
  public:
+  static std::vector<std::unique_ptr<Value>> AllFromStream(
+      std::istream& stream) throw(Exception);
+  static std::vector<std::unique_ptr<Value>> AllFromString(
+      const std::string& input) throw(Exception);
   static std::unique_ptr<Value> FromStream(std::istream& stream)
       throw(Exception);
   static std::unique_ptr<Value> FromString(const std::string& input)

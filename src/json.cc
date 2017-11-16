@@ -223,17 +223,13 @@ class TopLevelContext : public Context {
  public:
   TopLevelContext() : Context(nullptr) {}
   void AddValue(std::unique_ptr<Value> value) override {
-    if (value_ != nullptr) {
-      std::cerr << "Replacing " << *value_
-                << " with " << *value << std::endl;
-    }
-    value_ = std::move(value);
+    values_.emplace_back(std::move(value));
   }
-  std::unique_ptr<Value> value() {
-    return std::move(value_);
+  std::vector<std::unique_ptr<Value>> values() {
+    return std::move(values_);
   }
  private:
-  std::unique_ptr<Value> value_;
+  std::vector<std::unique_ptr<Value>> values_;
 };
 
 class ArrayContext : public Context {
@@ -320,13 +316,12 @@ class JSONBuilder {
   }
 
   // Top-level context only.
-  std::unique_ptr<Value> value() {
+  std::vector<std::unique_ptr<Value>> values() throw(Exception) {
     TopLevelContext* top_level = dynamic_cast<TopLevelContext*>(context_);
     if (top_level == nullptr) {
-      std::cerr << "value() called for an inner context" << std::endl;
-      return nullptr;
+      throw json::Exception("values() called for an inner context");
     }
-    return top_level->value();
+    return top_level->values();
   }
 
  private:
@@ -424,7 +419,7 @@ yajl_callbacks callbacks = {
 
 }
 
-std::unique_ptr<Value> Parser::FromStream(std::istream& stream)
+std::vector<std::unique_ptr<Value>> Parser::AllFromStream(std::istream& stream)
     throw(Exception)
 {
   JSONBuilder builder;
@@ -433,6 +428,8 @@ std::unique_ptr<Value> Parser::FromStream(std::istream& stream)
   unsigned char data[kMax];
   yajl_handle handle = yajl_alloc(&callbacks, NULL, (void*) &builder);
   yajl_config(handle, yajl_allow_comments, 1);
+  yajl_config(handle, yajl_allow_multiple_values, 1);
+  //yajl_config(handle, yajl_allow_trailing_garbage, 1);
   //yajl_config(handle, yajl_dont_validate_strings, 1);
 
   for (;;) {
@@ -454,13 +451,35 @@ std::unique_ptr<Value> Parser::FromStream(std::istream& stream)
   }
 
   yajl_free(handle);
-  return builder.value();
+  return builder.values();
+}
+
+std::unique_ptr<Value> Parser::FromStream(std::istream& stream)
+    throw(Exception)
+{
+  std::vector<std::unique_ptr<Value>> all_values = AllFromStream(stream);
+  if (all_values.empty()) {
+    return nullptr;
+  }
+  if (all_values.size() > 1) {
+    std::ostringstream out;
+    out << "Getting a single value out of " << all_values.size();
+    throw json::Exception(out.str());
+  }
+  return std::move(all_values[0]);
+}
+
+std::vector<std::unique_ptr<Value>> Parser::AllFromString(
+    const std::string& input) throw(Exception)
+{
+  std::istringstream stream(input);
+  return AllFromStream(stream);
 }
 
 std::unique_ptr<Value> Parser::FromString(const std::string& input)
     throw(Exception)
 {
-  std::stringstream stream(input);
+  std::istringstream stream(input);
   return FromStream(stream);
 }
 
