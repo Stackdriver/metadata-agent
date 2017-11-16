@@ -67,6 +67,10 @@ class KubernetesReader {
   MetadataUpdater::ResourceMetadata GetLegacyResource(
       const json::Object* pod, int container_index) const
       throw(json::Exception);
+  // Given a pod object, return the associated pod and container metadata.
+  std::vector<MetadataUpdater::ResourceMetadata> GetPodAndContainerMetadata(
+      const json::Object* pod, Timestamp collected_at) const
+      throw(json::Exception);
 
   // Issues a Kubernetes master API query at a given path and
   // returns a parsed JSON response. The path has to start with "/".

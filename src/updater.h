@@ -37,6 +37,9 @@ class MetadataUpdater {
                      const MonitoredResource& resource_,
                      MetadataAgent::Metadata&& metadata_)
         : ids(ids_), resource(resource_), metadata(std::move(metadata_)) {}
+    ResourceMetadata(ResourceMetadata&& other)
+        : ResourceMetadata(other.ids, other.resource,
+                           std::move(other.metadata)) {}
     std::vector<std::string> ids;
     MonitoredResource resource;
     MetadataAgent::Metadata metadata;

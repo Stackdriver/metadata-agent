@@ -267,9 +267,10 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
   Timestamp created_at = rfc3339::FromString(created_str);
   const json::Object* labels = metadata->Get<json::Object>("labels");
 
-  const json::Object* status = pod->Get<json::Object>("status");
   const json::Object* spec = pod->Get<json::Object>("spec");
   const std::string node_name = spec->Get<json::String>("nodeName");
+
+  const json::Object* status = pod->Get<json::Object>("status");
 
   const json::Array* container_specs = spec->Get<json::Array>("containers");
   const json::Array* container_list =
@@ -397,6 +398,54 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetLegacyResource(
 }
 
 std::vector<MetadataUpdater::ResourceMetadata>
+KubernetesReader::GetPodAndContainerMetadata(
+    const json::Object* pod, Timestamp collected_at) const
+    throw(json::Exception) {
+  std::vector<MetadataUpdater::ResourceMetadata> result;
+
+  json::value associations = ComputePodAssociations(pod);
+
+  const json::Object* metadata = pod->Get<json::Object>("metadata");
+  const std::string pod_name = metadata->Get<json::String>("name");
+  const std::string pod_id = metadata->Get<json::String>("uid");
+
+  const json::Object* spec = pod->Get<json::Object>("spec");
+  const std::string node_name = spec->Get<json::String>("nodeName");
+
+  const json::Object* status = pod->Get<json::Object>("status");
+
+  const json::Array* container_specs = spec->Get<json::Array>("containers");
+  const json::Array* container_list =
+      status->Get<json::Array>("containerStatuses");
+  std::size_t num_containers = std::min(
+      container_list->size(), container_specs->size());
+
+  for (int i = 0; i < num_containers; ++i) {
+    const json::value& c_element = (*container_list)[i];
+    const json::value& c_spec = (*container_specs)[i];
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "Container: " << *c_element;
+    }
+    const json::Object* container = c_element->As<json::Object>();
+    const json::Object* container_spec = c_spec->As<json::Object>();
+    const std::string container_name = container->Get<json::String>("name");
+    const std::string spec_name = container_spec->Get<json::String>("name");
+    if (container_name != spec_name) {
+      LOG(ERROR) << "Internal error; container name " << container_name
+                 << " not the same as spec name " << spec_name
+                 << " at index " << i;
+    }
+    result.emplace_back(GetLegacyResource(pod, i));
+    result.emplace_back(
+        GetContainerMetadata(pod, i, associations->Clone(), collected_at));
+  }
+
+  result.emplace_back(
+      GetPodMetadata(pod->Clone(), std::move(associations), collected_at));
+  return std::move(result);
+}
+
+std::vector<MetadataUpdater::ResourceMetadata>
     KubernetesReader::MetadataQuery() const {
   if (config_.VerboseLogging()) {
     LOG(INFO) << "Kubernetes Query called";
@@ -445,12 +494,9 @@ std::vector<MetadataUpdater::ResourceMetadata>
         }
         const json::Object* pod = raw_pod->As<json::Object>();
 
-        json::value associations = ComputePodAssociations(pod);
-
         const json::Object* metadata = pod->Get<json::Object>("metadata");
         const std::string pod_name = metadata->Get<json::String>("name");
         const std::string pod_id = metadata->Get<json::String>("uid");
-        const json::Object* status = pod->Get<json::Object>("status");
 
         const json::Object* spec = pod->Get<json::Object>("spec");
         const std::string pod_node_name = spec->Get<json::String>("nodeName");
@@ -459,10 +505,11 @@ std::vector<MetadataUpdater::ResourceMetadata>
                      << " not the same as agent node " << node_name;
         }
 
+        const json::Object* status = pod->Get<json::Object>("status");
+
         const json::Array* container_specs = spec->Get<json::Array>("containers");
         const json::Array* container_list =
             status->Get<json::Array>("containerStatuses");
-
         if (container_specs->size() != container_list->size()) {
           LOG(ERROR) << "Container specs and statuses arrays "
                      << "have different sizes: "
@@ -470,35 +517,12 @@ std::vector<MetadataUpdater::ResourceMetadata>
                      << container_list->size() << " for pod "
                      << pod_id << "(" << pod_name << ")";
         }
-        std::size_t num_containers = std::min(
-            container_list->size(), container_specs->size());
 
-        for (int i = 0; i < num_containers; ++i) {
-          const json::value& c_element = (*container_list)[i];
-          const json::value& c_spec = (*container_specs)[i];
-          if (config_.VerboseLogging()) {
-            LOG(INFO) << "Container: " << *c_element;
-          }
-          const json::Object* container = c_element->As<json::Object>();
-          const json::Object* container_spec = c_spec->As<json::Object>();
-          const std::string container_name =
-              container->Get<json::String>("name");
-          const std::string spec_name =
-              container_spec->Get<json::String>("name");
-          if (container_name != spec_name) {
-            LOG(ERROR) << "Internal error; container name " << container_name
-                       << " not the same as spec name " << spec_name
-                       << " at index " << i;
-          }
-          result.emplace_back(GetLegacyResource(pod, i));
-          result.emplace_back(
-              GetContainerMetadata(pod, i, associations->Clone(),
-                                   collected_at));
+        std::vector<MetadataUpdater::ResourceMetadata> pod_metadata =
+            GetPodAndContainerMetadata(pod, collected_at);
+        for (MetadataUpdater::ResourceMetadata& metadata : pod_metadata) {
+          result.emplace_back(std::move(metadata));
         }
-
-        result.emplace_back(
-            GetPodMetadata(pod->Clone(), std::move(associations),
-                           collected_at));
       } catch (const json::Exception& e) {
         LOG(ERROR) << e.what();
         continue;
