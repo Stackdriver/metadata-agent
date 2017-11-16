@@ -26,6 +26,7 @@
 #include <fstream>
 #include <tuple>
 
+#include "http_common.h"
 #include "json.h"
 #include "logging.h"
 #include "resource.h"
@@ -558,23 +559,40 @@ namespace {
 struct Watcher {
   Watcher(std::function<void(json::value)> callback,
           std::unique_lock<std::mutex>&& completion)
-      : completion_(std::move(completion)), callback_(callback) {}
+      : completion_(std::move(completion)), callback_(callback),
+        remaining_bytes_(0) {}
   ~Watcher() {}  // Unlocks the completion_ lock.
   void operator()(const boost::iterator_range<const char*>& range,
                   const boost::system::error_code& error) {
     if (!error) {
-      if (std::begin(range) == std::end(range)) {
-        LOG(INFO) << "Skipping empty watch notification";
-        return;
-      }
-      std::string body(std::begin(range), std::end(range));
 //#ifdef VERBOSE
-      LOG(DEBUG) << "Watch notification: " << body;
+//      LOG(DEBUG) << "Watch notification: '"
+//                 << std::string(std::begin(range), std::end(range))
+//                 << "'";
 //#endif
-      try {
-        callback_(json::Parser::FromString(body));
-      } catch (const json::Exception& e) {
-        LOG(ERROR) << e.what();
+      boost::iterator_range<const char*> pos = range;
+      if (remaining_bytes_ != 0) {
+        pos = ReadNextChunk(pos);
+//        LOG(ERROR) << "Read another chunk; body now is '" << body_ << "'; "
+//                   << remaining_bytes_ << " bytes remaining";
+      }
+
+      if (remaining_bytes_ == 0) {
+        // Invoke the callback.
+        CompleteChunk();
+
+        // Process the next batch.
+        while (remaining_bytes_ == 0 && std::begin(pos) != std::end(pos)) {
+          pos = StartNewChunk(pos);
+        }
+//        LOG(ERROR) << "Started new chunk; " << remaining_bytes_
+//                   << " bytes remaining";
+
+        if (remaining_bytes_ != 0) {
+          pos = ReadNextChunk(pos);
+//          LOG(ERROR) << "Read another chunk; body now is '" << body_ << "'; "
+//                     << remaining_bytes_ << " bytes remaining";
+        }
       }
     } else {
       if (error == boost::asio::error::eof) {
@@ -588,8 +606,86 @@ struct Watcher {
   }
 
  private:
+  boost::iterator_range<const char*>
+  StartNewChunk(const boost::iterator_range<const char*>& range) {
+    if (remaining_bytes_ != 0) {
+      LOG(ERROR) << "Starting new chunk with " << remaining_bytes_
+                 << " bytes remaining";
+    }
+
+    body_.clear();
+
+    const std::string crlf("\r\n");
+    auto begin = std::begin(range);
+    auto end = std::end(range);
+    auto iter = std::search(begin, end, crlf.begin(), crlf.end());
+    if (iter == end && iter != begin) {
+      LOG(ERROR) << "Invalid chunked encoding: '"
+                 << std::string(begin, end)
+                 << "'";
+      return boost::iterator_range<const char*>(begin, end);
+    }
+    std::string line(begin, iter);
+//    LOG(ERROR) << "Buffer before increment: '" << std::string(iter, end) << "'";
+    iter = std::next(iter, crlf.size());
+//    LOG(ERROR) << "Buffer: '" << std::string(iter, end) << "'";
+    if (line.empty()) {
+      // Blank lines are fine, just skip them.
+      LOG(DEBUG) << "Skipping blank line within chunked encoding;"
+                 << " remaining data '" << std::string(iter, end) << "'";
+    } else {
+//      LOG(ERROR) << "Line: '" << line << "'";
+      std::stringstream stream(line);
+      stream >> std::hex >> remaining_bytes_;
+    }
+    return boost::iterator_range<const char*>(iter, end);
+  }
+
+  boost::iterator_range<const char*>
+  ReadNextChunk(const boost::iterator_range<const char*>& range) {
+    if (remaining_bytes_ == 0) {
+      LOG(ERROR) << "Asked to read next chunk with no bytes remaining";
+      return range;
+    }
+
+    const std::string crlf("\r\n");
+    auto begin = std::begin(range);
+    auto end = std::end(range);
+    const size_t available = std::distance(begin, end);
+    const size_t len = std::min(available, remaining_bytes_);
+    body_.insert(body_.end(), begin, begin + len);
+    remaining_bytes_ -= len;
+    begin = std::next(begin, len);
+//    if (remaining_bytes_ == 0) {
+//      begin = std::next(begin, crlf.size());
+//    }
+    return boost::iterator_range<const char*>(begin, end);
+  }
+
+  void CompleteChunk() {
+    if (body_.empty()) {
+      LOG(INFO) << "Skipping empty watch notification";
+    } else {
+      try {
+//        LOG(INFO) << "Invoking callbacks on '" << body_ << "'";
+        std::vector<json::value> events = json::Parser::AllFromString(body_);
+        for (json::value& event : events) {
+          std::string event_str = event->ToString();
+//          LOG(INFO) << "Invoking callback('" << event_str << "')";
+          callback_(std::move(event));
+//          LOG(INFO) << "callback('" << event_str << "') completed";
+        }
+//        LOG(INFO) << "All callbacks on '" << body_ << "' completed";
+      } catch (const json::Exception& e) {
+        LOG(ERROR) << e.what();
+      }
+    }
+  }
+
   std::unique_lock<std::mutex> completion_;
   std::function<void(json::value)> callback_;
+  std::string body_;
+  size_t remaining_bytes_;
 };
 }
 
@@ -617,6 +713,18 @@ void KubernetesReader::WatchMaster(
     LOG(ERROR) << "Waiting for completion";
     std::lock_guard<std::mutex> await_completion(completion_mutex);
     LOG(DEBUG) << "WatchMaster completed " << body(response);
+    bool is_chunk_encoding = false;
+#ifdef VERBOSE
+    LOG(DEBUG) << "response headers: " << response.headers();
+#endif
+    for (const auto& h : headers(response)) {
+      if (h.first == "Transfer-Encoding" && h.second == "chunked") {
+        is_chunk_encoding = true;
+      }
+    }
+    if (!is_chunk_encoding) {
+      LOG(ERROR) << "Expected chunked encoding";
+    }
   } catch (const boost::system::system_error& e) {
     LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
     throw QueryException(endpoint + " -> " + e.what());
@@ -793,7 +901,7 @@ json::value KubernetesReader::FindTopLevelOwner(
 
 namespace {
 void WatchCallback(json::value result) throw(json::Exception) {
-  LOG(ERROR) << "Watch callback: " << *result;
+  //LOG(ERROR) << "Watch callback: " << *result;
   const json::Object* watch = result->As<json::Object>();
   const std::string type = watch->Get<json::String>("type");
   const json::Object* object = watch->Get<json::Object>("object");
