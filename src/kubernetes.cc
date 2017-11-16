@@ -558,9 +558,9 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
 namespace {
 struct Watcher {
   Watcher(std::function<void(json::value)> callback,
-          std::unique_lock<std::mutex>&& completion)
+          std::unique_lock<std::mutex>&& completion, bool verbose)
       : completion_(std::move(completion)), callback_(callback),
-        remaining_bytes_(0) {}
+        remaining_bytes_(0), verbose_(verbose) {}
   ~Watcher() {}  // Unlocks the completion_ lock.
   void operator()(const boost::iterator_range<const char*>& range,
                   const boost::system::error_code& error) {
@@ -573,8 +573,10 @@ struct Watcher {
       boost::iterator_range<const char*> pos = range;
       if (remaining_bytes_ != 0) {
         pos = ReadNextChunk(pos);
-//        LOG(ERROR) << "Read another chunk; body now is '" << body_ << "'; "
+//#ifdef VERBOSE
+//        LOG(DEBUG) << "Read another chunk; body now is '" << body_ << "'; "
 //                   << remaining_bytes_ << " bytes remaining";
+//#endif
       }
 
       if (remaining_bytes_ == 0) {
@@ -585,22 +587,30 @@ struct Watcher {
         while (remaining_bytes_ == 0 && std::begin(pos) != std::end(pos)) {
           pos = StartNewChunk(pos);
         }
-//        LOG(ERROR) << "Started new chunk; " << remaining_bytes_
+//#ifdef VERBOSE
+//        LOG(DEBUG) << "Started new chunk; " << remaining_bytes_
 //                   << " bytes remaining";
+//#endif
 
         if (remaining_bytes_ != 0) {
           pos = ReadNextChunk(pos);
-//          LOG(ERROR) << "Read another chunk; body now is '" << body_ << "'; "
+//#ifdef VERBOSE
+//          LOG(DEBUG) << "Read another chunk; body now is '" << body_ << "'; "
 //                     << remaining_bytes_ << " bytes remaining";
+//#endif
         }
       }
     } else {
       if (error == boost::asio::error::eof) {
+#ifdef VERBOSE
         LOG(DEBUG) << "Watch callback: EOF";
+#endif
       } else {
         LOG(ERROR) << "Callback got error " << error;
       }
-      LOG(ERROR) << "Unlocking completion mutex";
+      if (verbose_) {
+        LOG(INFO) << "Unlocking completion mutex";
+      }
       completion_.unlock();
     }
   }
@@ -626,15 +636,17 @@ struct Watcher {
       return boost::iterator_range<const char*>(begin, end);
     }
     std::string line(begin, iter);
-//    LOG(ERROR) << "Buffer before increment: '" << std::string(iter, end) << "'";
     iter = std::next(iter, crlf.size());
-//    LOG(ERROR) << "Buffer: '" << std::string(iter, end) << "'";
     if (line.empty()) {
       // Blank lines are fine, just skip them.
+#ifdef VERBOSE
       LOG(DEBUG) << "Skipping blank line within chunked encoding;"
                  << " remaining data '" << std::string(iter, end) << "'";
+#endif
     } else {
-//      LOG(ERROR) << "Line: '" << line << "'";
+//#ifdef VERBOSE
+//      LOG(DEBUG) << "Line: '" << line << "'";
+//#endif
       std::stringstream stream(line);
       stream >> std::hex >> remaining_bytes_;
     }
@@ -656,26 +668,33 @@ struct Watcher {
     body_.insert(body_.end(), begin, begin + len);
     remaining_bytes_ -= len;
     begin = std::next(begin, len);
-//    if (remaining_bytes_ == 0) {
-//      begin = std::next(begin, crlf.size());
-//    }
     return boost::iterator_range<const char*>(begin, end);
   }
 
   void CompleteChunk() {
     if (body_.empty()) {
-      LOG(INFO) << "Skipping empty watch notification";
+#ifdef VERBOSE
+      LOG(DEBUG) << "Skipping empty watch notification";
+#endif
     } else {
       try {
-//        LOG(INFO) << "Invoking callbacks on '" << body_ << "'";
+//#ifdef VERBOSE
+//        LOG(DEBUG) << "Invoking callbacks on '" << body_ << "'";
+//#endif
         std::vector<json::value> events = json::Parser::AllFromString(body_);
         for (json::value& event : events) {
           std::string event_str = event->ToString();
-//          LOG(INFO) << "Invoking callback('" << event_str << "')";
+#ifdef VERBOSE
+          LOG(DEBUG) << "Invoking callback('" << event_str << "')";
+#endif
           callback_(std::move(event));
-//          LOG(INFO) << "callback('" << event_str << "') completed";
+#ifdef VERBOSE
+          LOG(DEBUG) << "callback('" << event_str << "') completed";
+#endif
         }
-//        LOG(INFO) << "All callbacks on '" << body_ << "' completed";
+//#ifdef VERBOSE
+//        LOG(DEBUG) << "All callbacks on '" << body_ << "' completed";
+//#endif
       } catch (const json::Exception& e) {
         LOG(ERROR) << e.what();
       }
@@ -686,6 +705,7 @@ struct Watcher {
   std::function<void(json::value)> callback_;
   std::string body_;
   size_t remaining_bytes_;
+  bool verbose_;
 };
 }
 
@@ -700,30 +720,36 @@ void KubernetesReader::WatchMaster(
   http::client::request request(endpoint);
   request << boost::network::header(
       "Authorization", "Bearer " + KubernetesApiToken());
-//  if (config_.VerboseLogging()) {
+  if (config_.VerboseLogging()) {
     LOG(INFO) << "WatchMaster: Contacting " << endpoint;
-//  }
+  }
   try {
-    LOG(ERROR) << "Locking completion mutex";
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "Locking completion mutex";
+    }
     // A notification for watch completion.
     std::mutex completion_mutex;
     std::unique_lock<std::mutex> watch_completion(completion_mutex);
-    Watcher watcher(callback, std::move(watch_completion));
+    Watcher watcher(callback, std::move(watch_completion),
+                    config_.VerboseLogging());
     http::client::response response = client.get(request, boost::ref(watcher));
-    LOG(ERROR) << "Waiting for completion";
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "Waiting for completion";
+    }
     std::lock_guard<std::mutex> await_completion(completion_mutex);
-    LOG(DEBUG) << "WatchMaster completed " << body(response);
-    bool is_chunk_encoding = false;
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "WatchMaster completed " << body(response);
+    }
+    std::string encoding;
 #ifdef VERBOSE
     LOG(DEBUG) << "response headers: " << response.headers();
 #endif
-    for (const auto& h : headers(response)) {
-      if (h.first == "Transfer-Encoding" && h.second == "chunked") {
-        is_chunk_encoding = true;
-      }
+    auto transfer_encoding_header = headers(response)["Transfer-Encoding"];
+    if (!boost::empty(transfer_encoding_header)) {
+      encoding = boost::begin(transfer_encoding_header)->second;
     }
-    if (!is_chunk_encoding) {
-      LOG(ERROR) << "Expected chunked encoding";
+    if (encoding != "chunked") {
+      LOG(ERROR) << "Expected chunked encoding; found '" << encoding << "'";
     }
   } catch (const boost::system::system_error& e) {
     LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
@@ -910,7 +936,7 @@ void WatchCallback(json::value result) throw(json::Exception) {
 }
 
 void KubernetesReader::WatchPods() const {
-  LOG(ERROR) << "Watch thread started";
+  LOG(INFO) << "Watch thread (pods) started";
   try {
     WatchMaster(std::string(kKubernetesEndpointPath) + "/pods", WatchCallback);
   } catch (const json::Exception& e) {
@@ -918,7 +944,7 @@ void KubernetesReader::WatchPods() const {
   } catch (const KubernetesReader::QueryException& e) {
     // Already logged.
   }
-  LOG(ERROR) << "Watch thread exiting";
+  LOG(INFO) << "Watch thread (pods) exiting";
 }
 
 }
