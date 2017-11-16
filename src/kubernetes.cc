@@ -946,8 +946,20 @@ void KubernetesReader::WatchPods(MetadataUpdater::UpdateCallback callback)
     const {
   LOG(INFO) << "Watch thread (pods) started";
 
+  const std::string node_name = CurrentNode();
+
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Current node is " << node_name;
+  }
+
+  const std::string node_selector(kNodeSelectorPrefix + node_name);
+  const std::string pod_label_selector(
+      config_.KubernetesPodLabelSelector().empty()
+      ? "" : "&" + config_.KubernetesPodLabelSelector());
+
   try {
-    WatchMaster(std::string(kKubernetesEndpointPath) + "/pods",
+    WatchMaster(std::string(kKubernetesEndpointPath) + "/pods"
+                + node_selector + pod_label_selector,
                 std::bind(&KubernetesReader::PodCallback,
                           this, callback, std::placeholders::_1));
   } catch (const json::Exception& e) {
@@ -956,6 +968,47 @@ void KubernetesReader::WatchPods(MetadataUpdater::UpdateCallback callback)
     // Already logged.
   }
   LOG(INFO) << "Watch thread (pods) exiting";
+}
+
+void KubernetesReader::NodeCallback(MetadataUpdater::UpdateCallback callback,
+                                    json::value raw_watch) const
+    throw(json::Exception) {
+  Timestamp collected_at = std::chrono::system_clock::now();
+
+  //LOG(ERROR) << "Watch callback: " << *raw_watch;
+  const json::Object* watch = raw_watch->As<json::Object>();
+  const std::string type = watch->Get<json::String>("type");
+  const json::Object* node = watch->Get<json::Object>("object");
+  LOG(ERROR) << "Watch type: " << type << " object: " << *node;
+  if (type == "MODIFIED" || type == "ADDED") {
+    std::vector<MetadataUpdater::ResourceMetadata> result_vector;
+    result_vector.emplace_back(GetNodeMetadata(node->Clone(), collected_at));
+    callback(std::move(result_vector));
+  }
+}
+
+void KubernetesReader::WatchNode(MetadataUpdater::UpdateCallback callback)
+    const {
+  LOG(INFO) << "Watch thread (node) started";
+
+  const std::string node_name = CurrentNode();
+
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Current node is " << node_name;
+  }
+
+  try {
+    // TODO: There seems to be a Kubernetes API bug with watch=true.
+    WatchMaster(std::string(kKubernetesEndpointPath) + "/watch/nodes/"
+                + node_name,
+                std::bind(&KubernetesReader::NodeCallback,
+                          this, callback, std::placeholders::_1));
+  } catch (const json::Exception& e) {
+    LOG(ERROR) << e.what();
+  } catch (const KubernetesReader::QueryException& e) {
+    // Already logged.
+  }
+  LOG(INFO) << "Watch thread (node) exiting";
 }
 
 void KubernetesUpdater::MetadataCallback(

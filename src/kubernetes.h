@@ -38,6 +38,9 @@ class KubernetesReader {
   // A Kubernetes metadata query function.
   std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
+  // Node watcher.
+  void WatchNode(MetadataUpdater::UpdateCallback callback) const;
+
   // Pod watcher.
   void WatchPods(MetadataUpdater::UpdateCallback callback) const;
 
@@ -62,6 +65,11 @@ class KubernetesReader {
   void WatchMaster(
     const std::string& path, std::function<void(json::value)> callback) const
     throw(QueryException, json::Exception);
+
+  // Node watcher callback.
+  void NodeCallback(
+      MetadataUpdater::UpdateCallback callback, json::value result) const
+      throw(json::Exception);
 
   // Pod watcher callback.
   void PodCallback(
@@ -140,8 +148,11 @@ class KubernetesUpdater : public PollingMetadataUpdater {
           server, server->config().KubernetesUpdaterIntervalSeconds(),
           std::bind(&google::KubernetesReader::MetadataQuery, &reader_)) { }
   ~KubernetesUpdater() {
-    if (watch_thread_.joinable()) {
-      watch_thread_.join();
+    if (node_watch_thread_.joinable()) {
+      node_watch_thread_.join();
+    }
+    if (pod_watch_thread_.joinable()) {
+      pod_watch_thread_.join();
     }
   }
 
@@ -150,7 +161,9 @@ class KubernetesUpdater : public PollingMetadataUpdater {
     // Wrap the bind expression into a function to use as a bind argument.
     UpdateCallback cb = std::bind(&KubernetesUpdater::MetadataCallback, this,
                                   std::placeholders::_1);
-    watch_thread_ = std::thread(&KubernetesReader::WatchPods, &reader_, cb);
+    node_watch_thread_ = std::thread(
+        &KubernetesReader::WatchNode, &reader_, cb);
+    pod_watch_thread_ = std::thread(&KubernetesReader::WatchPods, &reader_, cb);
   }
 
  private:
@@ -158,7 +171,8 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   void MetadataCallback(std::vector<ResourceMetadata>&& result_vector);
 
   KubernetesReader reader_;
-  std::thread watch_thread_;
+  std::thread node_watch_thread_;
+  std::thread pod_watch_thread_;
 };
 
 }
