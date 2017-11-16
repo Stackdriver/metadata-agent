@@ -936,11 +936,8 @@ void KubernetesReader::PodCallback(MetadataUpdater::UpdateCallback callback,
   const json::Object* pod = watch->Get<json::Object>("object");
   LOG(ERROR) << "Watch type: " << type << " object: " << *pod;
   if (type == "MODIFIED" || type == "ADDED") {
-    json::value associations = ComputePodAssociations(pod);
-    std::vector<MetadataUpdater::ResourceMetadata> result_vector;
-    result_vector.emplace_back(GetPodMetadata(pod->Clone(),
-                                              std::move(associations),
-                                              collected_at));
+    std::vector<MetadataUpdater::ResourceMetadata> result_vector =
+        GetPodAndContainerMetadata(pod, collected_at);
     callback(std::move(result_vector));
   }
 }
