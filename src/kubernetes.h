@@ -85,6 +85,8 @@ class KubernetesReader {
   // A memoized map from version to a map from kind to name.
   mutable std::map<std::string, std::map<std::string, std::string>>
       version_to_kind_to_name_;
+  // A memoized map from an encoded owner reference to the owner object.
+  mutable std::map<std::string, json::value> owners_;
 
   const MetadataAgentConfiguration& config_;
   Environment environment_;
