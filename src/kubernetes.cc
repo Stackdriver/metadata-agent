@@ -782,21 +782,25 @@ const std::string& KubernetesReader::KubernetesNamespace() const {
 const std::string& KubernetesReader::CurrentNode() const {
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   if (current_node_.empty()) {
-    const std::string& ns = KubernetesNamespace();
-    // TODO: This is unreliable, see
-    // https://github.com/kubernetes/kubernetes/issues/52162.
-    const std::string pod_name = boost::asio::ip::host_name();
-    try {
-      json::value pod_response = QueryMaster(
-          std::string(kKubernetesEndpointPath) +
-          "/namespaces/" + ns + "/pods/" + pod_name);
-      const json::Object* pod = pod_response->As<json::Object>();
-      const json::Object* spec = pod->Get<json::Object>("spec");
-      current_node_ = spec->Get<json::String>("nodeName");
-    } catch (const json::Exception& e) {
-      LOG(ERROR) << e.what();
-    } catch (const QueryException& e) {
-      // Already logged.
+    if (!config_.KubernetesNodeName().empty()) {
+      current_node_ = config_.KubernetesNodeName();
+    } else {
+      const std::string& ns = KubernetesNamespace();
+      // TODO: This is unreliable, see
+      // https://github.com/kubernetes/kubernetes/issues/52162.
+      const std::string pod_name = boost::asio::ip::host_name();
+      try {
+        json::value pod_response = QueryMaster(
+            std::string(kKubernetesEndpointPath) +
+            "/namespaces/" + ns + "/pods/" + pod_name);
+        const json::Object* pod = pod_response->As<json::Object>();
+        const json::Object* spec = pod->Get<json::Object>("spec");
+        current_node_ = spec->Get<json::String>("nodeName");
+      } catch (const json::Exception& e) {
+        LOG(ERROR) << e.what();
+      } catch (const QueryException& e) {
+        // Already logged.
+      }
     }
   }
   return current_node_;
@@ -1009,6 +1013,19 @@ void KubernetesReader::WatchNode(MetadataUpdater::UpdateCallback callback)
     // Already logged.
   }
   LOG(INFO) << "Watch thread (node) exiting";
+}
+
+void KubernetesUpdater::start() {
+  PollingMetadataUpdater::start();
+  if (config().KubernetesUseWatch()) {
+    // Wrap the bind expression into a function to use as a bind argument.
+    UpdateCallback cb = std::bind(&KubernetesUpdater::MetadataCallback, this,
+                                  std::placeholders::_1);
+    node_watch_thread_ =
+        std::thread(&KubernetesReader::WatchNode, &reader_, cb);
+    pod_watch_thread_ =
+        std::thread(&KubernetesReader::WatchPods, &reader_, cb);
+  }
 }
 
 void KubernetesUpdater::MetadataCallback(

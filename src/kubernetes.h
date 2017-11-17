@@ -156,15 +156,7 @@ class KubernetesUpdater : public PollingMetadataUpdater {
     }
   }
 
-  void start() {
-    PollingMetadataUpdater::start();
-    // Wrap the bind expression into a function to use as a bind argument.
-    UpdateCallback cb = std::bind(&KubernetesUpdater::MetadataCallback, this,
-                                  std::placeholders::_1);
-    node_watch_thread_ = std::thread(
-        &KubernetesReader::WatchNode, &reader_, cb);
-    pod_watch_thread_ = std::thread(&KubernetesReader::WatchPods, &reader_, cb);
-  }
+  void start();
 
  private:
   // Metadata watcher callback.

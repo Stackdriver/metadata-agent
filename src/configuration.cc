@@ -46,6 +46,8 @@ constexpr const int kKubernetesUpdaterDefaultIntervalSeconds = 60;
 constexpr const char kKubernetesDefaultEndpointHost[] = "https://kubernetes";
 constexpr const char kKubernetesDefaultPodLabelSelector[] = "";
 constexpr const char kKubernetesDefaultClusterName[] = "";
+constexpr const char kKubernetesDefaultNodeName[] = "";
+constexpr const bool kKubernetesDefaultUseWatch = true;
 constexpr const char kDefaultInstanceId[] = "";
 constexpr const char kDefaultInstanceZone[] = "";
 
@@ -72,6 +74,8 @@ MetadataAgentConfiguration::MetadataAgentConfiguration()
       kubernetes_endpoint_host_(kKubernetesDefaultEndpointHost),
       kubernetes_pod_label_selector_(kKubernetesDefaultPodLabelSelector),
       kubernetes_cluster_name_(kKubernetesDefaultClusterName),
+      kubernetes_node_name_(kKubernetesDefaultNodeName),
+      kubernetes_use_watch_(kKubernetesDefaultUseWatch),
       instance_id_(kDefaultInstanceId),
       instance_zone_(kDefaultInstanceZone) {}
 
@@ -154,6 +158,10 @@ void MetadataAgentConfiguration::ParseConfigFile(const std::string& filename) {
   kubernetes_cluster_name_ =
       config["KubernetesClusterName"].as<std::string>(
           kKubernetesDefaultClusterName);
+  kubernetes_node_name_ =
+      config["KubernetesNodeName"].as<std::string>(kKubernetesDefaultNodeName);
+  kubernetes_use_watch_ =
+      config["KubernetesUseWatch"].as<bool>(kKubernetesDefaultUseWatch);
   instance_id_ =
       config["InstanceId"].as<std::string>(kDefaultInstanceId);
   instance_zone_ =
