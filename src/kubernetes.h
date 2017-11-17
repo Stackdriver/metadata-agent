@@ -63,6 +63,9 @@ class KubernetesReader {
     const std::string& path, std::function<void(json::value)> callback) const
     throw(QueryException, json::Exception);
 
+  // Pod watcher callback.
+  void PodCallback(json::value result) const throw(json::Exception);
+
   // Compute the associations for a given pod.
   json::value ComputePodAssociations(const json::Object* pod) const
       throw(json::Exception);

@@ -925,20 +925,29 @@ json::value KubernetesReader::FindTopLevelOwner(
   return FindTopLevelOwner(ns, GetOwner(ns, ref->As<json::Object>()));
 }
 
-namespace {
-void WatchCallback(json::value result) throw(json::Exception) {
-  //LOG(ERROR) << "Watch callback: " << *result;
-  const json::Object* watch = result->As<json::Object>();
+void KubernetesReader::PodCallback(json::value raw_watch) const
+    throw(json::Exception) {
+  Timestamp collected_at = std::chrono::system_clock::now();
+
+  //LOG(ERROR) << "Watch callback: " << *raw_watch;
+  const json::Object* watch = raw_watch->As<json::Object>();
   const std::string type = watch->Get<json::String>("type");
   const json::Object* object = watch->Get<json::Object>("object");
   LOG(ERROR) << "Watch type: " << type << " object: " << *object;
-}
+//  if (type == "MODIFIED" || type == "ADDED") {
+//    MetadataUpdater::ResourceMetadata result =
+//        GetPodMetadata(object->Clone(), collected_at);
+//    UpdateResourceCallback(result);
+//    UpdateMetadataCallback(std::move(result));
+//  }
 }
 
 void KubernetesReader::WatchPods() const {
   LOG(INFO) << "Watch thread (pods) started";
   try {
-    WatchMaster(std::string(kKubernetesEndpointPath) + "/pods", WatchCallback);
+    WatchMaster(std::string(kKubernetesEndpointPath) + "/pods",
+                std::bind(&KubernetesReader::PodCallback,
+                          this, std::placeholders::_1));
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
   } catch (const KubernetesReader::QueryException& e) {
