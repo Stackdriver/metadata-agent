@@ -9,6 +9,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /stackdriver-metadata.deb
 
-CMD /opt/stackdriver/metadata/sbin/metadatad
+ENTRYPOINT ["/opt/stackdriver/metadata/sbin/metadatad"]
 
 EXPOSE 8000
