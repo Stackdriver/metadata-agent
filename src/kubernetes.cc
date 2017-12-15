@@ -85,22 +85,20 @@ bool ReadServiceAccountSecret(
 KubernetesReader::KubernetesReader(const MetadataAgentConfiguration& config)
     : config_(config), environment_(config) {}
 
-std::vector<MetadataUpdater::ResourceMetadata>
-    KubernetesReader::MetadataQuery() const {
-  if (config_.VerboseLogging()) {
-    LOG(INFO) << "Kubernetes Query called";
-  }
-  std::vector<MetadataUpdater::ResourceMetadata> result;
-
+MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
+    json::value raw_node, Timestamp collected_at) const throw(json::Exception) {
   const std::string platform = "gce";  // TODO: detect other platforms.
   const std::string instance_id = environment_.InstanceId();
   const std::string zone = environment_.InstanceZone();
   const std::string cluster_name = environment_.KubernetesClusterName();
-  const std::string node_name = CurrentNode();
 
-  if (config_.VerboseLogging()) {
-    LOG(INFO) << "Current node is " << node_name;
-  }
+  const json::Object* node = raw_node->As<json::Object>();
+  const json::Object* metadata = node->Get<json::Object>("metadata");
+  const std::string node_id = metadata->Get<json::String>("uid");
+  const std::string node_name = metadata->Get<json::String>("name");
+  const std::string created_str =
+      metadata->Get<json::String>("creationTimestamp");
+  Timestamp created_at = rfc3339::FromString(created_str);
 
   const MonitoredResource k8s_node("k8s_node", {
     {"cluster_name", cluster_name},
@@ -108,58 +106,315 @@ std::vector<MetadataUpdater::ResourceMetadata>
     {"location", zone},
   });
 
+  json::value node_raw_metadata = json::object({
+    {"blobs", json::object({
+      {"association", json::object({
+        {"version", json::string(kRawContentVersion)},
+        {"raw", json::object({
+          {"providerPlatform", json::string(platform)},
+          {"instanceId", json::string(instance_id)},
+        })},
+      })},
+      {"api", json::object({
+        {"version", json::string(kKubernetesApiVersion)},
+        {"raw", std::move(raw_node)},
+      })},
+    })},
+  });
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Raw node metadata: " << *node_raw_metadata;
+  }
+
+#if 0
+  // TODO: do we need this?
+  const std::string k8s_node_id = boost::algorithm::join(
+      std::vector<std::string>{kK8sNodeResourcePrefix, node_id},
+      kResourceTypeSeparator);
+#endif
+  const std::string k8s_node_name = boost::algorithm::join(
+      std::vector<std::string>{kK8sNodeNameResourcePrefix, node_name},
+      kResourceTypeSeparator);
+  return MetadataUpdater::ResourceMetadata(
+      std::vector<std::string>{k8s_node_name},
+      k8s_node,
+#ifdef ENABLE_KUBERNETES_METADATA
+      MetadataAgent::Metadata(kRawContentVersion,
+                              /*deleted=*/false, created_at, collected_at,
+                              std::move(node_raw_metadata))
+#else
+      MetadataAgent::Metadata::IGNORED()
+#endif
+  );
+}
+
+json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
+    const throw(json::Exception) {
+  const std::string platform = "gce";  // TODO: detect other platforms.
+
+  const json::Object* metadata = pod->Get<json::Object>("metadata");
+  const std::string namespace_name = metadata->Get<json::String>("namespace");
+  const std::string pod_id = metadata->Get<json::String>("uid");
+
+  const json::value top_level = FindTopLevelOwner(namespace_name, pod->Clone());
+  const json::Object* top_level_controller = top_level->As<json::Object>();
+  const json::Object* top_level_metadata =
+      top_level_controller->Get<json::Object>("metadata");
+  const std::string top_level_name =
+      top_level_metadata->Get<json::String>("name");
+  if (!top_level_controller->Has("kind") &&
+      top_level_metadata->Get<json::String>("uid") != pod_id) {
+    LOG(ERROR) << "Internal error; top-level controller without 'kind' "
+               << *top_level_controller
+               << " not the same as pod " << *pod;
+  }
+  const std::string top_level_kind =
+      top_level_controller->Has("kind")
+          ? top_level_controller->Get<json::String>("kind")
+          : "Pod";
+
+  return json::object({
+    {"version", json::string(kRawContentVersion)},
+    {"raw", json::object({
+      {"providerPlatform", json::string(platform)},
+      {"controllers", json::object({
+        {"topLevelControllerType", json::string(top_level_kind)},
+        {"topLevelControllerName", json::string(top_level_name)},
+      })},
+    })},
+  });
+}
+
+MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
+    json::value raw_pod, json::value associations, Timestamp collected_at) const
+    throw(json::Exception) {
+  const std::string zone = environment_.InstanceZone();
+  const std::string cluster_name = environment_.KubernetesClusterName();
+
+  const json::Object* pod = raw_pod->As<json::Object>();
+
+  const json::Object* metadata = pod->Get<json::Object>("metadata");
+  const std::string namespace_name = metadata->Get<json::String>("namespace");
+  const std::string pod_name = metadata->Get<json::String>("name");
+  const std::string pod_id = metadata->Get<json::String>("uid");
+  const std::string created_str =
+      metadata->Get<json::String>("creationTimestamp");
+  Timestamp created_at = rfc3339::FromString(created_str);
+  const json::Object* labels = metadata->Get<json::Object>("labels");
+
+  const json::Object* status = pod->Get<json::Object>("status");
+  const std::string started_str = status->Get<json::String>("startTime");
+  Timestamp started_at = rfc3339::FromString(started_str);
+
+  const json::Object* spec = pod->Get<json::Object>("spec");
+  const std::string node_name = spec->Get<json::String>("nodeName");
+
+  const MonitoredResource k8s_pod("k8s_pod", {
+    {"cluster_name", cluster_name},
+    {"namespace_name", namespace_name},
+    {"node_name", node_name},
+    {"pod_name", pod_name},
+    {"location", zone},
+  });
+
+  // TODO: find pod_deleted.
+  //const json::Object* status = pod->Get<json::Object>("status");
+  bool pod_deleted = false;
+
+  json::value pod_raw_metadata = json::object({
+    {"blobs", json::object({
+      {"association", std::move(associations)},
+      {"api", json::object({
+        {"version", json::string(kKubernetesApiVersion)},
+        {"raw", pod->Clone()},
+      })},
+    })},
+  });
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Raw pod metadata: " << *pod_raw_metadata;
+  }
+
+  const std::string k8s_pod_id = boost::algorithm::join(
+      std::vector<std::string>{kK8sPodResourcePrefix, namespace_name, pod_id},
+      kResourceTypeSeparator);
+  const std::string k8s_pod_name = boost::algorithm::join(
+      std::vector<std::string>{kK8sPodNameResourcePrefix, namespace_name, pod_name},
+      kResourceTypeSeparator);
+  return MetadataUpdater::ResourceMetadata(
+      std::vector<std::string>{k8s_pod_id, k8s_pod_name},
+      k8s_pod,
+#ifdef ENABLE_KUBERNETES_METADATA
+      MetadataAgent::Metadata(kRawContentVersion,
+                              pod_deleted, created_at, collected_at,
+                              std::move(pod_raw_metadata))
+#else
+      MetadataAgent::Metadata::IGNORED()
+#endif
+  );
+}
+
+MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
+    const json::Object* pod, int container_index, json::value associations,
+    Timestamp collected_at) const throw(json::Exception) {
+  const std::string zone = environment_.InstanceZone();
+  const std::string cluster_name = environment_.KubernetesClusterName();
+
+  const json::Object* metadata = pod->Get<json::Object>("metadata");
+  const std::string namespace_name = metadata->Get<json::String>("namespace");
+  const std::string pod_name = metadata->Get<json::String>("name");
+  const std::string pod_id = metadata->Get<json::String>("uid");
+  const std::string created_str =
+      metadata->Get<json::String>("creationTimestamp");
+  Timestamp created_at = rfc3339::FromString(created_str);
+  const json::Object* labels = metadata->Get<json::Object>("labels");
+
+  const json::Object* status = pod->Get<json::Object>("status");
+  const json::Object* spec = pod->Get<json::Object>("spec");
+  const std::string node_name = spec->Get<json::String>("nodeName");
+
+  const json::Array* container_specs = spec->Get<json::Array>("containers");
+  const json::Array* container_list =
+      status->Get<json::Array>("containerStatuses");
+
+  const json::value& c_element = (*container_list)[container_index];
+  const json::value& c_spec = (*container_specs)[container_index];
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Container: " << *c_element;
+  }
+  const json::Object* container = c_element->As<json::Object>();
+  const json::Object* container_spec = c_spec->As<json::Object>();
+  const std::string container_name = container->Get<json::String>("name");
+  std::size_t docker_prefix_end = sizeof(kDockerIdPrefix) - 1;
+  if (container->Get<json::String>("containerID").compare(
+          0, docker_prefix_end, kDockerIdPrefix) != 0) {
+    LOG(ERROR) << "ContainerID "
+               << container->Get<json::String>("containerID")
+               << " does not start with " << kDockerIdPrefix
+               << " (" << docker_prefix_end << " chars)";
+    docker_prefix_end = 0;
+  }
+  const std::string container_id =
+      container->Get<json::String>("containerID").substr(
+          docker_prefix_end);
+  // TODO: find is_deleted.
+  //const json::Object* state = container->Get<json::Object>("state");
+  bool is_deleted = false;
+
+  const MonitoredResource k8s_container("k8s_container", {
+    {"cluster_name", cluster_name},
+    {"namespace_name", namespace_name},
+    {"node_name", node_name},
+    {"pod_name", pod_name},
+    {"container_name", container_name},
+    {"location", zone},
+  });
+
+  json::value container_raw_metadata = json::object({
+    {"blobs", json::object({
+      {"association", std::move(associations)},
+      {"spec", json::object({
+        {"version", json::string(kKubernetesApiVersion)},
+        {"raw", container_spec->Clone()},
+      })},
+      {"status", json::object({
+        {"version", json::string(kKubernetesApiVersion)},
+        {"raw", container->Clone()},
+      })},
+      {"labels", json::object({
+        {"version", json::string(kKubernetesApiVersion)},
+        {"raw", labels->Clone()},
+      })},
+    })},
+  });
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Raw container metadata: " << *container_raw_metadata;
+  }
+
+  const std::string k8s_container_id = boost::algorithm::join(
+      std::vector<std::string>{kK8sContainerResourcePrefix, container_id},
+      kResourceTypeSeparator);
+  const std::string k8s_container_pod = boost::algorithm::join(
+      std::vector<std::string>{kK8sContainerResourcePrefix, pod_id, container_name},
+      kResourceTypeSeparator);
+  const std::string k8s_container_name = boost::algorithm::join(
+      std::vector<std::string>{kK8sContainerNameResourcePrefix, namespace_name, pod_name, container_name},
+      kResourceTypeSeparator);
+  return MetadataUpdater::ResourceMetadata(
+      std::vector<std::string>{k8s_container_id, k8s_container_pod, k8s_container_name},
+      k8s_container,
+#ifdef ENABLE_KUBERNETES_METADATA
+      MetadataAgent::Metadata(kKubernetesApiVersion,
+                              is_deleted, created_at, collected_at,
+                              std::move(container_raw_metadata))
+#else
+      MetadataAgent::Metadata::IGNORED()
+#endif
+  );
+}
+
+MetadataUpdater::ResourceMetadata KubernetesReader::GetLegacyResource(
+    const json::Object* pod, int container_index) const
+    throw(json::Exception) {
+  const std::string instance_id = environment_.InstanceId();
+  const std::string zone = environment_.InstanceZone();
+  const std::string cluster_name = environment_.KubernetesClusterName();
+
+  const json::Object* metadata = pod->Get<json::Object>("metadata");
+  const std::string namespace_name = metadata->Get<json::String>("namespace");
+  const std::string pod_name = metadata->Get<json::String>("name");
+  const std::string pod_id = metadata->Get<json::String>("uid");
+
+  const json::Object* status = pod->Get<json::Object>("status");
+
+  const json::Array* container_list =
+      status->Get<json::Array>("containerStatuses");
+
+  const json::value& c_element = (*container_list)[container_index];
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Container: " << *c_element;
+  }
+  const json::Object* container = c_element->As<json::Object>();
+  const std::string container_name = container->Get<json::String>("name");
+
+  const MonitoredResource gke_container("gke_container", {
+    {"cluster_name", cluster_name},
+    {"namespace_id", namespace_name},
+    {"instance_id", instance_id},
+    {"pod_id", pod_id},
+    {"container_name", container_name},
+    {"zone", zone},
+  });
+
+  const std::string gke_container_id = boost::algorithm::join(
+      std::vector<std::string>{kGkeContainerResourcePrefix, namespace_name, pod_id, container_name},
+      kResourceTypeSeparator);
+  const std::string gke_container_name = boost::algorithm::join(
+      std::vector<std::string>{kGkeContainerNameResourcePrefix, namespace_name, pod_name, container_name},
+      kResourceTypeSeparator);
+  return MetadataUpdater::ResourceMetadata(
+      std::vector<std::string>{gke_container_id, gke_container_name},
+      gke_container,
+      MetadataAgent::Metadata::IGNORED());
+}
+
+std::vector<MetadataUpdater::ResourceMetadata>
+    KubernetesReader::MetadataQuery() const {
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Kubernetes Query called";
+  }
+  std::vector<MetadataUpdater::ResourceMetadata> result;
+
+  const std::string node_name = CurrentNode();
+
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Current node is " << node_name;
+  }
+
   try {
     json::value raw_node = QueryMaster(
         std::string(kKubernetesEndpointPath) + "/nodes/" + node_name);
     Timestamp collected_at = std::chrono::system_clock::now();
 
-    const json::Object* node = raw_node->As<json::Object>();
-
-    const json::Object* metadata = node->Get<json::Object>("metadata");
-    const std::string node_id = metadata->Get<json::String>("uid");
-    const std::string created_str =
-        metadata->Get<json::String>("creationTimestamp");
-    Timestamp created_at = rfc3339::FromString(created_str);
-
-    json::value node_raw_metadata = json::object({
-      {"blobs", json::object({
-        {"association", json::object({
-          {"version", json::string(kRawContentVersion)},
-          {"raw", json::object({
-            {"providerPlatform", json::string(platform)},
-            {"instanceId", json::string(instance_id)},
-          })},
-        })},
-        {"api", json::object({
-          {"version", json::string(kKubernetesApiVersion)},
-          {"raw", std::move(raw_node)},
-        })},
-      })},
-    });
-    if (config_.VerboseLogging()) {
-      LOG(INFO) << "Raw node metadata: " << *node_raw_metadata;
-    }
-
-#if 0
-    // TODO: do we need this?
-    const std::string k8s_node_id = boost::algorithm::join(
-        std::vector<std::string>{kK8sNodeResourcePrefix, node_id},
-        kResourceTypeSeparator);
-#endif
-    const std::string k8s_node_name = boost::algorithm::join(
-        std::vector<std::string>{kK8sNodeNameResourcePrefix, node_name},
-        kResourceTypeSeparator);
-    result.emplace_back(
-        std::vector<std::string>{k8s_node_name},
-        k8s_node,
-#ifdef ENABLE_KUBERNETES_METADATA
-        MetadataAgent::Metadata(kRawContentVersion,
-                                /*deleted=*/false, created_at, collected_at,
-                                std::move(node_raw_metadata))
-#else
-        MetadataAgent::Metadata::IGNORED()
-#endif
-    );
+    result.emplace_back(GetNodeMetadata(std::move(raw_node), collected_at));
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
   } catch (const QueryException& e) {
@@ -183,26 +438,19 @@ std::vector<MetadataUpdater::ResourceMetadata>
     const std::string api_version =
         podlist_object->Get<json::String>("apiVersion");
     const json::Array* pod_list = podlist_object->Get<json::Array>("items");
-    for (const json::value& element : *pod_list) {
+    for (const json::value& raw_pod : *pod_list) {
       try {
         if (config_.VerboseLogging()) {
-          LOG(INFO) << "Pod: " << *element;
+          LOG(INFO) << "Pod: " << *raw_pod;
         }
-        const json::Object* pod = element->As<json::Object>();
+        const json::Object* pod = raw_pod->As<json::Object>();
+
+        json::value associations = ComputePodAssociations(pod);
 
         const json::Object* metadata = pod->Get<json::Object>("metadata");
-        const std::string namespace_name =
-            metadata->Get<json::String>("namespace");
         const std::string pod_name = metadata->Get<json::String>("name");
         const std::string pod_id = metadata->Get<json::String>("uid");
-        const std::string created_str =
-            metadata->Get<json::String>("creationTimestamp");
-        Timestamp created_at = rfc3339::FromString(created_str);
-        const json::Object* labels = metadata->Get<json::Object>("labels");
-
         const json::Object* status = pod->Get<json::Object>("status");
-        const std::string started_str = status->Get<json::String>("startTime");
-        Timestamp started_at = rfc3339::FromString(started_str);
 
         const json::Object* spec = pod->Get<json::Object>("spec");
         const std::string pod_node_name = spec->Get<json::String>("nodeName");
@@ -210,78 +458,6 @@ std::vector<MetadataUpdater::ResourceMetadata>
           LOG(ERROR) << "Internal error; pod's node " << pod_node_name
                      << " not the same as agent node " << node_name;
         }
-
-        const json::value top_level =
-            FindTopLevelOwner(namespace_name, pod->Clone());
-        const json::Object* top_level_controller =
-            top_level->As<json::Object>();
-        const json::Object* top_level_metadata =
-            top_level_controller->Get<json::Object>("metadata");
-        const std::string top_level_name =
-            top_level_metadata->Get<json::String>("name");
-        if (!top_level_controller->Has("kind") &&
-            top_level_metadata->Get<json::String>("uid") != pod_id) {
-          LOG(ERROR) << "Internal error; top-level controller without 'kind' "
-                     << *top_level_controller
-                     << " not the same as pod " << *pod;
-        }
-        const std::string top_level_kind =
-            top_level_controller->Has("kind")
-                ? top_level_controller->Get<json::String>("kind")
-                : "Pod";
-
-        const MonitoredResource k8s_pod("k8s_pod", {
-          {"cluster_name", cluster_name},
-          {"namespace_name", namespace_name},
-          {"node_name", node_name},
-          {"pod_name", pod_name},
-          {"location", zone},
-        });
-
-        // TODO: find pod_deleted.
-        //const json::Object* status = pod->Get<json::Object>("status");
-        bool pod_deleted = false;
-
-        json::value associations = json::object({
-          {"version", json::string(kRawContentVersion)},
-          {"raw", json::object({
-            {"providerPlatform", json::string(platform)},
-            {"controllers", json::object({
-              {"topLevelControllerType", json::string(top_level_kind)},
-              {"topLevelControllerName", json::string(top_level_name)},
-            })},
-          })},
-        });
-        json::value pod_raw_metadata = json::object({
-          {"blobs", json::object({
-            {"association", associations->Clone()},
-            {"api", json::object({
-              {"version", json::string(kKubernetesApiVersion)},
-              {"raw", pod->Clone()},
-            })},
-          })},
-        });
-        if (config_.VerboseLogging()) {
-          LOG(INFO) << "Raw pod metadata: " << *pod_raw_metadata;
-        }
-
-        const std::string k8s_pod_id = boost::algorithm::join(
-            std::vector<std::string>{kK8sPodResourcePrefix, namespace_name, pod_id},
-            kResourceTypeSeparator);
-        const std::string k8s_pod_name = boost::algorithm::join(
-            std::vector<std::string>{kK8sPodNameResourcePrefix, namespace_name, pod_name},
-            kResourceTypeSeparator);
-        result.emplace_back(
-            std::vector<std::string>{k8s_pod_id, k8s_pod_name},
-            k8s_pod,
-#ifdef ENABLE_KUBERNETES_METADATA
-            MetadataAgent::Metadata(kRawContentVersion,
-                                    pod_deleted, created_at, collected_at,
-                                    std::move(pod_raw_metadata))
-#else
-            MetadataAgent::Metadata::IGNORED()
-#endif
-        );
 
         const json::Array* container_specs = spec->Get<json::Array>("containers");
         const json::Array* container_list =
@@ -307,93 +483,22 @@ std::vector<MetadataUpdater::ResourceMetadata>
           const json::Object* container_spec = c_spec->As<json::Object>();
           const std::string container_name =
               container->Get<json::String>("name");
-          std::size_t docker_prefix_end = sizeof(kDockerIdPrefix) - 1;
-          if (container->Get<json::String>("containerID").compare(
-                  0, docker_prefix_end, kDockerIdPrefix) != 0) {
-            LOG(ERROR) << "ContainerID "
-                       << container->Get<json::String>("containerID")
-                       << " does not start with " << kDockerIdPrefix
-                       << " (" << docker_prefix_end << " chars)";
-            docker_prefix_end = 0;
+          const std::string spec_name =
+              container_spec->Get<json::String>("name");
+          if (container_name != spec_name) {
+            LOG(ERROR) << "Internal error; container name " << container_name
+                       << " not the same as spec name " << spec_name
+                       << " at index " << i;
           }
-          const std::string container_id =
-              container->Get<json::String>("containerID").substr(
-                  docker_prefix_end);
-          // TODO: find is_deleted.
-          //const json::Object* state = container->Get<json::Object>("state");
-          bool is_deleted = false;
-
-          const MonitoredResource gke_container("gke_container", {
-            {"cluster_name", cluster_name},
-            {"namespace_id", namespace_name},
-            {"instance_id", instance_id},
-            {"pod_id", pod_id},
-            {"container_name", container_name},
-            {"zone", zone},
-          });
-
-          const std::string gke_container_id = boost::algorithm::join(
-              std::vector<std::string>{kGkeContainerResourcePrefix, namespace_name, pod_id, container_name},
-              kResourceTypeSeparator);
-          const std::string gke_container_name = boost::algorithm::join(
-              std::vector<std::string>{kGkeContainerNameResourcePrefix, namespace_name, pod_name, container_name},
-              kResourceTypeSeparator);
+          result.emplace_back(GetLegacyResource(pod, i));
           result.emplace_back(
-              std::vector<std::string>{gke_container_id, gke_container_name},
-              gke_container,
-              MetadataAgent::Metadata::IGNORED());
-
-          const MonitoredResource k8s_container("k8s_container", {
-            {"cluster_name", cluster_name},
-            {"namespace_name", namespace_name},
-            {"node_name", node_name},
-            {"pod_name", pod_name},
-            {"container_name", container_name},
-            {"location", zone},
-          });
-
-          json::value container_raw_metadata = json::object({
-            {"blobs", json::object({
-              {"association", associations->Clone()},
-              {"spec", json::object({
-                {"version", json::string(kKubernetesApiVersion)},
-                {"raw", container_spec->Clone()},
-              })},
-              {"status", json::object({
-                {"version", json::string(kKubernetesApiVersion)},
-                {"raw", container->Clone()},
-              })},
-              {"labels", json::object({
-                {"version", json::string(kKubernetesApiVersion)},
-                {"raw", labels->Clone()},
-              })},
-            })},
-          });
-          if (config_.VerboseLogging()) {
-            LOG(INFO) << "Raw container metadata: " << *container_raw_metadata;
-          }
-
-          const std::string k8s_container_id = boost::algorithm::join(
-              std::vector<std::string>{kK8sContainerResourcePrefix, container_id},
-              kResourceTypeSeparator);
-          const std::string k8s_container_pod = boost::algorithm::join(
-              std::vector<std::string>{kK8sContainerResourcePrefix, pod_id, container_name},
-              kResourceTypeSeparator);
-          const std::string k8s_container_name = boost::algorithm::join(
-              std::vector<std::string>{kK8sContainerNameResourcePrefix, namespace_name, pod_name, container_name},
-              kResourceTypeSeparator);
-          result.emplace_back(
-              std::vector<std::string>{k8s_container_id, k8s_container_pod, k8s_container_name},
-              k8s_container,
-#ifdef ENABLE_KUBERNETES_METADATA
-              MetadataAgent::Metadata(kKubernetesApiVersion,
-                                      is_deleted, created_at, collected_at,
-                                      std::move(container_raw_metadata))
-#else
-              MetadataAgent::Metadata::IGNORED()
-#endif
-          );
+              GetContainerMetadata(pod, i, associations->Clone(),
+                                   collected_at));
         }
+
+        result.emplace_back(
+            GetPodMetadata(pod->Clone(), std::move(associations),
+                           collected_at));
       } catch (const json::Exception& e) {
         LOG(ERROR) << e.what();
         continue;

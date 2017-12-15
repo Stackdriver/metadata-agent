@@ -47,6 +47,27 @@ class KubernetesReader {
     std::string explanation_;
   };
 
+  // Compute the associations for a given pod.
+  json::value ComputePodAssociations(const json::Object* pod) const
+      throw(json::Exception);
+  // Given a node object, return the associated metadata.
+  MetadataUpdater::ResourceMetadata GetNodeMetadata(
+      json::value raw_node, Timestamp collected_at) const
+      throw(json::Exception);
+  // Given a pod object, return the associated metadata.
+  MetadataUpdater::ResourceMetadata GetPodMetadata(
+      json::value raw_pod, json::value associations, Timestamp collected_at)
+      const throw(json::Exception);
+  // Given a pod object and container index, return the container metadata.
+  MetadataUpdater::ResourceMetadata GetContainerMetadata(
+      const json::Object* pod, int container_index, json::value associations,
+      Timestamp collected_at) const throw(json::Exception);
+  // Given a pod object and container index, return the legacy resource.
+  // The returned "metadata" field will be Metadata::IGNORED.
+  MetadataUpdater::ResourceMetadata GetLegacyResource(
+      const json::Object* pod, int container_index) const
+      throw(json::Exception);
+
   // Issues a Kubernetes master API query at a given path and
   // returns a parsed JSON response. The path has to start with "/".
   json::value QueryMaster(const std::string& path) const
