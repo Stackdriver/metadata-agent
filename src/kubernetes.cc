@@ -231,7 +231,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
   }
 
   const std::string k8s_pod_id = boost::algorithm::join(
-      std::vector<std::string>{kK8sPodResourcePrefix, namespace_name, pod_id},
+      std::vector<std::string>{kK8sPodResourcePrefix, pod_id},
       kResourceTypeSeparator);
   const std::string k8s_pod_name = boost::algorithm::join(
       std::vector<std::string>{kK8sPodNameResourcePrefix, namespace_name, pod_name},
