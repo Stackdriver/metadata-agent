@@ -19,6 +19,7 @@
 //#include "config.h"
 
 #include <chrono>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <thread>

@@ -20,6 +20,7 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/network/protocol/http/client.hpp>
+#include <boost/range/iterator_range.hpp>
 #include <chrono>
 #include <cstddef>
 #include <fstream>
@@ -55,6 +56,8 @@ constexpr const char kK8sNodeResourcePrefix[] = "k8s_node";
 constexpr const char kK8sNodeNameResourcePrefix[] = "k8s_nodeName";
 
 constexpr const char kNodeSelectorPrefix[] = "?fieldSelector=spec.nodeName%3D";
+
+constexpr const char kWatchParam[] = "watch=true";
 
 constexpr const char kDockerIdPrefix[] = "docker://";
 
@@ -551,6 +554,55 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
   }
 }
 
+namespace {
+struct Watcher {
+  Watcher(std::function<void(json::value)> callback) : callback_(callback) {}
+  void operator()(const boost::iterator_range<char const *>& range,
+                  const boost::system::error_code& error)
+      throw(boost::system::system_error, json::Exception) {
+    if (!error) {
+      std::string body(std::begin(range), std::end(range));
+//#ifdef VERBOSE
+      LOG(DEBUG) << "Watch notification: " << body;
+//#endif
+      callback_(json::Parser::FromString(body));
+    } else {
+      if (error == boost::asio::error::eof) {
+        LOG(DEBUG) << "Watch callback: EOF";
+      } else {
+        LOG(ERROR) << "Callback got error " << error;
+        throw boost::system::system_error(error);
+      }
+    }
+  }
+ private:
+  std::function<void(json::value)> callback_;
+};
+}
+
+void KubernetesReader::WatchMaster(
+    const std::string& path, std::function<void(json::value)> callback) const
+    throw(QueryException, json::Exception) {
+  const std::string prefix((path.find('?') == std::string::npos) ? "?" : "&");
+  const std::string watch_param(prefix + kWatchParam);
+  const std::string endpoint(
+      config_.KubernetesEndpointHost() + path + watch_param);
+  http::client client;
+  http::client::request request(endpoint);
+  request << boost::network::header(
+      "Authorization", "Bearer " + KubernetesApiToken());
+//  if (config_.VerboseLogging()) {
+    LOG(INFO) << "WatchMaster: Contacting " << endpoint;
+//  }
+  try {
+    http::client::response response = client.get(request, Watcher(callback));
+    LOG(DEBUG) << "WatchMaster: Response: " << body(response);
+  } catch (const boost::system::system_error& e) {
+    LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
+    throw QueryException(endpoint + " -> " + e.what());
+  }
+}
+
 const std::string& KubernetesReader::KubernetesApiToken() const {
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   if (kubernetes_api_token_.empty()) {
@@ -717,6 +769,25 @@ json::value KubernetesReader::FindTopLevelOwner(
   LOG(DEBUG) << "FindTopLevelOwner: ref is " << *ref;
 #endif
   return FindTopLevelOwner(ns, GetOwner(ns, ref->As<json::Object>()));
+}
+
+namespace {
+void WatchCallback(json::value result) throw(json::Exception) {
+  const json::Object* watch = result->As<json::Object>();
+  const std::string type = watch->Get<json::String>("type");
+  const json::Object* object = watch->Get<json::Object>("object");
+  LOG(ERROR) << "Watch type: " << type << " object: " << *object;
+}
+}
+
+void KubernetesReader::WatchPods() const {
+  try {
+    WatchMaster(std::string(kKubernetesEndpointPath) + "/pods", WatchCallback);
+  } catch (const json::Exception& e) {
+    LOG(ERROR) << e.what();
+  } catch (const KubernetesReader::QueryException& e) {
+    // Already logged.
+  }
 }
 
 }
