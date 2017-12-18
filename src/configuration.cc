@@ -43,7 +43,7 @@ constexpr const char kDockerDefaultEndpointHost[] =
 constexpr const char kDockerDefaultApiVersion[] = "1.23";
 constexpr const char kDockerDefaultContainerFilter[] = "limit=30";
 constexpr const int kKubernetesUpdaterDefaultIntervalSeconds = 60;
-constexpr const char kKubernetesDefaultEndpointHost[] = "https://kubernetes";
+constexpr const char kKubernetesDefaultEndpointHost[] = "https://kubernetes.default.svc";
 constexpr const char kKubernetesDefaultPodLabelSelector[] = "";
 constexpr const char kKubernetesDefaultClusterName[] = "";
 constexpr const char kDefaultInstanceId[] = "";
