@@ -28,6 +28,7 @@
 #include <openssl/pkcs12.h>
 
 #include "base64.h"
+#include "http_common.h"
 #include "json.h"
 #include "logging.h"
 
@@ -144,19 +145,6 @@ double SecondsSinceEpoch(
 }
 
 }
-
-// To allow logging headers. TODO: move to a common location.
-std::ostream& operator<<(
-    std::ostream& o,
-    const http::client::request::headers_container_type& hv) {
-  o << "[";
-  for (const auto& h : hv) {
-    o << " " << h.first << ": " << h.second;
-  }
-  o << " ]";
-  return o;
-}
-
 
 json::value OAuth2::ComputeTokenFromCredentials() const {
   const std::string service_account_email =

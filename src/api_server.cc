@@ -25,6 +25,7 @@
 
 #include "environment.h"
 #include "format.h"
+#include "http_common.h"
 #include "json.h"
 #include "logging.h"
 #include "oauth2.h"
@@ -57,8 +58,6 @@ class MetadataApiServer {
    private:
     const MetadataAgent& agent_;
   };
-  friend std::ostream& operator<<(
-      std::ostream& o, const HttpServer::request::headers_container_type& hv);
 
   Handler handler_;
   HttpServer server_;
@@ -86,20 +85,6 @@ class MetadataReporter {
   seconds period_;
   std::thread reporter_thread_;
 };
-
-
-// To allow logging headers. TODO: move to a common location.
-std::ostream& operator<<(
-    std::ostream& o,
-    const MetadataApiServer::HttpServer::request::headers_container_type& hv) {
-  o << "[";
-  for (const auto& h : hv) {
-    o << " " << h.name << ": " << h.value;
-  }
-  o << " ]";
-  return o;
-}
-
 
 MetadataApiServer::Handler::Handler(const MetadataAgent& agent)
     : agent_(agent) {}
@@ -155,7 +140,7 @@ MetadataApiServer::MetadataApiServer(const MetadataAgent& agent,
       server_pool_()
 {
   for (int i : boost::irange(0, server_threads)) {
-    server_pool_.emplace_back(std::bind(&HttpServer::run, &server_));
+    server_pool_.emplace_back(&HttpServer::run, &server_);
   }
 }
 
@@ -170,7 +155,7 @@ MetadataReporter::MetadataReporter(const MetadataAgent& agent, double period_s)
       environment_(agent.config_),
       auth_(environment_),
       period_(period_s),
-      reporter_thread_(std::bind(&MetadataReporter::ReportMetadata, this)) {}
+      reporter_thread_(&MetadataReporter::ReportMetadata, this) {}
 
 MetadataReporter::~MetadataReporter() {
   reporter_thread_.join();
