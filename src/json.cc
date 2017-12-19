@@ -463,7 +463,7 @@ std::unique_ptr<Value> Parser::FromStream(std::istream& stream)
   }
   if (all_values.size() > 1) {
     std::ostringstream out;
-    out << "Getting a single value out of " << all_values.size();
+    out << "Single value expected, " << all_values.size() << " values seen";
     throw Exception(out.str());
   }
   return std::move(all_values[0]);
