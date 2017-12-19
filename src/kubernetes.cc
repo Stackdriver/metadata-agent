@@ -518,9 +518,9 @@ std::vector<MetadataUpdater::ResourceMetadata>
                      << pod_id << "(" << pod_name << ")";
         }
 
-        std::vector<MetadataUpdater::ResourceMetadata> pod_metadata =
+        std::vector<MetadataUpdater::ResourceMetadata> full_pod_metadata =
             GetPodAndContainerMetadata(pod, collected_at);
-        for (MetadataUpdater::ResourceMetadata& metadata : pod_metadata) {
+        for (MetadataUpdater::ResourceMetadata& metadata : full_pod_metadata) {
           result.emplace_back(std::move(metadata));
         }
       } catch (const json::Exception& e) {
