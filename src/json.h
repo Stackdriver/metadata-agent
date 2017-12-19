@@ -247,13 +247,13 @@ class Object : public Value, public std::map<std::string, std::unique_ptr<Value>
   const T* GetField(const std::string& field) const throw(Exception) {
     auto value_it = find(field);
     if (value_it == end()) {
-      throw json::Exception("There is no " + field + " in " + ToString());
+      throw Exception("There is no " + field + " in " + ToString());
     }
     if (value_it->second->type() != internal::TypeHelper<T>::type) {
       constexpr const char* name = internal::TypeHelper<T>::name;
       constexpr const char* article = internal::ArticleHelper<name[0]>::value();
-      throw json::Exception(field + " " + value_it->second->ToString() +
-                            " is not " + article + " " + name);
+      throw Exception(field + " " + value_it->second->ToString() +
+                      " is not " + article + " " + name);
     }
     return value_it->second->As<T>();
   }

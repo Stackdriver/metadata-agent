@@ -319,7 +319,7 @@ class JSONBuilder {
   std::vector<std::unique_ptr<Value>> values() throw(Exception) {
     TopLevelContext* top_level = dynamic_cast<TopLevelContext*>(context_);
     if (top_level == nullptr) {
-      throw json::Exception("values() called for an inner context");
+      throw Exception("values() called for an inner context");
     }
     return top_level->values();
   }
@@ -447,7 +447,7 @@ std::vector<std::unique_ptr<Value>> Parser::AllFromStream(std::istream& stream)
     unsigned char* str = yajl_get_error(handle, 1, data, kMax);
     std::string error_str((const char*)str);
     yajl_free_error(handle, str);
-    throw json::Exception(error_str);
+    throw Exception(error_str);
   }
 
   yajl_free(handle);
@@ -464,7 +464,7 @@ std::unique_ptr<Value> Parser::FromStream(std::istream& stream)
   if (all_values.size() > 1) {
     std::ostringstream out;
     out << "Getting a single value out of " << all_values.size();
-    throw json::Exception(out.str());
+    throw Exception(out.str());
   }
   return std::move(all_values[0]);
 }
