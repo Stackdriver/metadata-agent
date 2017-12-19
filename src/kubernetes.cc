@@ -94,7 +94,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
 
   const json::Object* node = raw_node->As<json::Object>();
   const json::Object* metadata = node->Get<json::Object>("metadata");
-  const std::string node_id = metadata->Get<json::String>("uid");
   const std::string node_name = metadata->Get<json::String>("name");
   const std::string created_str =
       metadata->Get<json::String>("creationTimestamp");
@@ -125,12 +124,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     LOG(INFO) << "Raw node metadata: " << *node_raw_metadata;
   }
 
-#if 0
-  // TODO: do we need this?
-  const std::string k8s_node_id = boost::algorithm::join(
-      std::vector<std::string>{kK8sNodeResourcePrefix, node_id},
-      kResourceTypeSeparator);
-#endif
   const std::string k8s_node_name = boost::algorithm::join(
       std::vector<std::string>{kK8sNodeNameResourcePrefix, node_name},
       kResourceTypeSeparator);
@@ -216,9 +209,9 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
     {"location", zone},
   });
 
-  // TODO: find pod_deleted.
+  // TODO: find is_deleted.
   //const json::Object* status = pod->Get<json::Object>("status");
-  bool pod_deleted = false;
+  bool is_deleted = false;
 
   json::value pod_raw_metadata = json::object({
     {"blobs", json::object({
@@ -244,7 +237,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
       k8s_pod,
 #ifdef ENABLE_KUBERNETES_METADATA
       MetadataAgent::Metadata(kRawContentVersion,
-                              pod_deleted, created_at, collected_at,
+                              is_deleted, created_at, collected_at,
                               std::move(pod_raw_metadata))
 #else
       MetadataAgent::Metadata::IGNORED()
@@ -273,15 +266,15 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
   const json::Object* status = pod->Get<json::Object>("status");
 
   const json::Array* container_specs = spec->Get<json::Array>("containers");
-  const json::Array* container_list =
+  const json::Array* container_statuses =
       status->Get<json::Array>("containerStatuses");
 
-  const json::value& c_element = (*container_list)[container_index];
+  const json::value& c_status = (*container_statuses)[container_index];
   const json::value& c_spec = (*container_specs)[container_index];
   if (config_.VerboseLogging()) {
-    LOG(INFO) << "Container: " << *c_element;
+    LOG(INFO) << "Container: " << *c_status;
   }
-  const json::Object* container = c_element->As<json::Object>();
+  const json::Object* container = c_status->As<json::Object>();
   const json::Object* container_spec = c_spec->As<json::Object>();
   const std::string container_name = container->Get<json::String>("name");
   std::size_t docker_prefix_end = sizeof(kDockerIdPrefix) - 1;
@@ -366,14 +359,14 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetLegacyResource(
 
   const json::Object* status = pod->Get<json::Object>("status");
 
-  const json::Array* container_list =
+  const json::Array* container_statuses =
       status->Get<json::Array>("containerStatuses");
 
-  const json::value& c_element = (*container_list)[container_index];
+  const json::value& c_status = (*container_statuses)[container_index];
   if (config_.VerboseLogging()) {
-    LOG(INFO) << "Container: " << *c_element;
+    LOG(INFO) << "Container: " << *c_status;
   }
-  const json::Object* container = c_element->As<json::Object>();
+  const json::Object* container = c_status->As<json::Object>();
   const std::string container_name = container->Get<json::String>("name");
 
   const MonitoredResource gke_container("gke_container", {
@@ -415,18 +408,18 @@ KubernetesReader::GetPodAndContainerMetadata(
   const json::Object* status = pod->Get<json::Object>("status");
 
   const json::Array* container_specs = spec->Get<json::Array>("containers");
-  const json::Array* container_list =
+  const json::Array* container_statuses =
       status->Get<json::Array>("containerStatuses");
   std::size_t num_containers = std::min(
-      container_list->size(), container_specs->size());
+      container_statuses->size(), container_specs->size());
 
   for (int i = 0; i < num_containers; ++i) {
-    const json::value& c_element = (*container_list)[i];
+    const json::value& c_status = (*container_statuses)[i];
     const json::value& c_spec = (*container_specs)[i];
     if (config_.VerboseLogging()) {
-      LOG(INFO) << "Container: " << *c_element;
+      LOG(INFO) << "Container: " << *c_status;
     }
-    const json::Object* container = c_element->As<json::Object>();
+    const json::Object* container = c_status->As<json::Object>();
     const json::Object* container_spec = c_spec->As<json::Object>();
     const std::string container_name = container->Get<json::String>("name");
     const std::string spec_name = container_spec->Get<json::String>("name");
@@ -508,13 +501,13 @@ std::vector<MetadataUpdater::ResourceMetadata>
         const json::Object* status = pod->Get<json::Object>("status");
 
         const json::Array* container_specs = spec->Get<json::Array>("containers");
-        const json::Array* container_list =
+        const json::Array* container_statuses =
             status->Get<json::Array>("containerStatuses");
-        if (container_specs->size() != container_list->size()) {
+        if (container_specs->size() != container_statuses->size()) {
           LOG(ERROR) << "Container specs and statuses arrays "
                      << "have different sizes: "
                      << container_specs->size() << " vs "
-                     << container_list->size() << " for pod "
+                     << container_statuses->size() << " for pod "
                      << pod_id << "(" << pod_name << ")";
         }
 
