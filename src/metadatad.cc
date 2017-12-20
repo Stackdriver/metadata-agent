@@ -22,7 +22,6 @@
 #include "configuration.h"
 #include "docker.h"
 #include "kubernetes.h"
-#include "updater.h"
 
 int main(int ac, char** av) {
   google::MetadataAgentConfiguration config;
@@ -33,21 +32,11 @@ int main(int ac, char** av) {
 
   google::MetadataAgent server(config);
 
-  google::DockerReader docker(config);
-  google::PollingMetadataUpdater docker_updater(
-      config.DockerUpdaterIntervalSeconds(), &server,
-      std::bind(&google::DockerReader::MetadataQuery, &docker));
+  google::DockerUpdater docker_updater(&server);
+  google::KubernetesUpdater kubernetes_updater(&server);
 
-  google::KubernetesReader kubernetes(config);
-  google::PollingMetadataUpdater kubernetes_updater(
-      config.KubernetesUpdaterIntervalSeconds(), &server,
-      std::bind(&google::KubernetesReader::MetadataQuery, &kubernetes));
+  docker_updater.start();
+  kubernetes_updater.start();
 
-  if (config.DockerUpdaterIntervalSeconds() > 0) {
-    docker_updater.start();
-  }
-  if (config.KubernetesUpdaterIntervalSeconds() > 0) {
-    kubernetes_updater.start();
-  }
   server.start();
 }

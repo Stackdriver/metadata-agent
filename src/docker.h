@@ -30,11 +30,21 @@ class DockerReader {
  public:
   DockerReader(const MetadataAgentConfiguration& config);
   // A Docker metadata query function.
-  std::vector<PollingMetadataUpdater::ResourceMetadata> MetadataQuery() const;
+  std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
  private:
   const MetadataAgentConfiguration& config_;
   Environment environment_;
+};
+
+class DockerUpdater : public PollingMetadataUpdater {
+ public:
+  DockerUpdater(MetadataAgent* server)
+      : reader_(server->config()), PollingMetadataUpdater(
+          server, server->config().DockerUpdaterIntervalSeconds(),
+          std::bind(&google::DockerReader::MetadataQuery, &reader_)) { }
+ private:
+  DockerReader reader_;
 };
 
 }

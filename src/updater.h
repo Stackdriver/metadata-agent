@@ -29,29 +29,60 @@
 
 namespace google {
 
-// A class for all periodic updates of the metadata mapping.
-// Specific metadata updaters will be instances of this class.
-class PollingMetadataUpdater {
+// An abstract class for asynchronous updates of the metadata mapping.
+class MetadataUpdater {
  public:
   struct ResourceMetadata {
     ResourceMetadata(const std::vector<std::string>& ids_,
                      const MonitoredResource& resource_,
                      MetadataAgent::Metadata&& metadata_)
         : ids(ids_), resource(resource_), metadata(std::move(metadata_)) {}
+    ResourceMetadata(ResourceMetadata&& other)
+        : ResourceMetadata(other.ids, other.resource,
+                           std::move(other.metadata)) {}
     std::vector<std::string> ids;
     MonitoredResource resource;
     MetadataAgent::Metadata metadata;
   };
 
+  MetadataUpdater(MetadataAgent* store);
+  virtual ~MetadataUpdater();
+
+  const MetadataAgentConfiguration& config() {
+    return store_->config();
+  }
+
+  // Starts updating.
+  virtual void start() = 0;
+
+  // Stops updating.
+  virtual void stop() = 0;
+
+ protected:
+  // Updates the resource map in the store.
+  void UpdateResourceCallback(const ResourceMetadata& result) {
+    store_->UpdateResource(result.ids, result.resource);
+  }
+
+  // Updates the metadata in the store. Consumes result.
+  void UpdateMetadataCallback(ResourceMetadata&& result) {
+    store_->UpdateMetadata(result.resource, std::move(result.metadata));
+  }
+
+ private:
+  // The store for the metadata.
+  MetadataAgent* store_;
+};
+
+// A class for all periodic updates of the metadata mapping.
+class PollingMetadataUpdater : public MetadataUpdater {
+ public:
   PollingMetadataUpdater(
-      double period_s, MetadataAgent* store,
+      MetadataAgent* store, double period_s,
       std::function<std::vector<ResourceMetadata>()> query_metadata);
   ~PollingMetadataUpdater();
 
-  // Starts updating.
   void start();
-
-  // Stops updating.
   void stop();
 
  private:
@@ -61,9 +92,6 @@ class PollingMetadataUpdater {
 
   // The polling period in seconds.
   seconds period_;
-
-  // The store for the metadata.
-  MetadataAgent* store_;
 
   // The function to actually query for metadata.
   std::function<std::vector<ResourceMetadata>()> query_metadata_;

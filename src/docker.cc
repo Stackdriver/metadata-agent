@@ -43,7 +43,7 @@ constexpr const char resource_type_separator[] = ".";
 DockerReader::DockerReader(const MetadataAgentConfiguration& config)
     : config_(config), environment_(config) {}
 
-std::vector<PollingMetadataUpdater::ResourceMetadata>
+std::vector<MetadataUpdater::ResourceMetadata>
     DockerReader::MetadataQuery() const {
   if (config_.VerboseLogging()) {
     LOG(INFO) << "Docker Query called";
@@ -58,7 +58,7 @@ std::vector<PollingMetadataUpdater::ResourceMetadata>
   http::local_client client;
   http::local_client::request list_request(
       docker_endpoint + "/json?all=true" + container_filter);
-  std::vector<PollingMetadataUpdater::ResourceMetadata> result;
+  std::vector<MetadataUpdater::ResourceMetadata> result;
   try {
     http::local_client::response list_response = client.get(list_request);
     Timestamp collected_at = std::chrono::system_clock::now();

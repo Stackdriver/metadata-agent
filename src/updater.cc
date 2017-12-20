@@ -22,11 +22,16 @@
 
 namespace google {
 
+MetadataUpdater::MetadataUpdater(MetadataAgent* store)
+    : store_(store) {}
+
+MetadataUpdater::~MetadataUpdater() {}
+
 PollingMetadataUpdater::PollingMetadataUpdater(
-    double period_s, MetadataAgent* store,
+    MetadataAgent* store, double period_s,
     std::function<std::vector<ResourceMetadata>()> query_metadata)
-    : period_(period_s),
-      store_(store),
+    : MetadataUpdater(store),
+      period_(period_s),
       query_metadata_(query_metadata),
       timer_(),
       reporter_thread_() {}
@@ -39,16 +44,18 @@ PollingMetadataUpdater::~PollingMetadataUpdater() {
 
 void PollingMetadataUpdater::start() {
   timer_.lock();
-  if (store_->config().VerboseLogging()) {
+  if (config().VerboseLogging()) {
     LOG(INFO) << "Timer locked";
   }
-  reporter_thread_ =
-      std::thread(&PollingMetadataUpdater::PollForMetadata, this);
+  if (period_ > seconds::zero()) {
+    reporter_thread_ =
+        std::thread(&PollingMetadataUpdater::PollForMetadata, this);
+  }
 }
 
 void PollingMetadataUpdater::stop() {
   timer_.unlock();
-  if (store_->config().VerboseLogging()) {
+  if (config().VerboseLogging()) {
     LOG(INFO) << "Timer unlocked";
   }
 }
@@ -58,11 +65,11 @@ void PollingMetadataUpdater::PollForMetadata() {
   do {
     std::vector<ResourceMetadata> result_vector = query_metadata_();
     for (ResourceMetadata& result : result_vector) {
-      store_->UpdateResource(
-          result.ids, result.resource, std::move(result.metadata));
+      UpdateResourceCallback(result);
+      UpdateMetadataCallback(std::move(result));
     }
     // An unlocked timer means we should stop updating.
-    if (store_->config().VerboseLogging()) {
+    if (config().VerboseLogging()) {
       LOG(INFO) << "Trying to unlock the timer";
     }
     auto start = std::chrono::high_resolution_clock::now();
@@ -74,7 +81,7 @@ void PollingMetadataUpdater::PollForMetadata() {
       if (now < wakeup) {
         continue;
       }
-      if (store_->config().VerboseLogging()) {
+      if (config().VerboseLogging()) {
         LOG(INFO) << " Timer unlock timed out after "
                   << std::chrono::duration_cast<seconds>(now - start).count()
                   << "s (good)";
@@ -84,7 +91,7 @@ void PollingMetadataUpdater::PollForMetadata() {
       done = false;
     }
   } while (!done);
-  if (store_->config().VerboseLogging()) {
+  if (config().VerboseLogging()) {
     LOG(INFO) << "Timer unlocked (stop polling)";
   }
 }

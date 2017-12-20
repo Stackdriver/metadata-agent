@@ -81,12 +81,15 @@ class MetadataAgent {
   MetadataAgent(const MetadataAgentConfiguration& config);
   ~MetadataAgent();
 
-  // Updates metadata for a given resource.
+  // Updates the local resource map entry for a given resource.
   // Each local id in `resource_ids` is effectively an alias for `resource`.
-  // Adds a resource mapping from each of the `resource_ids` to the `resource`
-  // and a metadata mapping from the `resource` to the metadata `entry`.
+  // Adds a resource mapping from each of the `resource_ids` to the `resource`.
   void UpdateResource(const std::vector<std::string>& resource_ids,
-                      const MonitoredResource& resource,
+                      const MonitoredResource& resource);
+
+  // Updates metadata for a given resource.
+  // Adds a metadata mapping from the `resource` to the metadata `entry`.
+  void UpdateMetadata(const MonitoredResource& resource,
                       Metadata&& entry);
 
   // Starts serving.
@@ -104,10 +107,12 @@ class MetadataAgent {
 
   const MetadataAgentConfiguration& config_;
 
-  // A lock that guards access to the maps.
-  mutable std::mutex mu_;
+  // A lock that guards access to the local resource map.
+  mutable std::mutex resource_mu_;
   // A map from a locally unique id to MonitoredResource.
   std::map<std::string, MonitoredResource> resource_map_;
+  // A lock that guards access to the metadata map.
+  mutable std::mutex metadata_mu_;
   // A map from MonitoredResource to (JSON) resource metadata.
   std::map<MonitoredResource, Metadata> metadata_map_;
 

@@ -102,7 +102,7 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
   }
   if (request.method == "GET" && request.destination.find(kPrefix) == 0) {
     std::string id = request.destination.substr(kPrefix.size());
-    std::lock_guard<std::mutex> lock(agent_.mu_);
+    std::lock_guard<std::mutex> lock(agent_.resource_mu_);
     const auto result = agent_.resource_map_.find(id);
     if (result == agent_.resource_map_.end()) {
       // TODO: This could be considered log spam.
@@ -286,9 +286,8 @@ MetadataAgent::MetadataAgent(const MetadataAgentConfiguration& config)
 MetadataAgent::~MetadataAgent() {}
 
 void MetadataAgent::UpdateResource(const std::vector<std::string>& resource_ids,
-                                   const MonitoredResource& resource,
-                                   Metadata&& entry) {
-  std::lock_guard<std::mutex> lock(mu_);
+                                   const MonitoredResource& resource) {
+  std::lock_guard<std::mutex> lock(resource_mu_);
   // TODO: How do we handle deleted resources?
   // TODO: Do we care if the value was already there?
   for (const std::string& id : resource_ids) {
@@ -297,6 +296,11 @@ void MetadataAgent::UpdateResource(const std::vector<std::string>& resource_ids,
     }
     resource_map_.emplace(id, resource);
   }
+}
+
+void MetadataAgent::UpdateMetadata(const MonitoredResource& resource,
+                                   Metadata&& entry) {
+  std::lock_guard<std::mutex> lock(metadata_mu_);
   if (config_.VerboseLogging()) {
     LOG(INFO) << "Updating metadata map " << resource << "->{"
               << "version: " << entry.version << ", "
@@ -316,7 +320,7 @@ void MetadataAgent::UpdateResource(const std::vector<std::string>& resource_ids,
 
 std::map<MonitoredResource, MetadataAgent::Metadata>
     MetadataAgent::GetMetadataMap() const {
-  std::lock_guard<std::mutex> lock(mu_);
+  std::lock_guard<std::mutex> lock(metadata_mu_);
 
   std::map<MonitoredResource, Metadata> result;
   for (const auto& kv : metadata_map_) {

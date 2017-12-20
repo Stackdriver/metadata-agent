@@ -35,7 +35,7 @@ class KubernetesReader {
  public:
   KubernetesReader(const MetadataAgentConfiguration& config);
   // A Kubernetes metadata query function.
-  std::vector<PollingMetadataUpdater::ResourceMetadata> MetadataQuery() const;
+  std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
  private:
   // A representation of all query-related errors.
@@ -46,6 +46,31 @@ class KubernetesReader {
    private:
     std::string explanation_;
   };
+
+  // Compute the associations for a given pod.
+  json::value ComputePodAssociations(const json::Object* pod) const
+      throw(json::Exception);
+  // Given a node object, return the associated metadata.
+  MetadataUpdater::ResourceMetadata GetNodeMetadata(
+      json::value raw_node, Timestamp collected_at) const
+      throw(json::Exception);
+  // Given a pod object, return the associated metadata.
+  MetadataUpdater::ResourceMetadata GetPodMetadata(
+      json::value raw_pod, json::value associations, Timestamp collected_at)
+      const throw(json::Exception);
+  // Given a pod object and container index, return the container metadata.
+  MetadataUpdater::ResourceMetadata GetContainerMetadata(
+      const json::Object* pod, int container_index, json::value associations,
+      Timestamp collected_at) const throw(json::Exception);
+  // Given a pod object and container index, return the legacy resource.
+  // The returned "metadata" field will be Metadata::IGNORED.
+  MetadataUpdater::ResourceMetadata GetLegacyResource(
+      const json::Object* pod, int container_index) const
+      throw(json::Exception);
+  // Given a pod object, return the associated pod and container metadata.
+  std::vector<MetadataUpdater::ResourceMetadata> GetPodAndContainerMetadata(
+      const json::Object* pod, Timestamp collected_at) const
+      throw(json::Exception);
 
   // Issues a Kubernetes master API query at a given path and
   // returns a parsed JSON response. The path has to start with "/".
@@ -90,6 +115,16 @@ class KubernetesReader {
 
   const MetadataAgentConfiguration& config_;
   Environment environment_;
+};
+
+class KubernetesUpdater : public PollingMetadataUpdater {
+ public:
+  KubernetesUpdater(MetadataAgent* server)
+      : reader_(server->config()), PollingMetadataUpdater(
+          server, server->config().KubernetesUpdaterIntervalSeconds(),
+          std::bind(&google::KubernetesReader::MetadataQuery, &reader_)) { }
+ private:
+  KubernetesReader reader_;
 };
 
 }
