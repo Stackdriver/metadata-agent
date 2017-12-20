@@ -378,14 +378,14 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetLegacyResource(
     {"zone", zone},
   });
 
-  const std::string gke_container_id = boost::algorithm::join(
+  const std::string gke_container_pod_id = boost::algorithm::join(
       std::vector<std::string>{kGkeContainerResourcePrefix, namespace_name, pod_id, container_name},
       kResourceTypeSeparator);
   const std::string gke_container_name = boost::algorithm::join(
       std::vector<std::string>{kGkeContainerNameResourcePrefix, namespace_name, pod_name, container_name},
       kResourceTypeSeparator);
   return MetadataUpdater::ResourceMetadata(
-      std::vector<std::string>{gke_container_id, gke_container_name},
+      std::vector<std::string>{gke_container_pod_id, gke_container_name},
       gke_container,
       MetadataAgent::Metadata::IGNORED());
 }
