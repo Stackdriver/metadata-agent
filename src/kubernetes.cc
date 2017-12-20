@@ -560,7 +560,7 @@ struct Watcher {
   Watcher(std::function<void(json::value)> callback,
           std::unique_lock<std::mutex>&& completion, bool verbose)
       : completion_(std::move(completion)), callback_(callback),
-        remaining_bytes_(0), verbose_(verbose) {}
+        remaining_chunk_bytes_(0), verbose_(verbose) {}
   ~Watcher() {}  // Unlocks the completion_ lock.
   void operator()(const boost::iterator_range<const char*>& range,
                   const boost::system::error_code& error) {
@@ -571,32 +571,33 @@ struct Watcher {
 //                 << "'";
 //#endif
       boost::iterator_range<const char*> pos = range;
-      if (remaining_bytes_ != 0) {
+      if (remaining_chunk_bytes_ != 0) {
         pos = ReadNextChunk(pos);
 //#ifdef VERBOSE
 //        LOG(DEBUG) << "Read another chunk; body now is '" << body_ << "'; "
-//                   << remaining_bytes_ << " bytes remaining";
+//                   << remaining_chunk_bytes_ << " bytes remaining";
 //#endif
       }
 
-      if (remaining_bytes_ == 0) {
+      if (remaining_chunk_bytes_ == 0) {
         // Invoke the callback.
         CompleteChunk();
 
         // Process the next batch.
-        while (remaining_bytes_ == 0 && std::begin(pos) != std::end(pos)) {
+        while (remaining_chunk_bytes_ == 0 &&
+               std::begin(pos) != std::end(pos)) {
           pos = StartNewChunk(pos);
         }
 //#ifdef VERBOSE
-//        LOG(DEBUG) << "Started new chunk; " << remaining_bytes_
+//        LOG(DEBUG) << "Started new chunk; " << remaining_chunk_bytes_
 //                   << " bytes remaining";
 //#endif
 
-        if (remaining_bytes_ != 0) {
+        if (remaining_chunk_bytes_ != 0) {
           pos = ReadNextChunk(pos);
 //#ifdef VERBOSE
 //          LOG(DEBUG) << "Read another chunk; body now is '" << body_ << "'; "
-//                     << remaining_bytes_ << " bytes remaining";
+//                     << remaining_chunk_bytes_ << " bytes remaining";
 //#endif
         }
       }
@@ -618,8 +619,8 @@ struct Watcher {
  private:
   boost::iterator_range<const char*>
   StartNewChunk(const boost::iterator_range<const char*>& range) {
-    if (remaining_bytes_ != 0) {
-      LOG(ERROR) << "Starting new chunk with " << remaining_bytes_
+    if (remaining_chunk_bytes_ != 0) {
+      LOG(ERROR) << "Starting new chunk with " << remaining_chunk_bytes_
                  << " bytes remaining";
     }
 
@@ -648,14 +649,14 @@ struct Watcher {
 //      LOG(DEBUG) << "Line: '" << line << "'";
 //#endif
       std::stringstream stream(line);
-      stream >> std::hex >> remaining_bytes_;
+      stream >> std::hex >> remaining_chunk_bytes_;
     }
     return boost::iterator_range<const char*>(iter, end);
   }
 
   boost::iterator_range<const char*>
   ReadNextChunk(const boost::iterator_range<const char*>& range) {
-    if (remaining_bytes_ == 0) {
+    if (remaining_chunk_bytes_ == 0) {
       LOG(ERROR) << "Asked to read next chunk with no bytes remaining";
       return range;
     }
@@ -663,10 +664,12 @@ struct Watcher {
     const std::string crlf("\r\n");
     auto begin = std::begin(range);
     auto end = std::end(range);
+    // The available bytes in the current notification, which may include the
+    // remainder of this chunk and the start of the next one.
     const size_t available = std::distance(begin, end);
-    const size_t len = std::min(available, remaining_bytes_);
+    const size_t len = std::min(available, remaining_chunk_bytes_);
     body_.insert(body_.end(), begin, begin + len);
-    remaining_bytes_ -= len;
+    remaining_chunk_bytes_ -= len;
     begin = std::next(begin, len);
     return boost::iterator_range<const char*>(begin, end);
   }
@@ -704,7 +707,7 @@ struct Watcher {
   std::unique_lock<std::mutex> completion_;
   std::function<void(json::value)> callback_;
   std::string body_;
-  size_t remaining_bytes_;
+  size_t remaining_chunk_bytes_;
   bool verbose_;
 };
 }
