@@ -630,7 +630,15 @@ struct Watcher {
     auto begin = std::begin(range);
     auto end = std::end(range);
     auto iter = std::search(begin, end, crlf.begin(), crlf.end());
-    if (iter == end && iter != begin) {
+    if (iter == begin) {
+      // Blank lines are fine, just skip them.
+      iter = std::next(iter, crlf.size());
+#ifdef VERBOSE
+      LOG(DEBUG) << "Skipping blank line within chunked encoding;"
+                 << " remaining data '" << std::string(iter, end) << "'";
+#endif
+      return boost::iterator_range<const char*>(iter, end);
+    } else if (iter == end) {
       LOG(ERROR) << "Invalid chunked encoding: '"
                  << std::string(begin, end)
                  << "'";
@@ -638,19 +646,11 @@ struct Watcher {
     }
     std::string line(begin, iter);
     iter = std::next(iter, crlf.size());
-    if (line.empty()) {
-      // Blank lines are fine, just skip them.
-#ifdef VERBOSE
-      LOG(DEBUG) << "Skipping blank line within chunked encoding;"
-                 << " remaining data '" << std::string(iter, end) << "'";
-#endif
-    } else {
 //#ifdef VERBOSE
-//      LOG(DEBUG) << "Line: '" << line << "'";
+//    LOG(DEBUG) << "Line: '" << line << "'";
 //#endif
-      std::stringstream stream(line);
-      stream >> std::hex >> remaining_chunk_bytes_;
-    }
+    std::stringstream stream(line);
+    stream >> std::hex >> remaining_chunk_bytes_;
     return boost::iterator_range<const char*>(iter, end);
   }
 
