@@ -527,13 +527,42 @@ json::value KubernetesReader::GetOwner(
   const std::string api_version = owner_ref->Get<json::String>("apiVersion");
   const std::string kind = owner_ref->Get<json::String>("kind");
   const std::string name = owner_ref->Get<json::String>("name");
-  const auto path_component = KindPath(api_version, kind);
+  const std::string uid = owner_ref->Get<json::String>("uid");
+
+  // Even though we query by name, we should look up the owner by uid,
+  // to handle the case when an object is deleted and re-constructed.
+  const std::string encoded_ref = boost::algorithm::join(
+      std::vector<std::string>{api_version, kind, uid}, "/");
+
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  auto found = owners_.emplace(std::piecewise_construct,
+                               std::forward_as_tuple(encoded_ref),
+                               std::forward_as_tuple());
+  json::value& owner = found.first->second;
+  if (found.second) {  // Not found, inserted new.
+    const auto path_component = KindPath(api_version, kind);
 #ifdef VERBOSE
-  LOG(DEBUG) << "KindPath returned {" << path_component.first << ", "
-             << path_component.second << "}";
+    LOG(DEBUG) << "KindPath returned {" << path_component.first << ", "
+               << path_component.second << "}";
 #endif
-  return QueryMaster(path_component.first + "/namespaces/" + ns + "/" +
-                     path_component.second + "/" + name);
+    owner = std::move(
+        QueryMaster(path_component.first + "/namespaces/" + ns + "/" +
+                    path_component.second + "/" + name));
+    // Sanity check: because we are looking up by name, the object we get
+    // back might have a different uid.
+    const json::Object* owner_obj = owner->As<json::Object>();
+    const json::Object* metadata = owner_obj->Get<json::Object>("metadata");
+    const std::string owner_uid = metadata->Get<json::String>("uid");
+    if (owner_uid != uid) {
+      LOG(WARNING) << "Owner " << kind << "'" << name << "' (id " << uid
+                   << ") disappeared before we could query it. Found id "
+                   << owner_uid << " instead.";
+      owner.reset();
+      throw QueryException("Owner " + kind + " " + name + " (id " + uid +
+                           ") disappeared");
+    }
+  }
+  return owner->Clone();
 }
 
 json::value KubernetesReader::FindTopLevelOwner(
