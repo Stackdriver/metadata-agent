@@ -63,7 +63,7 @@ install: metadatad
 
 export DISTRO
 PKG_NAME=stackdriver-metadata
-PKG_VERSION=0.0.14.k8s.watch
+PKG_VERSION=0.0.14
 PKG_RELEASE=1
 PKG_MAINTAINER=Stackdriver Engineering <engineering@stackdriver.com>
 
