@@ -39,7 +39,7 @@ namespace google {
 namespace {
 
 #if 0
-constexpr const char kKubernetesEndpointHost[] = "https://kubernetes";
+constexpr const char kKubernetesEndpointHost[] = "https://kubernetes.default.svc";
 #endif
 constexpr const char kKubernetesApiVersion[] = "1.6";
 constexpr const char kKubernetesEndpointPath[] = "/api/v1";
