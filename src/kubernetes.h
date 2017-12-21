@@ -18,6 +18,7 @@
 
 //#include "config.h"
 
+#include <functional>
 #include <map>
 #include <mutex>
 #include <string>
@@ -37,6 +38,12 @@ class KubernetesReader {
   // A Kubernetes metadata query function.
   std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
+  // Node watcher.
+  void WatchNode(MetadataUpdater::UpdateCallback callback) const;
+
+  // Pod watcher.
+  void WatchPods(MetadataUpdater::UpdateCallback callback) const;
+
  private:
   // A representation of all query-related errors.
   class QueryException {
@@ -46,6 +53,28 @@ class KubernetesReader {
    private:
     std::string explanation_;
   };
+
+  // Issues a Kubernetes master API query at a given path and
+  // returns a parsed JSON response. The path has to start with "/".
+  json::value QueryMaster(const std::string& path) const
+      throw(QueryException, json::Exception);
+
+  // Issues a Kubernetes master API query at a given path and
+  // watches for parsed JSON responses. The path has to start with "/".
+  // Invokes callback for every notification.
+  void WatchMaster(
+    const std::string& path, std::function<void(json::value)> callback) const
+    throw(QueryException, json::Exception);
+
+  // Node watcher callback.
+  void NodeCallback(
+      MetadataUpdater::UpdateCallback callback, json::value result) const
+      throw(json::Exception);
+
+  // Pod watcher callback.
+  void PodCallback(
+      MetadataUpdater::UpdateCallback callback, json::value result) const
+      throw(json::Exception);
 
   // Compute the associations for a given pod.
   json::value ComputePodAssociations(const json::Object* pod) const
@@ -71,11 +100,6 @@ class KubernetesReader {
   std::vector<MetadataUpdater::ResourceMetadata> GetPodAndContainerMetadata(
       const json::Object* pod, Timestamp collected_at) const
       throw(json::Exception);
-
-  // Issues a Kubernetes master API query at a given path and
-  // returns a parsed JSON response. The path has to start with "/".
-  json::value QueryMaster(const std::string& path) const
-      throw(QueryException, json::Exception);
 
   // Gets the name of the node the agent is running on.
   // Returns an empty string if unable to find the current node.
@@ -123,8 +147,24 @@ class KubernetesUpdater : public PollingMetadataUpdater {
       : reader_(server->config()), PollingMetadataUpdater(
           server, server->config().KubernetesUpdaterIntervalSeconds(),
           std::bind(&google::KubernetesReader::MetadataQuery, &reader_)) { }
+  ~KubernetesUpdater() {
+    if (node_watch_thread_.joinable()) {
+      node_watch_thread_.join();
+    }
+    if (pod_watch_thread_.joinable()) {
+      pod_watch_thread_.join();
+    }
+  }
+
+  void start();
+
  private:
+  // Metadata watcher callback.
+  void MetadataCallback(std::vector<ResourceMetadata>&& result_vector);
+
   KubernetesReader reader_;
+  std::thread node_watch_thread_;
+  std::thread pod_watch_thread_;
 };
 
 }

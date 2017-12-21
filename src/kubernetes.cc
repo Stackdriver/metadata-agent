@@ -20,11 +20,13 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/network/protocol/http/client.hpp>
+#include <boost/range/iterator_range.hpp>
 #include <chrono>
 #include <cstddef>
 #include <fstream>
 #include <tuple>
 
+#include "http_common.h"
 #include "json.h"
 #include "logging.h"
 #include "resource.h"
@@ -55,6 +57,8 @@ constexpr const char kK8sNodeResourcePrefix[] = "k8s_node";
 constexpr const char kK8sNodeNameResourcePrefix[] = "k8s_nodeName";
 
 constexpr const char kNodeSelectorPrefix[] = "?fieldSelector=spec.nodeName%3D";
+
+constexpr const char kWatchParam[] = "watch=true";
 
 constexpr const char kDockerIdPrefix[] = "docker://";
 
@@ -551,6 +555,211 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
   }
 }
 
+namespace {
+struct Watcher {
+  Watcher(std::function<void(json::value)> callback,
+          std::unique_lock<std::mutex>&& completion, bool verbose)
+      : completion_(std::move(completion)), callback_(callback),
+        remaining_chunk_bytes_(0), verbose_(verbose) {}
+  ~Watcher() {}  // Unlocks the completion_ lock.
+  void operator()(const boost::iterator_range<const char*>& range,
+                  const boost::system::error_code& error) {
+    if (!error) {
+//#ifdef VERBOSE
+//      LOG(DEBUG) << "Watch notification: '"
+//                 << std::string(std::begin(range), std::end(range))
+//                 << "'";
+//#endif
+      boost::iterator_range<const char*> pos = range;
+      if (remaining_chunk_bytes_ != 0) {
+        pos = ReadNextChunk(pos);
+//#ifdef VERBOSE
+//        LOG(DEBUG) << "Read another chunk; body now is '" << body_ << "'; "
+//                   << remaining_chunk_bytes_ << " bytes remaining";
+//#endif
+      }
+
+      if (remaining_chunk_bytes_ == 0) {
+        // Invoke the callback.
+        CompleteChunk();
+
+        // Process the next batch.
+        while (remaining_chunk_bytes_ == 0 &&
+               std::begin(pos) != std::end(pos)) {
+          pos = StartNewChunk(pos);
+        }
+//#ifdef VERBOSE
+//        LOG(DEBUG) << "Started new chunk; " << remaining_chunk_bytes_
+//                   << " bytes remaining";
+//#endif
+
+        if (remaining_chunk_bytes_ != 0) {
+          pos = ReadNextChunk(pos);
+//#ifdef VERBOSE
+//          LOG(DEBUG) << "Read another chunk; body now is '" << body_ << "'; "
+//                     << remaining_chunk_bytes_ << " bytes remaining";
+//#endif
+        }
+      }
+    } else {
+      if (error == boost::asio::error::eof) {
+#ifdef VERBOSE
+        LOG(DEBUG) << "Watch callback: EOF";
+#endif
+      } else {
+        LOG(ERROR) << "Callback got error " << error;
+      }
+      if (verbose_) {
+        LOG(INFO) << "Unlocking completion mutex";
+      }
+      completion_.unlock();
+    }
+  }
+
+ private:
+  boost::iterator_range<const char*>
+  StartNewChunk(const boost::iterator_range<const char*>& range) {
+    if (remaining_chunk_bytes_ != 0) {
+      LOG(ERROR) << "Starting new chunk with " << remaining_chunk_bytes_
+                 << " bytes remaining";
+    }
+
+    body_.clear();
+
+    const std::string crlf("\r\n");
+    auto begin = std::begin(range);
+    auto end = std::end(range);
+    auto iter = std::search(begin, end, crlf.begin(), crlf.end());
+    if (iter == begin) {
+      // Blank lines are fine, just skip them.
+      iter = std::next(iter, crlf.size());
+#ifdef VERBOSE
+      LOG(DEBUG) << "Skipping blank line within chunked encoding;"
+                 << " remaining data '" << std::string(iter, end) << "'";
+#endif
+      return boost::iterator_range<const char*>(iter, end);
+    } else if (iter == end) {
+      LOG(ERROR) << "Invalid chunked encoding: '"
+                 << std::string(begin, end)
+                 << "'";
+      return boost::iterator_range<const char*>(begin, end);
+    }
+    std::string line(begin, iter);
+    iter = std::next(iter, crlf.size());
+//#ifdef VERBOSE
+//    LOG(DEBUG) << "Line: '" << line << "'";
+//#endif
+    std::stringstream stream(line);
+    stream >> std::hex >> remaining_chunk_bytes_;
+    return boost::iterator_range<const char*>(iter, end);
+  }
+
+  boost::iterator_range<const char*>
+  ReadNextChunk(const boost::iterator_range<const char*>& range) {
+    if (remaining_chunk_bytes_ == 0) {
+      LOG(ERROR) << "Asked to read next chunk with no bytes remaining";
+      return range;
+    }
+
+    const std::string crlf("\r\n");
+    auto begin = std::begin(range);
+    auto end = std::end(range);
+    // The available bytes in the current notification, which may include the
+    // remainder of this chunk and the start of the next one.
+    const size_t available = std::distance(begin, end);
+    const size_t len = std::min(available, remaining_chunk_bytes_);
+    body_.insert(body_.end(), begin, begin + len);
+    remaining_chunk_bytes_ -= len;
+    begin = std::next(begin, len);
+    return boost::iterator_range<const char*>(begin, end);
+  }
+
+  void CompleteChunk() {
+    if (body_.empty()) {
+#ifdef VERBOSE
+      LOG(DEBUG) << "Skipping empty watch notification";
+#endif
+    } else {
+      try {
+//#ifdef VERBOSE
+//        LOG(DEBUG) << "Invoking callbacks on '" << body_ << "'";
+//#endif
+        std::vector<json::value> events = json::Parser::AllFromString(body_);
+        for (json::value& event : events) {
+          std::string event_str = event->ToString();
+#ifdef VERBOSE
+          LOG(DEBUG) << "Invoking callback('" << event_str << "')";
+#endif
+          callback_(std::move(event));
+#ifdef VERBOSE
+          LOG(DEBUG) << "callback('" << event_str << "') completed";
+#endif
+        }
+//#ifdef VERBOSE
+//        LOG(DEBUG) << "All callbacks on '" << body_ << "' completed";
+//#endif
+      } catch (const json::Exception& e) {
+        LOG(ERROR) << e.what();
+      }
+    }
+  }
+
+  std::unique_lock<std::mutex> completion_;
+  std::function<void(json::value)> callback_;
+  std::string body_;
+  size_t remaining_chunk_bytes_;
+  bool verbose_;
+};
+}
+
+void KubernetesReader::WatchMaster(
+    const std::string& path, std::function<void(json::value)> callback) const
+    throw(QueryException, json::Exception) {
+  const std::string prefix((path.find('?') == std::string::npos) ? "?" : "&");
+  const std::string watch_param(prefix + kWatchParam);
+  const std::string endpoint(
+      config_.KubernetesEndpointHost() + path + watch_param);
+  http::client client;
+  http::client::request request(endpoint);
+  request << boost::network::header(
+      "Authorization", "Bearer " + KubernetesApiToken());
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "WatchMaster: Contacting " << endpoint;
+  }
+  try {
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "Locking completion mutex";
+    }
+    // A notification for watch completion.
+    std::mutex completion_mutex;
+    std::unique_lock<std::mutex> watch_completion(completion_mutex);
+    Watcher watcher(callback, std::move(watch_completion),
+                    config_.VerboseLogging());
+    http::client::response response = client.get(request, boost::ref(watcher));
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "Waiting for completion";
+    }
+    std::lock_guard<std::mutex> await_completion(completion_mutex);
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "WatchMaster completed " << body(response);
+    }
+    std::string encoding;
+#ifdef VERBOSE
+    LOG(DEBUG) << "response headers: " << response.headers();
+#endif
+    auto transfer_encoding_header = headers(response)["Transfer-Encoding"];
+    if (!boost::empty(transfer_encoding_header)) {
+      encoding = boost::begin(transfer_encoding_header)->second;
+    }
+    if (encoding != "chunked") {
+      LOG(ERROR) << "Expected chunked encoding; found '" << encoding << "'";
+    }
+  } catch (const boost::system::system_error& e) {
+    LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
+    throw QueryException(endpoint + " -> " + e.what());
+  }
+}
+
 const std::string& KubernetesReader::KubernetesApiToken() const {
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   if (kubernetes_api_token_.empty()) {
@@ -576,21 +785,25 @@ const std::string& KubernetesReader::KubernetesNamespace() const {
 const std::string& KubernetesReader::CurrentNode() const {
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   if (current_node_.empty()) {
-    const std::string& ns = KubernetesNamespace();
-    // TODO: This is unreliable, see
-    // https://github.com/kubernetes/kubernetes/issues/52162.
-    const std::string pod_name = boost::asio::ip::host_name();
-    try {
-      json::value pod_response = QueryMaster(
-          std::string(kKubernetesEndpointPath) +
-          "/namespaces/" + ns + "/pods/" + pod_name);
-      const json::Object* pod = pod_response->As<json::Object>();
-      const json::Object* spec = pod->Get<json::Object>("spec");
-      current_node_ = spec->Get<json::String>("nodeName");
-    } catch (const json::Exception& e) {
-      LOG(ERROR) << e.what();
-    } catch (const QueryException& e) {
-      // Already logged.
+    if (!config_.KubernetesNodeName().empty()) {
+      current_node_ = config_.KubernetesNodeName();
+    } else {
+      const std::string& ns = KubernetesNamespace();
+      // TODO: This is unreliable, see
+      // https://github.com/kubernetes/kubernetes/issues/52162.
+      const std::string pod_name = boost::asio::ip::host_name();
+      try {
+        json::value pod_response = QueryMaster(
+            std::string(kKubernetesEndpointPath) +
+            "/namespaces/" + ns + "/pods/" + pod_name);
+        const json::Object* pod = pod_response->As<json::Object>();
+        const json::Object* spec = pod->Get<json::Object>("spec");
+        current_node_ = spec->Get<json::String>("nodeName");
+      } catch (const json::Exception& e) {
+        LOG(ERROR) << e.what();
+      } catch (const QueryException& e) {
+        // Already logged.
+      }
     }
   }
   return current_node_;
@@ -717,6 +930,113 @@ json::value KubernetesReader::FindTopLevelOwner(
   LOG(DEBUG) << "FindTopLevelOwner: ref is " << *ref;
 #endif
   return FindTopLevelOwner(ns, GetOwner(ns, ref->As<json::Object>()));
+}
+
+void KubernetesReader::PodCallback(MetadataUpdater::UpdateCallback callback,
+                                   json::value raw_watch) const
+    throw(json::Exception) {
+  Timestamp collected_at = std::chrono::system_clock::now();
+
+  //LOG(ERROR) << "Watch callback: " << *raw_watch;
+  const json::Object* watch = raw_watch->As<json::Object>();
+  const std::string type = watch->Get<json::String>("type");
+  const json::Object* pod = watch->Get<json::Object>("object");
+  LOG(ERROR) << "Watch type: " << type << " object: " << *pod;
+  if (type == "MODIFIED" || type == "ADDED") {
+    std::vector<MetadataUpdater::ResourceMetadata> result_vector =
+        GetPodAndContainerMetadata(pod, collected_at);
+    callback(std::move(result_vector));
+  }
+}
+
+void KubernetesReader::WatchPods(MetadataUpdater::UpdateCallback callback)
+    const {
+  LOG(INFO) << "Watch thread (pods) started";
+
+  const std::string node_name = CurrentNode();
+
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Current node is " << node_name;
+  }
+
+  const std::string node_selector(kNodeSelectorPrefix + node_name);
+  const std::string pod_label_selector(
+      config_.KubernetesPodLabelSelector().empty()
+      ? "" : "&" + config_.KubernetesPodLabelSelector());
+
+  try {
+    WatchMaster(std::string(kKubernetesEndpointPath) + "/pods"
+                + node_selector + pod_label_selector,
+                std::bind(&KubernetesReader::PodCallback,
+                          this, callback, std::placeholders::_1));
+  } catch (const json::Exception& e) {
+    LOG(ERROR) << e.what();
+  } catch (const KubernetesReader::QueryException& e) {
+    // Already logged.
+  }
+  LOG(INFO) << "Watch thread (pods) exiting";
+}
+
+void KubernetesReader::NodeCallback(MetadataUpdater::UpdateCallback callback,
+                                    json::value raw_watch) const
+    throw(json::Exception) {
+  Timestamp collected_at = std::chrono::system_clock::now();
+
+  //LOG(ERROR) << "Watch callback: " << *raw_watch;
+  const json::Object* watch = raw_watch->As<json::Object>();
+  const std::string type = watch->Get<json::String>("type");
+  const json::Object* node = watch->Get<json::Object>("object");
+  LOG(ERROR) << "Watch type: " << type << " object: " << *node;
+  if (type == "MODIFIED" || type == "ADDED") {
+    std::vector<MetadataUpdater::ResourceMetadata> result_vector;
+    result_vector.emplace_back(GetNodeMetadata(node->Clone(), collected_at));
+    callback(std::move(result_vector));
+  }
+}
+
+void KubernetesReader::WatchNode(MetadataUpdater::UpdateCallback callback)
+    const {
+  LOG(INFO) << "Watch thread (node) started";
+
+  const std::string node_name = CurrentNode();
+
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Current node is " << node_name;
+  }
+
+  try {
+    // TODO: There seems to be a Kubernetes API bug with watch=true.
+    WatchMaster(std::string(kKubernetesEndpointPath) + "/watch/nodes/"
+                + node_name,
+                std::bind(&KubernetesReader::NodeCallback,
+                          this, callback, std::placeholders::_1));
+  } catch (const json::Exception& e) {
+    LOG(ERROR) << e.what();
+  } catch (const KubernetesReader::QueryException& e) {
+    // Already logged.
+  }
+  LOG(INFO) << "Watch thread (node) exiting";
+}
+
+void KubernetesUpdater::start() {
+  PollingMetadataUpdater::start();
+  if (config().KubernetesUseWatch()) {
+    // Wrap the bind expression into a function to use as a bind argument.
+    UpdateCallback cb = std::bind(&KubernetesUpdater::MetadataCallback, this,
+                                  std::placeholders::_1);
+    node_watch_thread_ =
+        std::thread(&KubernetesReader::WatchNode, &reader_, cb);
+    pod_watch_thread_ =
+        std::thread(&KubernetesReader::WatchPods, &reader_, cb);
+  }
+}
+
+void KubernetesUpdater::MetadataCallback(
+    std::vector<MetadataUpdater::ResourceMetadata>&& result_vector) {
+  for (MetadataUpdater::ResourceMetadata& result : result_vector) {
+    UpdateResourceCallback(result);
+    UpdateMetadataCallback(std::move(result));
+  }
 }
 
 }
