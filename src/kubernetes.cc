@@ -402,8 +402,8 @@ KubernetesReader::GetPodAndContainerMetadata(
     if (config_.VerboseLogging()) {
       LOG(INFO) << "Container: " << *c_status;
     }
-    const json::Object* container = c_status->As<json::Object>();
-    const std::string name = container->Get<json::String>("name");
+    const json::Object* container_status = c_status->As<json::Object>();
+    const std::string name = container_status->Get<json::String>("name");
     auto spec_it = container_spec_by_name.find(name);
     if (spec_it == container_spec_by_name.end()) {
       LOG(ERROR) << "Internal error; spec not found for container " << name;
@@ -412,7 +412,7 @@ KubernetesReader::GetPodAndContainerMetadata(
     const json::Object* container_spec = spec_it->second;
     result.emplace_back(GetLegacyResource(pod, name));
     result.emplace_back(
-        GetContainerMetadata(pod, container, container_spec,
+        GetContainerMetadata(pod, container_status, container_spec,
                              associations->Clone(), collected_at));
   }
 
