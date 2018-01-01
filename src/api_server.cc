@@ -164,9 +164,7 @@ void MetadataApiServer::HandleHealthz(
     }));
     conn->write("healthy");
   } else {
-    if (config_.VerboseLogging()) {
-      LOG(WARNING) << "/healthz returning 500";
-    }
+    LOG(WARNING) << "/healthz returning 500";
     conn->set_status(HttpServer::connection::internal_server_error);
     conn->set_headers(std::map<std::string, std::string>({
       {"Content-Type", "text/plain"},
