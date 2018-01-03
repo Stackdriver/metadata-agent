@@ -263,7 +263,12 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
   const std::string created_str =
       metadata->Get<json::String>("creationTimestamp");
   Timestamp created_at = rfc3339::FromString(created_str);
-  const json::Object* labels = metadata->Get<json::Object>("labels");
+  const json::Object* labels;
+  try {
+    labels = metadata->Get<json::Object>("labels");
+  } catch (const json::Exception& e) {
+    labels = new json::Object({});
+  }
 
   const json::Object* spec = pod->Get<json::Object>("spec");
   const std::string node_name = spec->Get<json::String>("nodeName");
