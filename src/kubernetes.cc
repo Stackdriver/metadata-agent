@@ -196,7 +196,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
   const std::string created_str =
       metadata->Get<json::String>("creationTimestamp");
   Timestamp created_at = rfc3339::FromString(created_str);
-  const json::Object* labels = metadata->Get<json::Object>("labels");
 
   const json::Object* status = pod->Get<json::Object>("status");
   const std::string started_str = status->Get<json::String>("startTime");
@@ -263,7 +262,12 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
   const std::string created_str =
       metadata->Get<json::String>("creationTimestamp");
   Timestamp created_at = rfc3339::FromString(created_str);
-  const json::Object* labels = metadata->Get<json::Object>("labels");
+  const json::Object* labels;
+  if (!metadata->Has("labels")) {
+    labels = nullptr;
+  } else {
+    labels = metadata->Get<json::Object>("labels");
+  }
 
   const json::Object* spec = pod->Get<json::Object>("spec");
   const std::string node_name = spec->Get<json::String>("nodeName");
@@ -293,22 +297,28 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
     {"location", zone},
   });
 
-  json::value container_raw_metadata = json::object({
-    {"blobs", json::object({
-      {"association", std::move(associations)},
-      {"spec", json::object({
-        {"version", json::string(kKubernetesApiVersion)},
-        {"raw", container_spec->Clone()},
-      })},
-      {"status", json::object({
-        {"version", json::string(kKubernetesApiVersion)},
-        {"raw", container_status->Clone()},
-      })},
-      {"labels", json::object({
+  std::unique_ptr<json::Object> blobs(new json::Object({
+    {"association", std::move(associations)},
+    {"spec", json::object({
+      {"version", json::string(kKubernetesApiVersion)},
+      {"raw", container_spec->Clone()},
+    })},
+    {"status", json::object({
+      {"version", json::string(kKubernetesApiVersion)},
+      {"raw", container_status->Clone()},
+    })},
+  }));
+  if (labels) {
+    blobs->emplace(std::make_pair(
+      "labels",
+      json::object({
         {"version", json::string(kKubernetesApiVersion)},
         {"raw", labels->Clone()},
-      })},
-    })},
+      })
+    ));
+  }
+  json::value container_raw_metadata = json::object({
+    {"blobs", json::value(std::move(blobs))},
   });
   if (config_.VerboseLogging()) {
     LOG(INFO) << "Raw container metadata: " << *container_raw_metadata;
