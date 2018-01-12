@@ -290,11 +290,16 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
       {"version", json::string(kKubernetesApiVersion)},
       {"raw", container_spec->Clone()},
     })},
-    {"status", json::object({
-      {"version", json::string(kKubernetesApiVersion)},
-      {"raw", container_status->Clone()},
-    })},
   }));
+  if (container_status) {
+    blobs->emplace(std::make_pair(
+      "status",
+      json::object({
+        {"version", json::string(kKubernetesApiVersion)},
+        {"raw", container_status->Clone()},
+      })
+    ));
+  }
   if (labels) {
     blobs->emplace(std::make_pair(
       "labels",
