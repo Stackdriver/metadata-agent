@@ -407,8 +407,14 @@ KubernetesReader::GetPodAndContainerMetadata(
     const json::Object* container_status;
     if (status_it == container_status_by_name.end()) {
       container_status = nullptr;
+      if (config_.VerboseLogging()) {
+        LOG(INFO) << "No status for container " << name;
+      }
     } else {
       container_status = status_it->second;
+      if (config_.VerboseLogging()) {
+        LOG(INFO) << "Container status: " << *container_status;
+      }
     }
     result.emplace_back(GetLegacyResource(pod, name));
     result.emplace_back(
