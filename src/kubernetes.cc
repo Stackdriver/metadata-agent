@@ -60,8 +60,6 @@ constexpr const char kNodeSelectorPrefix[] = "?fieldSelector=spec.nodeName%3D";
 
 constexpr const char kWatchParam[] = "watch=true";
 
-constexpr const char kDockerIdPrefix[] = "docker://";
-
 constexpr const char kServiceAccountDirectory[] =
     "/var/run/secrets/kubernetes.io/serviceaccount";
 
@@ -273,17 +271,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
   const std::string node_name = spec->Get<json::String>("nodeName");
 
   const std::string container_name = container_spec->Get<json::String>("name");
-  std::size_t docker_prefix_end = sizeof(kDockerIdPrefix) - 1;
-  const std::string docker_id =
-      container_status->Get<json::String>("containerID");
-  if (docker_id.compare(0, docker_prefix_end, kDockerIdPrefix) != 0) {
-    LOG(ERROR) << "ContainerID "
-               << docker_id
-               << " does not start with " << kDockerIdPrefix
-               << " (" << docker_prefix_end << " chars)";
-    docker_prefix_end = 0;
-  }
-  const std::string container_id = docker_id.substr(docker_prefix_end);
   // TODO: find is_deleted.
   //const json::Object* state = container_status->Get<json::Object>("state");
   bool is_deleted = false;
@@ -324,9 +311,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
     LOG(INFO) << "Raw container metadata: " << *container_raw_metadata;
   }
 
-  const std::string k8s_container_id = boost::algorithm::join(
-      std::vector<std::string>{kK8sContainerResourcePrefix, container_id},
-      kResourceTypeSeparator);
   const std::string k8s_container_pod = boost::algorithm::join(
       std::vector<std::string>{kK8sContainerResourcePrefix, pod_id, container_name},
       kResourceTypeSeparator);
@@ -334,7 +318,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
       std::vector<std::string>{kK8sContainerNameResourcePrefix, namespace_name, pod_name, container_name},
       kResourceTypeSeparator);
   return MetadataUpdater::ResourceMetadata(
-      std::vector<std::string>{k8s_container_id, k8s_container_pod, k8s_container_name},
+      std::vector<std::string>{k8s_container_pod, k8s_container_name},
       k8s_container,
 #ifdef ENABLE_KUBERNETES_METADATA
       MetadataAgent::Metadata(kKubernetesApiVersion,
