@@ -89,8 +89,8 @@ class KubernetesReader {
       const throw(json::Exception);
   // Given a pod object and container info, return the container metadata.
   MetadataUpdater::ResourceMetadata GetContainerMetadata(
-      const json::Object* pod, const json::Object* container_status,
-      const json::Object* container_spec, json::value associations,
+      const json::Object* pod, const json::Object* container_spec,
+      const json::Object* container_status, json::value associations,
       Timestamp collected_at) const throw(json::Exception);
   // Given a pod object and container name, return the legacy resource.
   // The returned "metadata" field will be Metadata::IGNORED.
