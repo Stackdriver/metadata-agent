@@ -249,8 +249,8 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
 }
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
-    const json::Object* pod, const json::Object* container_status,
-    const json::Object* container_spec, json::value associations,
+    const json::Object* pod, const json::Object* container_spec,
+    const json::Object* container_status, json::value associations,
     Timestamp collected_at) const throw(json::Exception) {
   const std::string zone = environment_.InstanceZone();
   const std::string cluster_name = environment_.KubernetesClusterName();
@@ -400,29 +400,30 @@ KubernetesReader::GetPodAndContainerMetadata(
   const json::Array* container_statuses =
       status->Get<json::Array>("containerStatuses");
 
-  // Move the container specs into a map from name to spec.
-  std::map<std::string, const json::Object*> container_spec_by_name;
-  for (const json::value& c_spec : *container_specs) {
-    const json::Object* container_spec = c_spec->As<json::Object>();
-    const std::string name = container_spec->Get<json::String>("name");
-    container_spec_by_name.emplace(name, container_spec);
-  }
-
+  // Move the container statuses into a map from name to status.
+  std::map<std::string, const json::Object*> container_status_by_name;
   for (const json::value& c_status : *container_statuses) {
-    if (config_.VerboseLogging()) {
-      LOG(INFO) << "Container: " << *c_status;
-    }
     const json::Object* container_status = c_status->As<json::Object>();
     const std::string name = container_status->Get<json::String>("name");
-    auto spec_it = container_spec_by_name.find(name);
-    if (spec_it == container_spec_by_name.end()) {
-      LOG(ERROR) << "Internal error; spec not found for container " << name;
-      continue;
+    container_status_by_name.emplace(name, container_status);
+  }
+
+  for (const json::value& c_spec : *container_specs) {
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "Container: " << *c_spec;
     }
-    const json::Object* container_spec = spec_it->second;
+    const json::Object* container_spec = c_spec->As<json::Object>();
+    const std::string name = container_spec->Get<json::String>("name");
+    auto status_it = container_status_by_name.find(name);
+    const json::Object* container_status;
+    if (status_it == container_status_by_name.end()) {
+      container_status = nullptr;
+    } else {
+      container_status = status_it->second;
+    }
     result.emplace_back(GetLegacyResource(pod, name));
     result.emplace_back(
-        GetContainerMetadata(pod, container_status, container_spec,
+        GetContainerMetadata(pod, container_spec, container_status,
                              associations->Clone(), collected_at));
   }
 
