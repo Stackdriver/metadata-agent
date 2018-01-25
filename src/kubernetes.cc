@@ -167,6 +167,9 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
           ? top_level_controller->Get<json::String>("kind")
           : "Pod";
 
+  const json::Object* spec = pod->Get<json::Object>("spec");
+  const std::string node_name = spec->Get<json::String>("nodeName");
+
   return json::object({
     {"version", json::string(kRawContentVersion)},
     {"raw", json::object({
@@ -175,6 +178,7 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
         {"topLevelControllerType", json::string(top_level_kind)},
         {"topLevelControllerName", json::string(top_level_name)},
       })},
+      {"nodeName", json::string(node_name)},
     })},
   });
 }
