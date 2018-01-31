@@ -53,7 +53,6 @@ constexpr const char kK8sContainerResourcePrefix[] = "k8s_container";
 constexpr const char kK8sContainerNameResourcePrefix[] = "k8s_containerName";
 constexpr const char kK8sPodResourcePrefix[] = "k8s_pod";
 constexpr const char kK8sPodNameResourcePrefix[] = "k8s_podName";
-constexpr const char kK8sNodeResourcePrefix[] = "k8s_node";
 constexpr const char kK8sNodeNameResourcePrefix[] = "k8s_nodeName";
 
 constexpr const char kNodeSelectorPrefix[] = "?fieldSelector=spec.nodeName%3D";
