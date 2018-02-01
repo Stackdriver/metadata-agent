@@ -166,6 +166,7 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
           ? top_level_controller->Get<json::String>("kind")
           : "Pod";
 
+  // TODO: What about pods that are not scheduled yet?
   const json::Object* spec = pod->Get<json::Object>("spec");
   const std::string node_name = spec->Get<json::String>("nodeName");
 
