@@ -331,18 +331,18 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
   };
 
   if (container_status) {
-    std::size_t docker_prefix_end = sizeof(kDockerIdPrefix) - 1;
+    std::size_t docker_prefix_length = sizeof(kDockerIdPrefix) - 1;
 
     const std::string docker_id =
         container_status->Get<json::String>("containerID");
-    if (docker_id.compare(0, docker_prefix_end, kDockerIdPrefix) != 0) {
-      LOG(ERROR) << "ContainerID "
+    if (docker_id.compare(0, docker_prefix_length, kDockerIdPrefix) != 0) {
+      LOG(ERROR) << "containerID "
                  << docker_id
                  << " does not start with " << kDockerIdPrefix
-                 << " (" << docker_prefix_end << " chars)";
-      docker_prefix_end = 0;
+                 << " (" << docker_prefix_length << " chars)";
+      docker_prefix_length = 0;
     }
-    const std::string container_id = docker_id.substr(docker_prefix_end);
+    const std::string container_id = docker_id.substr(docker_prefix_length);
     const std::string k8s_container_id = boost::algorithm::join(
         std::vector<std::string>{kK8sContainerResourcePrefix, container_id},
         kResourceTypeSeparator);
