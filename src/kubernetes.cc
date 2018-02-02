@@ -53,7 +53,6 @@ constexpr const char kK8sContainerResourcePrefix[] = "k8s_container";
 constexpr const char kK8sContainerNameResourcePrefix[] = "k8s_containerName";
 constexpr const char kK8sPodResourcePrefix[] = "k8s_pod";
 constexpr const char kK8sPodNameResourcePrefix[] = "k8s_podName";
-constexpr const char kK8sNodeResourcePrefix[] = "k8s_node";
 constexpr const char kK8sNodeNameResourcePrefix[] = "k8s_nodeName";
 
 constexpr const char kNodeSelectorPrefix[] = "?fieldSelector=spec.nodeName%3D";
@@ -169,6 +168,10 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
           ? top_level_controller->Get<json::String>("kind")
           : "Pod";
 
+  // TODO: What about pods that are not scheduled yet?
+  const json::Object* spec = pod->Get<json::Object>("spec");
+  const std::string node_name = spec->Get<json::String>("nodeName");
+
   return json::object({
     {"version", json::string(kRawContentVersion)},
     {"raw", json::object({
@@ -177,6 +180,7 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
         {"topLevelControllerType", json::string(top_level_kind)},
         {"topLevelControllerName", json::string(top_level_name)},
       })},
+      {"nodeName", json::string(node_name)},
     })},
   });
 }
@@ -201,13 +205,9 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
   const std::string started_str = status->Get<json::String>("startTime");
   Timestamp started_at = rfc3339::FromString(started_str);
 
-  const json::Object* spec = pod->Get<json::Object>("spec");
-  const std::string node_name = spec->Get<json::String>("nodeName");
-
   const MonitoredResource k8s_pod("k8s_pod", {
     {"cluster_name", cluster_name},
     {"namespace_name", namespace_name},
-    {"node_name", node_name},
     {"pod_name", pod_name},
     {"location", zone},
   });
@@ -269,9 +269,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
     labels = metadata->Get<json::Object>("labels");
   }
 
-  const json::Object* spec = pod->Get<json::Object>("spec");
-  const std::string node_name = spec->Get<json::String>("nodeName");
-
   const std::string container_name = container_spec->Get<json::String>("name");
   // TODO: find is_deleted.
   //const json::Object* state = container_status->Get<json::Object>("state");
@@ -280,7 +277,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
   const MonitoredResource k8s_container("k8s_container", {
     {"cluster_name", cluster_name},
     {"namespace_name", namespace_name},
-    {"node_name", node_name},
     {"pod_name", pod_name},
     {"container_name", container_name},
     {"location", zone},
@@ -409,7 +405,6 @@ KubernetesReader::GetPodAndContainerMetadata(
   const std::string pod_id = metadata->Get<json::String>("uid");
 
   const json::Object* spec = pod->Get<json::Object>("spec");
-  const std::string node_name = spec->Get<json::String>("nodeName");
 
   const json::Object* status = pod->Get<json::Object>("status");
 
