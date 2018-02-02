@@ -60,6 +60,8 @@ constexpr const char kNodeSelectorPrefix[] = "?fieldSelector=spec.nodeName%3D";
 
 constexpr const char kWatchParam[] = "watch=true";
 
+constexpr const char kDockerIdPrefix[] = "docker://";
+
 constexpr const char kServiceAccountDirectory[] =
     "/var/run/secrets/kubernetes.io/serviceaccount";
 
@@ -322,8 +324,34 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
   const std::string k8s_container_name = boost::algorithm::join(
       std::vector<std::string>{kK8sContainerNameResourcePrefix, namespace_name, pod_name, container_name},
       kResourceTypeSeparator);
+
+  std::vector<std::string> local_resource_ids = {
+    k8s_container_pod,
+    k8s_container_name,
+  };
+
+  if (container_status) {
+    std::size_t docker_prefix_length = sizeof(kDockerIdPrefix) - 1;
+
+    const std::string docker_id =
+        container_status->Get<json::String>("containerID");
+    if (docker_id.compare(0, docker_prefix_length, kDockerIdPrefix) != 0) {
+      LOG(ERROR) << "containerID "
+                 << docker_id
+                 << " does not start with " << kDockerIdPrefix
+                 << " (" << docker_prefix_length << " chars)";
+      docker_prefix_length = 0;
+    }
+    const std::string container_id = docker_id.substr(docker_prefix_length);
+    const std::string k8s_container_id = boost::algorithm::join(
+        std::vector<std::string>{kK8sContainerResourcePrefix, container_id},
+        kResourceTypeSeparator);
+
+    local_resource_ids.push_back(k8s_container_id);
+  }
+
   return MetadataUpdater::ResourceMetadata(
-      std::vector<std::string>{k8s_container_pod, k8s_container_name},
+      std::move(local_resource_ids),
       k8s_container,
 #ifdef ENABLE_KUBERNETES_METADATA
       MetadataAgent::Metadata(kKubernetesApiVersion,
