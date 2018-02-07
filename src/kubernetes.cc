@@ -88,10 +88,21 @@ bool ReadServiceAccountSecret(
 KubernetesReader::KubernetesReader(const MetadataAgentConfiguration& config)
     : config_(config), environment_(config) {}
 
+json::value KubernetesReader::InstanceResource() const {
+  const std::string resource_type = "gce_instance";  // TODO: detect other resources.
+  const std::string instance_id = environment_.InstanceId();
+  const std::string zone = environment_.InstanceZone();
+  return json::object({
+    {"type", json::string(resource_type)},
+    {"labels", json::object({
+      {"instance_id", json::string(instance_id)},
+      {"zone", json::string(zone)},
+    })},
+  });
+}
+
 MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     json::value raw_node, Timestamp collected_at) const throw(json::Exception) {
-  const std::string platform = "gce";  // TODO: detect other platforms.
-  const std::string instance_id = environment_.InstanceId();
   const std::string zone = environment_.InstanceZone();
   const std::string cluster_name = environment_.KubernetesClusterName();
 
@@ -113,8 +124,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
       {"association", json::object({
         {"version", json::string(kRawContentVersion)},
         {"raw", json::object({
-          {"providerPlatform", json::string(platform)},
-          {"instanceId", json::string(instance_id)},
+          {"infrastructureResource", std::move(InstanceResource())},
         })},
       })},
       {"api", json::object({
@@ -145,8 +155,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
 
 json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
     const throw(json::Exception) {
-  const std::string platform = "gce";  // TODO: detect other platforms.
-
   const json::Object* metadata = pod->Get<json::Object>("metadata");
   const std::string namespace_name = metadata->Get<json::String>("namespace");
   const std::string pod_id = metadata->Get<json::String>("uid");
@@ -175,7 +183,7 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
   return json::object({
     {"version", json::string(kRawContentVersion)},
     {"raw", json::object({
-      {"providerPlatform", json::string(platform)},
+      {"infrastructureResource", std::move(InstanceResource())},
       {"controllers", json::object({
         {"topLevelControllerType", json::string(top_level_kind)},
         {"topLevelControllerName", json::string(top_level_name)},
