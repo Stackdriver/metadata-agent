@@ -3,7 +3,7 @@ GTEST_MODULE=$(LIBDIR)/googletest
 GTEST_DIR=$(LIBDIR)/googletest/googletest
 GTEST_SOURCEDIR=$(GTEST_DIR)/src
 GTEST_HEADERS=$(GTEST_DIR)/include/gtest/*.h \
-                $(GTEST_DIR)/include/gtest/internal/*.h
+              $(GTEST_DIR)/include/gtest/internal/*.h
 GTEST_SRCS_=$(GTEST_SOURCEDIR)/*.cc $(GTEST_SOURCEDIR)/*.h $(GTEST_HEADERS)
 
 CPP_NETLIB_DIR=$(LIBDIR)/cpp-netlib
@@ -34,14 +34,14 @@ purge: clean
 
 init-submodules:
 	git submodule init && \
-	git submodule update
+	    git submodule update
 
 $(GTEST_SRCS_): init-submodules
 $(GTEST_DIR)/Makefile: $(GTEST_SRCS_)
 	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
-            $(GTEST_SOURCEDIR)/gtest-all.cc
+	    $(GTEST_SOURCEDIR)/gtest-all.cc
 	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
-            $(GTEST_SOURCEDIR)/gtest_main.cc
+	    $(GTEST_SOURCEDIR)/gtest_main.cc
 
 $(GTEST_LIBS): build-googletest
 
@@ -50,7 +50,7 @@ build-googletest: $(GTEST_DIR)/Makefile
 
 build-source: $(SRCS) $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) -I$(CPP_NETLIB_DIR) \
-		-I$(YAML_CPP_DIR)/include $(CXXFLAGS) -c $(SRCS)
+	    -I$(YAML_CPP_DIR)/include $(CXXFLAGS) -c $(SRCS)
 
 build-test: $(TESTS) $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c $(TESTS)
@@ -59,3 +59,6 @@ $(OBJS): build-source
 $(TEST_OBJS): build-test
 unittest: $(GTEST_LIBS) $(OBJS) $(TEST_OBJS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+
+.PHONY: all clean purge init-submodules build-googletest build-source \
+	build-test unittest
