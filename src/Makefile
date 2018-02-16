@@ -3,6 +3,7 @@ CPP_NETLIB_DIR=$(LIBDIR)/cpp-netlib
 CPP_NETLIB_LIBDIR=$(CPP_NETLIB_DIR)/libs/network/src
 YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
 YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
+SUBMODULE_DIRS=$(CPP_NETLIB_DIR) $(YAML_CPP_DIR)
 
 SED_I=/usr/bin/env sed -i
 CMAKE=cmake
@@ -123,14 +124,11 @@ clean:
 	$(RM) metadatad $(OBJS)
 
 purge: clean
-	$(RM) -r init-submodules build-cpp-netlib build-yaml-cpp \
-	    $(CPP_NETLIB_DIR) $(YAML_CPP_DIR)
-	git submodule deinit --all
+	$(RM) -r init-submodules build-cpp-netlib build-yaml-cpp
+	git submodule deinit -f $(SUBMODULE_DIRS)
 
 init-submodules:
-	cd .. && \
-	git submodule init && \
-	git submodule update
+	git submodule update --init $(SUBMODULE_DIRS)
 	touch init-submodules
 
 $(CPP_NETLIB_DIR)/Makefile: init-submodules
