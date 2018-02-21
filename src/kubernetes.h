@@ -127,9 +127,6 @@ class KubernetesReader {
   json::value FindTopLevelOwner(const std::string& ns, json::value object) const
       throw(QueryException, json::Exception);
 
-  // Gets the monitored resource of the instance the agent is running on.
-  json::value InstanceResource() const;
-
   // Cached data.
   mutable std::recursive_mutex mutex_;
   mutable std::string current_node_;

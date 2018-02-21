@@ -27,6 +27,7 @@
 #include <tuple>
 
 #include "http_common.h"
+#include "instance.h"
 #include "json.h"
 #include "logging.h"
 #include "resource.h"
@@ -82,19 +83,6 @@ bool ReadServiceAccountSecret(
 KubernetesReader::KubernetesReader(const MetadataAgentConfiguration& config)
     : config_(config), environment_(config) {}
 
-json::value KubernetesReader::InstanceResource() const {
-  const std::string resource_type = "gce_instance";  // TODO: detect other resources.
-  const std::string instance_id = environment_.InstanceId();
-  const std::string zone = environment_.InstanceZone();
-  return json::object({
-    {"type", json::string(resource_type)},
-    {"labels", json::object({
-      {"instance_id", json::string(instance_id)},
-      {"zone", json::string(zone)},
-    })},
-  });
-}
-
 MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     json::value raw_node, Timestamp collected_at) const throw(json::Exception) {
   const std::string zone = environment_.InstanceZone();
@@ -113,12 +101,15 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     {"location", zone},
   });
 
+  json::value instance_resource =
+      InstanceReader::InstanceResource(environment_).ToJSON();
+
   json::value node_raw_metadata = json::object({
     {"blobs", json::object({
       {"association", json::object({
         {"version", json::string(config_.MetadataIngestionRawContentVersion())},
         {"raw", json::object({
-          {"infrastructureResource", std::move(InstanceResource())},
+          {"infrastructureResource", std::move(instance_resource)},
         })},
       })},
       {"api", json::object({
@@ -174,10 +165,13 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
   const json::Object* spec = pod->Get<json::Object>("spec");
   const std::string node_name = spec->Get<json::String>("nodeName");
 
+  json::value instance_resource =
+      InstanceReader::InstanceResource(environment_).ToJSON();
+
   return json::object({
     {"version", json::string(config_.MetadataIngestionRawContentVersion())},
     {"raw", json::object({
-      {"infrastructureResource", std::move(InstanceResource())},
+      {"infrastructureResource", std::move(instance_resource)},
       {"controllers", json::object({
         {"topLevelControllerType", json::string(top_level_kind)},
         {"topLevelControllerName", json::string(top_level_name)},

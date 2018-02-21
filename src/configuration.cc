@@ -39,6 +39,8 @@ constexpr const char kMetadataIngestionDefaultEndpointFormat[] =
 constexpr const int kMetadataIngestionDefaultRequestSizeLimitBytes =
     8*1024*1024;
 constexpr const char kMetadataIngestionDefaultRawContentVersion[] = "0.1";
+constexpr const int kInstanceUpdaterDefaultIntervalSeconds = 60*60;
+constexpr const char kDefaultInstanceResourceType[] = "";
 constexpr const int kDockerUpdaterDefaultIntervalSeconds = 60;
 constexpr const char kDockerDefaultEndpointHost[] =
     "unix://%2Fvar%2Frun%2Fdocker.sock/";
@@ -72,6 +74,9 @@ MetadataAgentConfiguration::MetadataAgentConfiguration()
           kMetadataIngestionDefaultRequestSizeLimitBytes),
       metadata_ingestion_raw_content_version_(
           kMetadataIngestionDefaultRawContentVersion),
+      instance_updater_interval_seconds_(
+          kInstanceUpdaterDefaultIntervalSeconds),
+      instance_resource_type_(kDefaultInstanceResourceType),
       docker_updater_interval_seconds_(kDockerUpdaterDefaultIntervalSeconds),
       docker_endpoint_host_(kDockerDefaultEndpointHost),
       docker_api_version_(kDockerDefaultApiVersion),
@@ -148,6 +153,12 @@ void MetadataAgentConfiguration::ParseConfigFile(const std::string& filename) {
   metadata_ingestion_raw_content_version_ =
       config["MetadataIngestionRawContentVersion"].as<std::string>(
           kMetadataIngestionDefaultRawContentVersion);
+  instance_updater_interval_seconds_ =
+      config["InstanceUpdaterIntervalSeconds"].as<int>(
+          kInstanceUpdaterDefaultIntervalSeconds);
+  instance_resource_type_ =
+      config["InstanceResourceType"].as<std::string>(
+          kDefaultInstanceResourceType);
   docker_updater_interval_seconds_ =
       config["DockerUpdaterIntervalSeconds"].as<int>(
           kDockerUpdaterDefaultIntervalSeconds);

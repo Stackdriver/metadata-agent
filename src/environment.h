@@ -29,6 +29,7 @@ class Environment {
   Environment(const MetadataAgentConfiguration& config);
 
   const std::string& NumericProjectId() const;
+  const std::string& InstanceResourceType() const;
   const std::string& InstanceId() const;
   const std::string& InstanceZone() const;
   const std::string& KubernetesClusterName() const;
@@ -51,6 +52,7 @@ class Environment {
   mutable std::string project_id_;
   mutable std::string zone_;
   mutable std::string instance_id_;
+  mutable std::string instance_resource_type_;
   mutable std::string kubernetes_cluster_name_;
   mutable std::string client_email_;
   mutable std::string private_key_;

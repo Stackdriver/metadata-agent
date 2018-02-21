@@ -70,6 +70,10 @@ json::value ReadCredentials(
 
 constexpr const char kGceMetadataServerAddress[] =
     "http://metadata.google.internal./computeMetadata/v1/";
+
+constexpr const char kGceInstanceResourceType[] =
+    "gce_instance";
+
 }
 
 Environment::Environment(const MetadataAgentConfiguration& config)
@@ -162,6 +166,20 @@ const std::string& Environment::InstanceId() const {
     }
   }
   return instance_id_;
+}
+
+const std::string& Environment::InstanceResourceType() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (instance_resource_type_.empty()) {
+    if (!config_.InstanceResourceType().empty()) {
+      instance_resource_type_ = config_.InstanceResourceType();
+    } else {
+      // Default to a GCE instance.
+      // TODO: Detect other resources.
+      instance_resource_type_ = kGceInstanceResourceType;
+    }
+  }
+  return instance_resource_type_;
 }
 
 const std::string& Environment::KubernetesClusterName() const {
