@@ -17,9 +17,11 @@
 #include "docker.h"
 
 #include "local_stream_http.h"
+#include <boost/algorithm/string/join.hpp>
 #include <boost/network/protocol/http/client.hpp>
 #include <chrono>
 
+#include "instance.h"
 #include "json.h"
 #include "logging.h"
 #include "resource.h"
@@ -32,15 +34,90 @@ namespace google {
 namespace {
 
 #if 0
-constexpr const char docker_endpoint_host[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
-constexpr const char docker_api_version[] = "1.23";
+constexpr const char kDockerEndpointHost[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
+constexpr const char kDockerApiVersion[] = "1.23";
 #endif
-constexpr const char docker_endpoint_path[] = "/containers";
+constexpr const char kDockerEndpointPath[] = "/containers";
+constexpr const char kDockerContainerResourcePrefix[] = "container";
 
 }
 
 DockerReader::DockerReader(const MetadataAgentConfiguration& config)
     : config_(config), environment_(config) {}
+
+MetadataUpdater::ResourceMetadata DockerReader::GetContainerMetadata(
+    const json::Object* container, Timestamp collected_at) const
+    throw(json::Exception) {
+  const std::string zone = environment_.InstanceZone();
+
+  const std::string id = container->Get<json::String>("Id");
+  // Inspect the container.
+  try {
+    json::value raw_docker = QueryDocker(
+        std::string(kDockerEndpointPath) + "/" + id + "/json");
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "Parsed metadata: " << *raw_docker;
+    }
+
+    const json::Object* container_desc = raw_docker->As<json::Object>();
+    const std::string name = container_desc->Get<json::String>("Name");
+
+    const std::string created_str =
+        container_desc->Get<json::String>("Created");
+    Timestamp created_at = rfc3339::FromString(created_str);
+
+    const json::Object* state = container_desc->Get<json::Object>("State");
+    bool is_deleted = state->Get<json::Boolean>("Dead");
+
+    const MonitoredResource resource("docker_container", {
+      {"location", zone},
+      {"container_id", id},
+    });
+
+    json::value instance_resource =
+        InstanceReader::InstanceResource(environment_).ToJSON();
+
+    json::value raw_metadata = json::object({
+      {"blobs", json::object({
+        {"association", json::object({
+          {"version", json::string(config_.MetadataIngestionRawContentVersion())},
+          {"raw", json::object({
+            {"infrastructureResource", std::move(instance_resource)},
+          })},
+        })},
+        {"api", json::object({
+          {"version", json::string(config_.DockerApiVersion())},
+          {"raw", std::move(raw_docker)},
+        })},
+      })},
+    });
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "Raw docker metadata: " << *raw_metadata;
+    }
+
+    const std::string resource_id = boost::algorithm::join(
+        std::vector<std::string>{kDockerContainerResourcePrefix, id},
+        config_.MetadataApiResourceTypeSeparator());
+    const std::string resource_name = boost::algorithm::join(
+        // The container name reported by Docker will always have a leading '/'.
+        std::vector<std::string>{kDockerContainerResourcePrefix, name.substr(1)},
+        config_.MetadataApiResourceTypeSeparator());
+    return MetadataUpdater::ResourceMetadata(
+        std::vector<std::string>{resource_id, resource_name},
+        resource,
+#ifdef ENABLE_DOCKER_METADATA
+        MetadataAgent::Metadata(config_.MetadataIngestionRawContentVersion(),
+                                is_deleted, created_at, collected_at,
+                                std::move(raw_metadata))
+#else
+        MetadataAgent::Metadata::IGNORED()
+#endif
+    );
+  } catch (const QueryException& e) {
+    throw json::Exception("Container " + id +
+                          " disappeared before we could inspect it");
+  }
+}
 
 std::vector<MetadataUpdater::ResourceMetadata>
     DockerReader::MetadataQuery() const {
@@ -50,66 +127,23 @@ std::vector<MetadataUpdater::ResourceMetadata>
   const std::string zone = environment_.InstanceZone();
   const std::string docker_endpoint(config_.DockerEndpointHost() +
                                     "v" + config_.DockerApiVersion() +
-                                    docker_endpoint_path);
+                                    kDockerEndpointPath);
   const std::string container_filter(
       config_.DockerContainerFilter().empty()
       ? "" : "&" + config_.DockerContainerFilter());
-  http::local_client client;
-  http::local_client::request list_request(
-      docker_endpoint + "/json?all=true" + container_filter);
   std::vector<MetadataUpdater::ResourceMetadata> result;
   try {
-    http::local_client::response list_response = client.get(list_request);
+    json::value parsed_list = QueryDocker(
+        std::string(kDockerEndpointPath) + "/json?all=true" + container_filter);
     Timestamp collected_at = std::chrono::system_clock::now();
-    if (config_.VerboseLogging()) {
-      LOG(INFO) << "List response: " << body(list_response);
-    }
-    json::value parsed_list = json::Parser::FromString(body(list_response));
     if (config_.VerboseLogging()) {
       LOG(INFO) << "Parsed list: " << *parsed_list;
     }
     const json::Array* container_list = parsed_list->As<json::Array>();
-    for (const json::value& element : *container_list) {
+    for (const json::value& raw_container : *container_list) {
       try {
-        const json::Object* container = element->As<json::Object>();
-        const std::string id = container->Get<json::String>("Id");
-        // Inspect the container.
-        http::local_client::request inspect_request(docker_endpoint + "/" + id + "/json");
-        http::local_client::response inspect_response = client.get(inspect_request);
-        if (config_.VerboseLogging()) {
-          LOG(INFO) << "Inspect response: " << body(inspect_response);
-        }
-        json::value parsed_metadata =
-            json::Parser::FromString(body(inspect_response));
-        if (config_.VerboseLogging()) {
-          LOG(INFO) << "Parsed metadata: " << *parsed_metadata;
-        }
-
-        const MonitoredResource resource("docker_container", {
-          {"location", zone},
-          {"container_id", id},
-        });
-
-        const json::Object* container_desc = parsed_metadata->As<json::Object>();
-        const std::string name = container_desc->Get<json::String>("Name");
-
-        const std::string created_str =
-            container_desc->Get<json::String>("Created");
-        Timestamp created_at = rfc3339::FromString(created_str);
-
-        const json::Object* state = container_desc->Get<json::Object>("State");
-        bool is_deleted = state->Get<json::Boolean>("Dead");
-
-        const std::string resource_id =
-            std::string("container") + config_.MetadataApiResourceTypeSeparator() + id;
-        // The container name reported by Docker will always have a leading '/'.
-        const std::string resource_name =
-            std::string("container") + config_.MetadataApiResourceTypeSeparator() + name.substr(1);
-        result.emplace_back(std::vector<std::string>{resource_id, resource_name},
-                            resource,
-                            MetadataAgent::Metadata(config_.DockerApiVersion(),
-                                                    is_deleted, created_at, collected_at,
-                                                    std::move(parsed_metadata)));
+        const json::Object* container = raw_container->As<json::Object>();
+        result.emplace_back(GetContainerMetadata(container, collected_at));
       } catch (const json::Exception& e) {
         LOG(ERROR) << e.what();
         continue;
@@ -117,10 +151,32 @@ std::vector<MetadataUpdater::ResourceMetadata>
     }
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
-  } catch (const boost::system::system_error& e) {
-    LOG(ERROR) << "Failed to communicate with " << docker_endpoint << ": " << e.what();
+  } catch (const QueryException& e) {
+    // Already logged.
   }
   return result;
+}
+
+json::value DockerReader::QueryDocker(const std::string& path) const
+    throw(QueryException, json::Exception) {
+  const std::string endpoint(config_.DockerEndpointHost() +
+                             "v" + config_.DockerApiVersion() +
+                             path);
+  http::local_client client;
+  http::local_client::request request(endpoint);
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "QueryDocker: Contacting " << endpoint;
+  }
+  try {
+    http::local_client::response response = client.get(request);
+#ifdef VERBOSE
+    LOG(DEBUG) << "QueryDocker: Response: " << body(response);
+#endif
+    return json::Parser::FromString(body(response));
+  } catch (const boost::system::system_error& e) {
+    LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
+    throw QueryException(endpoint + " -> " + e.what());
+  }
 }
 
 }

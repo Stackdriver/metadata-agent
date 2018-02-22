@@ -33,6 +33,25 @@ class DockerReader {
   std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
  private:
+  // A representation of all query-related errors.
+  class QueryException {
+   public:
+    QueryException(const std::string& what) : explanation_(what) {}
+    const std::string& what() const { return explanation_; }
+   private:
+    std::string explanation_;
+  };
+
+  // Issues a Docker API query at a given path and returns a parsed
+  // JSON response. The path has to start with "/".
+  json::value QueryDocker(const std::string& path) const
+      throw(QueryException, json::Exception);
+
+  // Given a container object, return the associated metadata.
+  MetadataUpdater::ResourceMetadata GetContainerMetadata(
+      const json::Object* container, Timestamp collected_at) const
+      throw(json::Exception);
+
   const MetadataAgentConfiguration& config_;
   Environment environment_;
 };
