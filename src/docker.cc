@@ -32,10 +32,10 @@ namespace google {
 namespace {
 
 #if 0
-constexpr const char kDockerEndpointHost[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
-constexpr const char kDockerApiVersion[] = "1.23";
+constexpr const char docker_endpoint_host[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
+constexpr const char docker_api_version[] = "1.23";
 #endif
-constexpr const char kDockerEndpointPath[] = "/containers";
+constexpr const char docker_endpoint_path[] = "/containers";
 
 }
 
@@ -50,7 +50,7 @@ std::vector<MetadataUpdater::ResourceMetadata>
   const std::string zone = environment_.InstanceZone();
   const std::string docker_endpoint(config_.DockerEndpointHost() +
                                     "v" + config_.DockerApiVersion() +
-                                    kDockerEndpointPath);
+                                    docker_endpoint_path);
   const std::string container_filter(
       config_.DockerContainerFilter().empty()
       ? "" : "&" + config_.DockerContainerFilter());
@@ -79,10 +79,10 @@ std::vector<MetadataUpdater::ResourceMetadata>
         if (config_.VerboseLogging()) {
           LOG(INFO) << "Inspect response: " << body(inspect_response);
         }
-        json::value raw_docker =
+        json::value parsed_metadata =
             json::Parser::FromString(body(inspect_response));
         if (config_.VerboseLogging()) {
-          LOG(INFO) << "Parsed metadata: " << *raw_docker;
+          LOG(INFO) << "Parsed metadata: " << *parsed_metadata;
         }
 
         const MonitoredResource resource("docker_container", {
@@ -90,7 +90,7 @@ std::vector<MetadataUpdater::ResourceMetadata>
           {"container_id", id},
         });
 
-        const json::Object* container_desc = raw_docker->As<json::Object>();
+        const json::Object* container_desc = parsed_metadata->As<json::Object>();
         const std::string name = container_desc->Get<json::String>("Name");
 
         const std::string created_str =
@@ -109,7 +109,7 @@ std::vector<MetadataUpdater::ResourceMetadata>
                             resource,
                             MetadataAgent::Metadata(config_.DockerApiVersion(),
                                                     is_deleted, created_at, collected_at,
-                                                    std::move(raw_docker)));
+                                                    std::move(parsed_metadata)));
       } catch (const json::Exception& e) {
         LOG(ERROR) << e.what();
         continue;
