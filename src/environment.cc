@@ -71,8 +71,7 @@ json::value ReadCredentials(
 constexpr const char kGceMetadataServerAddress[] =
     "http://metadata.google.internal./computeMetadata/v1/";
 
-constexpr const char kGceInstanceResourceType[] =
-    "gce_instance";
+constexpr const char kGceInstanceResourceType[] = "gce_instance";
 
 }
 
@@ -175,7 +174,7 @@ const std::string& Environment::InstanceResourceType() const {
       instance_resource_type_ = config_.InstanceResourceType();
     } else {
       // Default to a GCE instance.
-      // TODO: Detect other resources.
+      // TODO: Detect other instance resources.
       instance_resource_type_ = kGceInstanceResourceType;
     }
   }
