@@ -32,11 +32,10 @@ namespace google {
 namespace {
 
 #if 0
-constexpr const char docker_endpoint_host[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
-constexpr const char docker_api_version[] = "1.23";
+constexpr const char kDockerEndpointHost[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
+constexpr const char kDockerApiVersion[] = "1.23";
 #endif
-constexpr const char docker_endpoint_path[] = "/containers";
-constexpr const char resource_type_separator[] = ".";
+constexpr const char kDockerEndpointPath[] = "/containers";
 
 }
 
@@ -51,7 +50,7 @@ std::vector<MetadataUpdater::ResourceMetadata>
   const std::string zone = environment_.InstanceZone();
   const std::string docker_endpoint(config_.DockerEndpointHost() +
                                     "v" + config_.DockerApiVersion() +
-                                    docker_endpoint_path);
+                                    kDockerEndpointPath);
   const std::string container_filter(
       config_.DockerContainerFilter().empty()
       ? "" : "&" + config_.DockerContainerFilter());
@@ -80,17 +79,18 @@ std::vector<MetadataUpdater::ResourceMetadata>
         if (config_.VerboseLogging()) {
           LOG(INFO) << "Inspect response: " << body(inspect_response);
         }
-        json::value parsed_metadata =
+        json::value raw_docker =
             json::Parser::FromString(body(inspect_response));
         if (config_.VerboseLogging()) {
-          LOG(INFO) << "Parsed metadata: " << *parsed_metadata;
+          LOG(INFO) << "Parsed metadata: " << *raw_docker;
         }
+
         const MonitoredResource resource("docker_container", {
           {"location", zone},
           {"container_id", id},
         });
 
-        const json::Object* container_desc = parsed_metadata->As<json::Object>();
+        const json::Object* container_desc = raw_docker->As<json::Object>();
         const std::string name = container_desc->Get<json::String>("Name");
 
         const std::string created_str =
@@ -101,15 +101,15 @@ std::vector<MetadataUpdater::ResourceMetadata>
         bool is_deleted = state->Get<json::Boolean>("Dead");
 
         const std::string resource_id =
-            std::string("container") + resource_type_separator + id;
+            std::string("container") + config_.MetadataApiResourceTypeSeparator() + id;
         // The container name reported by Docker will always have a leading '/'.
         const std::string resource_name =
-            std::string("container") + resource_type_separator + name.substr(1);
+            std::string("container") + config_.MetadataApiResourceTypeSeparator() + name.substr(1);
         result.emplace_back(std::vector<std::string>{resource_id, resource_name},
                             resource,
                             MetadataAgent::Metadata(config_.DockerApiVersion(),
                                                     is_deleted, created_at, collected_at,
-                                                    std::move(parsed_metadata)));
+                                                    std::move(raw_docker)));
       } catch (const json::Exception& e) {
         LOG(ERROR) << e.what();
         continue;

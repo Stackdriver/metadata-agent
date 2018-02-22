@@ -31,19 +31,22 @@ constexpr const char kDefaultProjectId[] = "";
 constexpr const char kDefaultCredentialsFile[] = "";
 constexpr const int kMetadataApiDefaultNumThreads = 3;
 constexpr const int kMetadataApiDefaultPort = 8000;
+constexpr const char kMetadataApiDefaultResourceTypeSeparator[] = ".";
 constexpr const int kMetadataReporterDefaultIntervalSeconds = 60;
 constexpr const char kMetadataIngestionDefaultEndpointFormat[] =
     "https://stackdriver.googleapis.com/v1beta2/projects/{{project_id}}"
     "/resourceMetadata:batchUpdate";
 constexpr const int kMetadataIngestionDefaultRequestSizeLimitBytes =
     8*1024*1024;
+constexpr const char kMetadataIngestionDefaultRawContentVersion[] = "0.1";
 constexpr const int kDockerUpdaterDefaultIntervalSeconds = 60;
 constexpr const char kDockerDefaultEndpointHost[] =
     "unix://%2Fvar%2Frun%2Fdocker.sock/";
 constexpr const char kDockerDefaultApiVersion[] = "1.23";
 constexpr const char kDockerDefaultContainerFilter[] = "limit=30";
 constexpr const int kKubernetesUpdaterDefaultIntervalSeconds = 60;
-constexpr const char kKubernetesDefaultEndpointHost[] = "https://kubernetes.default.svc";
+constexpr const char kKubernetesDefaultEndpointHost[] =
+    "https://kubernetes.default.svc";
 constexpr const char kKubernetesDefaultPodLabelSelector[] = "";
 constexpr const char kKubernetesDefaultClusterName[] = "";
 constexpr const char kKubernetesDefaultNodeName[] = "";
@@ -59,12 +62,16 @@ MetadataAgentConfiguration::MetadataAgentConfiguration()
       verbose_logging_(false),
       metadata_api_num_threads_(kMetadataApiDefaultNumThreads),
       metadata_api_port_(kMetadataApiDefaultPort),
+      metadata_api_resource_type_separator_(
+          kMetadataApiDefaultResourceTypeSeparator),
       metadata_reporter_interval_seconds_(
           kMetadataReporterDefaultIntervalSeconds),
       metadata_ingestion_endpoint_format_(
           kMetadataIngestionDefaultEndpointFormat),
       metadata_ingestion_request_size_limit_bytes_(
           kMetadataIngestionDefaultRequestSizeLimitBytes),
+      metadata_ingestion_raw_content_version_(
+          kMetadataIngestionDefaultRawContentVersion),
       docker_updater_interval_seconds_(kDockerUpdaterDefaultIntervalSeconds),
       docker_endpoint_host_(kDockerDefaultEndpointHost),
       docker_api_version_(kDockerDefaultApiVersion),
@@ -126,6 +133,9 @@ void MetadataAgentConfiguration::ParseConfigFile(const std::string& filename) {
       config["MetadataApiNumThreads"].as<int>(kMetadataApiDefaultNumThreads);
   metadata_api_port_ =
       config["MetadataApiPort"].as<int>(kMetadataApiDefaultPort);
+  metadata_api_resource_type_separator_ =
+      config["MetadataApiResourceTypeSeparator"].as<std::string>(
+          kMetadataApiDefaultResourceTypeSeparator);
   metadata_reporter_interval_seconds_ =
       config["MetadataReporterIntervalSeconds"].as<int>(
           kMetadataReporterDefaultIntervalSeconds);
@@ -135,6 +145,9 @@ void MetadataAgentConfiguration::ParseConfigFile(const std::string& filename) {
   metadata_ingestion_request_size_limit_bytes_ =
       config["MetadataIngestionRequestSizeLimitBytes"].as<int>(
           kMetadataIngestionDefaultRequestSizeLimitBytes);
+  metadata_ingestion_raw_content_version_ =
+      config["MetadataIngestionRawContentVersion"].as<std::string>(
+          kMetadataIngestionDefaultRawContentVersion);
   docker_updater_interval_seconds_ =
       config["DockerUpdaterIntervalSeconds"].as<int>(
           kDockerUpdaterDefaultIntervalSeconds);
