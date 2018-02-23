@@ -24,6 +24,7 @@
 #include <chrono>
 #include <cstddef>
 #include <fstream>
+#include <sstream>
 #include <tuple>
 
 #include "format.h"
@@ -650,17 +651,18 @@ struct Watcher {
 #endif
       return boost::iterator_range<const char*>(iter, end);
     } else if (iter == end) {
-      LOG(ERROR) << "Invalid chunked encoding: '"
-                 << std::string(begin, end)
-                 << "'";
-      return boost::iterator_range<const char*>(begin, end);
+      std::string line(begin, end);
+      LOG(ERROR) << "Invalid chunked encoding: '" << line << "'; assuming crlf";
+      std::istringstream stream(line);
+      stream >> std::hex >> remaining_chunk_bytes_;
+      return boost::iterator_range<const char*>(end, end);
     }
     std::string line(begin, iter);
     iter = std::next(iter, crlf.size());
 //#ifdef VERBOSE
 //    LOG(DEBUG) << "Line: '" << line << "'";
 //#endif
-    std::stringstream stream(line);
+    std::istringstream stream(line);
     stream >> std::hex >> remaining_chunk_bytes_;
     return boost::iterator_range<const char*>(iter, end);
   }
