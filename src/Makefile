@@ -27,6 +27,7 @@ SRCS=\
      api_server.cc \
      configuration.cc \
      updater.cc \
+     instance.cc \
      docker.cc \
      kubernetes.cc \
      resource.cc \

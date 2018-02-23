@@ -21,6 +21,7 @@
 #include "api_server.h"
 #include "configuration.h"
 #include "docker.h"
+#include "instance.h"
 #include "kubernetes.h"
 
 int main(int ac, char** av) {
@@ -32,9 +33,11 @@ int main(int ac, char** av) {
 
   google::MetadataAgent server(config);
 
+  google::InstanceUpdater instance_updater(&server);
   google::DockerUpdater docker_updater(&server);
   google::KubernetesUpdater kubernetes_updater(&server);
 
+  instance_updater.start();
   docker_updater.start();
   kubernetes_updater.start();
 

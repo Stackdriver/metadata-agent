@@ -48,6 +48,10 @@ class MetadataAgentConfiguration {
     std::lock_guard<std::mutex> lock(mutex_);
     return metadata_api_port_;
   }
+  const std::string& MetadataApiResourceTypeSeparator() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return metadata_api_resource_type_separator_;
+  }
   // Metadata reporter options.
   int MetadataReporterIntervalSeconds() const {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -60,6 +64,19 @@ class MetadataAgentConfiguration {
   int MetadataIngestionRequestSizeLimitBytes() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return metadata_ingestion_request_size_limit_bytes_;
+  }
+  const std::string& MetadataIngestionRawContentVersion() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return metadata_ingestion_raw_content_version_;
+  }
+  // Instance metadata updater options.
+  int InstanceUpdaterIntervalSeconds() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return instance_updater_interval_seconds_;
+  }
+  const std::string& InstanceResourceType() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return instance_resource_type_;
   }
   // Docker metadata updater options.
   int DockerUpdaterIntervalSeconds() const {
@@ -122,9 +139,13 @@ class MetadataAgentConfiguration {
   bool verbose_logging_;
   int metadata_api_num_threads_;
   int metadata_api_port_;
+  std::string metadata_api_resource_type_separator_;
   int metadata_reporter_interval_seconds_;
   std::string metadata_ingestion_endpoint_format_;
   int metadata_ingestion_request_size_limit_bytes_;
+  std::string metadata_ingestion_raw_content_version_;
+  int instance_updater_interval_seconds_;
+  std::string instance_resource_type_;
   int docker_updater_interval_seconds_;
   std::string docker_endpoint_host_;
   std::string docker_api_version_;

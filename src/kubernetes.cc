@@ -27,6 +27,7 @@
 #include <tuple>
 
 #include "http_common.h"
+#include "instance.h"
 #include "json.h"
 #include "logging.h"
 #include "resource.h"
@@ -43,9 +44,6 @@ constexpr const char kKubernetesEndpointHost[] = "https://kubernetes.default.svc
 #endif
 constexpr const char kKubernetesApiVersion[] = "1.6";
 constexpr const char kKubernetesEndpointPath[] = "/api/v1";
-constexpr const char kResourceTypeSeparator[] = ".";
-
-constexpr const char kRawContentVersion[] = "0.1";
 
 constexpr const char kGkeContainerResourcePrefix[] = "gke_container";
 constexpr const char kK8sContainerResourcePrefix[] = "k8s_container";
@@ -85,19 +83,6 @@ bool ReadServiceAccountSecret(
 KubernetesReader::KubernetesReader(const MetadataAgentConfiguration& config)
     : config_(config), environment_(config) {}
 
-json::value KubernetesReader::InstanceResource() const {
-  const std::string resource_type = "gce_instance";  // TODO: detect other resources.
-  const std::string instance_id = environment_.InstanceId();
-  const std::string zone = environment_.InstanceZone();
-  return json::object({
-    {"type", json::string(resource_type)},
-    {"labels", json::object({
-      {"instance_id", json::string(instance_id)},
-      {"zone", json::string(zone)},
-    })},
-  });
-}
-
 MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     json::value raw_node, Timestamp collected_at) const throw(json::Exception) {
   const std::string zone = environment_.InstanceZone();
@@ -116,12 +101,15 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     {"location", zone},
   });
 
+  json::value instance_resource =
+      InstanceReader::InstanceResource(environment_).ToJSON();
+
   json::value node_raw_metadata = json::object({
     {"blobs", json::object({
       {"association", json::object({
-        {"version", json::string(kRawContentVersion)},
+        {"version", json::string(config_.MetadataIngestionRawContentVersion())},
         {"raw", json::object({
-          {"infrastructureResource", std::move(InstanceResource())},
+          {"infrastructureResource", std::move(instance_resource)},
         })},
       })},
       {"api", json::object({
@@ -136,12 +124,12 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
 
   const std::string k8s_node_name = boost::algorithm::join(
       std::vector<std::string>{kK8sNodeResourcePrefix, node_name},
-      kResourceTypeSeparator);
+      config_.MetadataApiResourceTypeSeparator());
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_node_name},
       k8s_node,
 #ifdef ENABLE_KUBERNETES_METADATA
-      MetadataAgent::Metadata(kRawContentVersion,
+      MetadataAgent::Metadata(config_.MetadataIngestionRawContentVersion(),
                               /*deleted=*/false, created_at, collected_at,
                               std::move(node_raw_metadata))
 #else
@@ -177,10 +165,13 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
   const json::Object* spec = pod->Get<json::Object>("spec");
   const std::string node_name = spec->Get<json::String>("nodeName");
 
+  json::value instance_resource =
+      InstanceReader::InstanceResource(environment_).ToJSON();
+
   return json::object({
-    {"version", json::string(kRawContentVersion)},
+    {"version", json::string(config_.MetadataIngestionRawContentVersion())},
     {"raw", json::object({
-      {"infrastructureResource", std::move(InstanceResource())},
+      {"infrastructureResource", std::move(instance_resource)},
       {"controllers", json::object({
         {"topLevelControllerType", json::string(top_level_kind)},
         {"topLevelControllerName", json::string(top_level_name)},
@@ -236,15 +227,15 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
 
   const std::string k8s_pod_id = boost::algorithm::join(
       std::vector<std::string>{kK8sPodResourcePrefix, pod_id},
-      kResourceTypeSeparator);
+      config_.MetadataApiResourceTypeSeparator());
   const std::string k8s_pod_name = boost::algorithm::join(
       std::vector<std::string>{kK8sPodResourcePrefix, namespace_name, pod_name},
-      kResourceTypeSeparator);
+      config_.MetadataApiResourceTypeSeparator());
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_pod_id, k8s_pod_name},
       k8s_pod,
 #ifdef ENABLE_KUBERNETES_METADATA
-      MetadataAgent::Metadata(kRawContentVersion,
+      MetadataAgent::Metadata(config_.MetadataIngestionRawContentVersion(),
                               is_deleted, created_at, collected_at,
                               std::move(pod_raw_metadata))
 #else
@@ -321,10 +312,10 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
 
   const std::string k8s_container_pod = boost::algorithm::join(
       std::vector<std::string>{kK8sContainerResourcePrefix, pod_id, container_name},
-      kResourceTypeSeparator);
+      config_.MetadataApiResourceTypeSeparator());
   const std::string k8s_container_name = boost::algorithm::join(
       std::vector<std::string>{kK8sContainerResourcePrefix, namespace_name, pod_name, container_name},
-      kResourceTypeSeparator);
+      config_.MetadataApiResourceTypeSeparator());
 
   std::vector<std::string> local_resource_ids = {
     k8s_container_pod,
@@ -346,7 +337,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
     const std::string container_id = docker_id.substr(docker_prefix_length);
     const std::string k8s_container_id = boost::algorithm::join(
         std::vector<std::string>{kK8sContainerResourcePrefix, container_id},
-        kResourceTypeSeparator);
+        config_.MetadataApiResourceTypeSeparator());
 
     local_resource_ids.push_back(k8s_container_id);
   }
@@ -387,10 +378,10 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetLegacyResource(
 
   const std::string gke_container_pod_id = boost::algorithm::join(
       std::vector<std::string>{kGkeContainerResourcePrefix, namespace_name, pod_id, container_name},
-      kResourceTypeSeparator);
+      config_.MetadataApiResourceTypeSeparator());
   const std::string gke_container_name = boost::algorithm::join(
       std::vector<std::string>{kGkeContainerResourcePrefix, namespace_name, pod_name, container_name},
-      kResourceTypeSeparator);
+      config_.MetadataApiResourceTypeSeparator());
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{gke_container_pod_id, gke_container_name},
       gke_container,

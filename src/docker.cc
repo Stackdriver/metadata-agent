@@ -36,7 +36,6 @@ constexpr const char docker_endpoint_host[] = "unix://%2Fvar%2Frun%2Fdocker.sock
 constexpr const char docker_api_version[] = "1.23";
 #endif
 constexpr const char docker_endpoint_path[] = "/containers";
-constexpr const char resource_type_separator[] = ".";
 
 }
 
@@ -85,6 +84,7 @@ std::vector<MetadataUpdater::ResourceMetadata>
         if (config_.VerboseLogging()) {
           LOG(INFO) << "Parsed metadata: " << *parsed_metadata;
         }
+
         const MonitoredResource resource("docker_container", {
           {"location", zone},
           {"container_id", id},
@@ -101,10 +101,10 @@ std::vector<MetadataUpdater::ResourceMetadata>
         bool is_deleted = state->Get<json::Boolean>("Dead");
 
         const std::string resource_id =
-            std::string("container") + resource_type_separator + id;
+            std::string("container") + config_.MetadataApiResourceTypeSeparator() + id;
         // The container name reported by Docker will always have a leading '/'.
         const std::string resource_name =
-            std::string("container") + resource_type_separator + name.substr(1);
+            std::string("container") + config_.MetadataApiResourceTypeSeparator() + name.substr(1);
         result.emplace_back(std::vector<std::string>{resource_id, resource_name},
                             resource,
                             MetadataAgent::Metadata(config_.DockerApiVersion(),
