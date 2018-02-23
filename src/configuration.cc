@@ -52,6 +52,7 @@ constexpr const char kKubernetesDefaultEndpointHost[] =
     "https://kubernetes.default.svc";
 constexpr const char kKubernetesDefaultPodLabelSelector[] = "";
 constexpr const char kKubernetesDefaultClusterName[] = "";
+constexpr const char kKubernetesDefaultClusterLocation[] = "";
 constexpr const char kKubernetesDefaultNodeName[] = "";
 constexpr const bool kKubernetesDefaultUseWatch = true;
 constexpr const char kDefaultInstanceId[] = "";
@@ -87,6 +88,7 @@ MetadataAgentConfiguration::MetadataAgentConfiguration()
       kubernetes_endpoint_host_(kKubernetesDefaultEndpointHost),
       kubernetes_pod_label_selector_(kKubernetesDefaultPodLabelSelector),
       kubernetes_cluster_name_(kKubernetesDefaultClusterName),
+      kubernetes_cluster_location_(kKubernetesDefaultClusterLocation),
       kubernetes_node_name_(kKubernetesDefaultNodeName),
       kubernetes_use_watch_(kKubernetesDefaultUseWatch),
       instance_id_(kDefaultInstanceId),
@@ -183,6 +185,9 @@ void MetadataAgentConfiguration::ParseConfigFile(const std::string& filename) {
   kubernetes_cluster_name_ =
       config["KubernetesClusterName"].as<std::string>(
           kKubernetesDefaultClusterName);
+  kubernetes_cluster_location_ =
+      config["KubernetesClusterLocation"].as<std::string>(
+          kKubernetesDefaultClusterLocation);
   kubernetes_node_name_ =
       config["KubernetesNodeName"].as<std::string>(kKubernetesDefaultNodeName);
   kubernetes_use_watch_ =

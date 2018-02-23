@@ -33,6 +33,7 @@ class Environment {
   const std::string& InstanceId() const;
   const std::string& InstanceZone() const;
   const std::string& KubernetesClusterName() const;
+  const std::string& KubernetesClusterLocation() const;
   const std::string& CredentialsClientEmail() const;
   const std::string& CredentialsPrivateKey() const;
 
@@ -54,6 +55,7 @@ class Environment {
   mutable std::string instance_id_;
   mutable std::string instance_resource_type_;
   mutable std::string kubernetes_cluster_name_;
+  mutable std::string kubernetes_cluster_location_;
   mutable std::string client_email_;
   mutable std::string private_key_;
   mutable bool application_default_credentials_read_;

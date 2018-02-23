@@ -86,8 +86,8 @@ KubernetesReader::KubernetesReader(const MetadataAgentConfiguration& config)
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     json::value raw_node, Timestamp collected_at) const throw(json::Exception) {
-  const std::string zone = environment_.InstanceZone();
   const std::string cluster_name = environment_.KubernetesClusterName();
+  const std::string location = environment_.KubernetesClusterLocation();
 
   const json::Object* node = raw_node->As<json::Object>();
   const json::Object* metadata = node->Get<json::Object>("metadata");
@@ -99,7 +99,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
   const MonitoredResource k8s_node("k8s_node", {
     {"cluster_name", cluster_name},
     {"node_name", node_name},
-    {"location", zone},
+    {"location", location},
   });
 
   json::value instance_resource =
@@ -185,8 +185,8 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
 MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
     json::value raw_pod, json::value associations, Timestamp collected_at) const
     throw(json::Exception) {
-  const std::string zone = environment_.InstanceZone();
   const std::string cluster_name = environment_.KubernetesClusterName();
+  const std::string location = environment_.KubernetesClusterLocation();
 
   const json::Object* pod = raw_pod->As<json::Object>();
 
@@ -206,7 +206,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
     {"cluster_name", cluster_name},
     {"namespace_name", namespace_name},
     {"pod_name", pod_name},
-    {"location", zone},
+    {"location", location},
   });
 
   // TODO: find is_deleted.
@@ -249,8 +249,8 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
     const json::Object* pod, const json::Object* container_spec,
     const json::Object* container_status, json::value associations,
     Timestamp collected_at) const throw(json::Exception) {
-  const std::string zone = environment_.InstanceZone();
   const std::string cluster_name = environment_.KubernetesClusterName();
+  const std::string location = environment_.KubernetesClusterLocation();
 
   const json::Object* metadata = pod->Get<json::Object>("metadata");
   const std::string namespace_name = metadata->Get<json::String>("namespace");
@@ -276,7 +276,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
     {"namespace_name", namespace_name},
     {"pod_name", pod_name},
     {"container_name", container_name},
-    {"location", zone},
+    {"location", location},
   });
 
   std::unique_ptr<json::Object> blobs(new json::Object({
