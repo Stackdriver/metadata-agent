@@ -48,12 +48,9 @@ constexpr const char kResourceTypeSeparator[] = ".";
 constexpr const char kRawContentVersion[] = "0.1";
 
 constexpr const char kGkeContainerResourcePrefix[] = "gke_container";
-constexpr const char kGkeContainerNameResourcePrefix[] = "gke_containerName";
 constexpr const char kK8sContainerResourcePrefix[] = "k8s_container";
-constexpr const char kK8sContainerNameResourcePrefix[] = "k8s_containerName";
 constexpr const char kK8sPodResourcePrefix[] = "k8s_pod";
-constexpr const char kK8sPodNameResourcePrefix[] = "k8s_podName";
-constexpr const char kK8sNodeNameResourcePrefix[] = "k8s_nodeName";
+constexpr const char kK8sNodeResourcePrefix[] = "k8s_node";
 
 constexpr const char kNodeSelectorPrefix[] = "?fieldSelector=spec.nodeName%3D";
 
@@ -138,7 +135,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
   }
 
   const std::string k8s_node_name = boost::algorithm::join(
-      std::vector<std::string>{kK8sNodeNameResourcePrefix, node_name},
+      std::vector<std::string>{kK8sNodeResourcePrefix, node_name},
       kResourceTypeSeparator);
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_node_name},
@@ -241,7 +238,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
       std::vector<std::string>{kK8sPodResourcePrefix, pod_id},
       kResourceTypeSeparator);
   const std::string k8s_pod_name = boost::algorithm::join(
-      std::vector<std::string>{kK8sPodNameResourcePrefix, namespace_name, pod_name},
+      std::vector<std::string>{kK8sPodResourcePrefix, namespace_name, pod_name},
       kResourceTypeSeparator);
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_pod_id, k8s_pod_name},
@@ -326,7 +323,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
       std::vector<std::string>{kK8sContainerResourcePrefix, pod_id, container_name},
       kResourceTypeSeparator);
   const std::string k8s_container_name = boost::algorithm::join(
-      std::vector<std::string>{kK8sContainerNameResourcePrefix, namespace_name, pod_name, container_name},
+      std::vector<std::string>{kK8sContainerResourcePrefix, namespace_name, pod_name, container_name},
       kResourceTypeSeparator);
 
   std::vector<std::string> local_resource_ids = {
@@ -392,7 +389,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetLegacyResource(
       std::vector<std::string>{kGkeContainerResourcePrefix, namespace_name, pod_id, container_name},
       kResourceTypeSeparator);
   const std::string gke_container_name = boost::algorithm::join(
-      std::vector<std::string>{kGkeContainerNameResourcePrefix, namespace_name, pod_name, container_name},
+      std::vector<std::string>{kGkeContainerResourcePrefix, namespace_name, pod_name, container_name},
       kResourceTypeSeparator);
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{gke_container_pod_id, gke_container_name},
