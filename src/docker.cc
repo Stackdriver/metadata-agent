@@ -104,7 +104,7 @@ std::vector<MetadataUpdater::ResourceMetadata>
             std::string("container") + resource_type_separator + id;
         // The container name reported by Docker will always have a leading '/'.
         const std::string resource_name =
-            std::string("containerName") + resource_type_separator + name.substr(1);
+            std::string("container") + resource_type_separator + name.substr(1);
         result.emplace_back(std::vector<std::string>{resource_id, resource_name},
                             resource,
                             MetadataAgent::Metadata(config_.DockerApiVersion(),
