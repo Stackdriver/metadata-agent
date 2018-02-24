@@ -212,18 +212,10 @@ const std::string& Environment::KubernetesClusterLocation() const {
     if (!config_.KubernetesClusterLocation().empty()) {
       kubernetes_cluster_location_ = config_.KubernetesClusterLocation();
     } else {
-      // Get the kube-env.
-      const std::string kube_env =
-          GetMetadataString("instance/attributes/kube-env");
-      // kube-env is a list of NAME: VALUE pairs, one per line.
-      // The actual location is in the ZONE variable.
-      // TODO: Refactor this into GetKubeEnv("ZONE") in kubernetes.cc.
-      std::istringstream in(kube_env);
-      for (std::string line; std::getline(in, line); ) {
-        if (line.find("ZONE: ") == 0) {
-          kubernetes_cluster_location_ = line.substr(line.find(':') + 2);
-        }
-      }
+      // Query the metadata server.
+      // TODO: Other sources? kube-env?
+      kubernetes_cluster_location_ =
+          GetMetadataString("instance/attributes/cluster-location");
     }
   }
   return kubernetes_cluster_location_;
