@@ -30,6 +30,10 @@ class Exception {
   std::string explanation_;
 };
 
+std::string str(int);
+std::string str(double);
+std::string str(bool);
+
 // Format string substitution.
 // Placeholder format is '{{param}}'.
 // All instances of each placeholder will be substituted by the value of the

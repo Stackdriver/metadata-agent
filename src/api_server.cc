@@ -76,7 +76,8 @@ class MetadataReporter {
 
   // Send the given set of metadata.
   void SendMetadata(
-      std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata);
+      std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata)
+      throw (boost::system::system_error);
 
   const MetadataAgent& agent_;
   Environment environment_;
@@ -171,9 +172,13 @@ void MetadataReporter::ReportMetadata() {
     if (agent_.config_.VerboseLogging()) {
       LOG(INFO) << "Sending metadata request to server";
     }
-    SendMetadata(agent_.GetMetadataMap());
-    if (agent_.config_.VerboseLogging()) {
-      LOG(INFO) << "Metadata request sent successfully";
+    try {
+      SendMetadata(agent_.GetMetadataMap());
+      if (agent_.config_.VerboseLogging()) {
+        LOG(INFO) << "Metadata request sent successfully";
+      }
+    } catch (const boost::system::system_error& e) {
+      LOG(ERROR) << "Unsuccessful: " << e.what();
     }
     std::this_thread::sleep_for(period_);
   }
@@ -185,7 +190,8 @@ namespace {
 void SendMetadataRequest(std::vector<json::value>&& entries,
                          const std::string& endpoint,
                          const std::string& auth_header,
-                         bool verbose_logging) {
+                         bool verbose_logging)
+    throw (boost::system::system_error) {
   json::value update_metadata_request = json::object({
     {"entries", json::array(std::move(entries))},
   });
@@ -204,6 +210,13 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
   request << boost::network::header("Authorization", auth_header);
   request << boost::network::body(request_body);
   http::client::response response = client.post(request);
+  if (status(response) != 200) {
+    throw boost::system::system_error(
+        boost::system::errc::make_error_code(boost::system::errc::not_connected),
+        format::Substitute("Server responded with '{{message}}' ({{code}})",
+                           {{"message", status_message(response)},
+                            {"code", format::str(status(response))}}));
+  }
   if (verbose_logging) {
     LOG(INFO) << "Server responded with " << body(response);
   }
@@ -213,7 +226,8 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 }
 
 void MetadataReporter::SendMetadata(
-    std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata) {
+    std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata)
+    throw (boost::system::system_error) {
   if (metadata.empty()) {
     if (agent_.config_.VerboseLogging()) {
       LOG(INFO) << "No data to send";

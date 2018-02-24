@@ -26,6 +26,7 @@
 #include <fstream>
 #include <tuple>
 
+#include "format.h"
 #include "http_common.h"
 #include "instance.h"
 #include "json.h"
@@ -549,6 +550,13 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
   }
   try {
     http::client::response response = client.get(request);
+    if (status(response) != 200) {
+      throw boost::system::system_error(
+          boost::system::errc::make_error_code(boost::system::errc::not_connected),
+          format::Substitute("Server responded with '{{message}}' ({{code}})",
+                             {{"message", status_message(response)},
+                              {"code", format::str(status(response))}}));
+    }
 #ifdef VERBOSE
     LOG(DEBUG) << "QueryMaster: Response: " << body(response);
 #endif
