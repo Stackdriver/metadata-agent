@@ -652,9 +652,13 @@ struct Watcher {
       return boost::iterator_range<const char*>(iter, end);
     } else if (iter == end) {
       std::string line(begin, end);
-      LOG(ERROR) << "Invalid chunked encoding: '" << line << "'; assuming crlf";
-      std::istringstream stream(line);
-      stream >> std::hex >> remaining_chunk_bytes_;
+      LOG(ERROR) << "Invalid chunked encoding: '"
+                 << std::string(begin, end)
+                 << "'; exiting";
+      if (verbose_) {
+        LOG(INFO) << "Unlocking completion mutex";
+      }
+      completion_.unlock();
       return boost::iterator_range<const char*>(end, end);
     }
     std::string line(begin, iter);
