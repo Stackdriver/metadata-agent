@@ -18,7 +18,6 @@
 
 #include <boost/network/protocol/http/client.hpp>
 #include <fstream>
-#include <sstream>
 
 #include "format.h"
 #include "logging.h"
