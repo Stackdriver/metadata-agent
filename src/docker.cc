@@ -53,13 +53,13 @@ MetadataUpdater::ResourceMetadata DockerReader::GetContainerMetadata(
   const std::string id = container->Get<json::String>("Id");
   // Inspect the container.
   try {
-    json::value raw_docker = QueryDocker(
+    json::value raw_container = QueryDocker(
         std::string(kDockerEndpointPath) + "/" + id + "/json");
     if (config_.VerboseLogging()) {
-      LOG(INFO) << "Parsed metadata: " << *raw_docker;
+      LOG(INFO) << "Parsed metadata: " << *raw_container;
     }
 
-    const json::Object* container_desc = raw_docker->As<json::Object>();
+    const json::Object* container_desc = raw_container->As<json::Object>();
     const std::string name = container_desc->Get<json::String>("Name");
 
     const std::string created_str =
@@ -87,7 +87,7 @@ MetadataUpdater::ResourceMetadata DockerReader::GetContainerMetadata(
         })},
         {"api", json::object({
           {"version", json::string(config_.DockerApiVersion())},
-          {"raw", std::move(raw_docker)},
+          {"raw", std::move(raw_container)},
         })},
       })},
     });
