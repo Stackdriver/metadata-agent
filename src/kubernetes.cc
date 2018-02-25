@@ -85,7 +85,8 @@ KubernetesReader::KubernetesReader(const MetadataAgentConfiguration& config)
     : config_(config), environment_(config) {}
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
-    json::value raw_node, Timestamp collected_at) const throw(json::Exception) {
+    json::value raw_node, Timestamp collected_at, bool is_deleted) const
+    throw(json::Exception) {
   const std::string cluster_name = environment_.KubernetesClusterName();
   const std::string location = environment_.KubernetesClusterLocation();
 
@@ -131,7 +132,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
       k8s_node,
 #ifdef ENABLE_KUBERNETES_METADATA
       MetadataAgent::Metadata(config_.MetadataIngestionRawContentVersion(),
-                              /*deleted=*/false, created_at, collected_at,
+                              is_deleted, created_at, collected_at,
                               std::move(node_raw_metadata))
 #else
       MetadataAgent::Metadata::IGNORED()
@@ -183,8 +184,8 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
 }
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
-    json::value raw_pod, json::value associations, Timestamp collected_at) const
-    throw(json::Exception) {
+    json::value raw_pod, json::value associations, Timestamp collected_at,
+    bool is_deleted) const throw(json::Exception) {
   const std::string cluster_name = environment_.KubernetesClusterName();
   const std::string location = environment_.KubernetesClusterLocation();
 
@@ -208,10 +209,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
     {"pod_name", pod_name},
     {"location", location},
   });
-
-  // TODO: find is_deleted.
-  //const json::Object* status = pod->Get<json::Object>("status");
-  bool is_deleted = false;
 
   json::value pod_raw_metadata = json::object({
     {"blobs", json::object({
@@ -248,7 +245,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
 MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
     const json::Object* pod, const json::Object* container_spec,
     const json::Object* container_status, json::value associations,
-    Timestamp collected_at) const throw(json::Exception) {
+    Timestamp collected_at, bool is_deleted) const throw(json::Exception) {
   const std::string cluster_name = environment_.KubernetesClusterName();
   const std::string location = environment_.KubernetesClusterLocation();
 
@@ -267,9 +264,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
   }
 
   const std::string container_name = container_spec->Get<json::String>("name");
-  // TODO: find is_deleted.
-  //const json::Object* state = container_status->Get<json::Object>("state");
-  bool is_deleted = false;
 
   const MonitoredResource k8s_container("k8s_container", {
     {"cluster_name", cluster_name},
@@ -391,7 +385,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetLegacyResource(
 
 std::vector<MetadataUpdater::ResourceMetadata>
 KubernetesReader::GetPodAndContainerMetadata(
-    const json::Object* pod, Timestamp collected_at) const
+    const json::Object* pod, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
   std::vector<MetadataUpdater::ResourceMetadata> result;
 
@@ -439,11 +433,12 @@ KubernetesReader::GetPodAndContainerMetadata(
     result.emplace_back(GetLegacyResource(pod, name));
     result.emplace_back(
         GetContainerMetadata(pod, container_spec, container_status,
-                             associations->Clone(), collected_at));
+                             associations->Clone(), collected_at, is_deleted));
   }
 
   result.emplace_back(
-      GetPodMetadata(pod->Clone(), std::move(associations), collected_at));
+      GetPodMetadata(pod->Clone(), std::move(associations), collected_at,
+                     is_deleted));
   return std::move(result);
 }
 
@@ -465,7 +460,8 @@ std::vector<MetadataUpdater::ResourceMetadata>
         std::string(kKubernetesEndpointPath) + "/nodes/" + node_name);
     Timestamp collected_at = std::chrono::system_clock::now();
 
-    result.emplace_back(GetNodeMetadata(std::move(raw_node), collected_at));
+    result.emplace_back(GetNodeMetadata(std::move(raw_node), collected_at,
+                                        /*is_deleted=*/false));
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
   } catch (const QueryException& e) {
@@ -520,8 +516,11 @@ std::vector<MetadataUpdater::ResourceMetadata>
                      << pod_id << "(" << pod_name << ")";
         }
 
+        // TODO: find is_deleted.
+        //const json::Object* status = pod->Get<json::Object>("status");
+        bool is_deleted = false;
         std::vector<MetadataUpdater::ResourceMetadata> full_pod_metadata =
-            GetPodAndContainerMetadata(pod, collected_at);
+            GetPodAndContainerMetadata(pod, collected_at, is_deleted);
         for (MetadataUpdater::ResourceMetadata& metadata : full_pod_metadata) {
           result.emplace_back(std::move(metadata));
         }
@@ -954,11 +953,13 @@ void KubernetesReader::PodCallback(MetadataUpdater::UpdateCallback callback,
   const std::string type = watch->Get<json::String>("type");
   const json::Object* pod = watch->Get<json::Object>("object");
   LOG(ERROR) << "Watch type: " << type << " object: " << *pod;
-  if (type == "MODIFIED" || type == "ADDED") {
-    std::vector<MetadataUpdater::ResourceMetadata> result_vector =
-        GetPodAndContainerMetadata(pod, collected_at);
-    callback(std::move(result_vector));
+  if (type != "MODIFIED" && type != "ADDED" && type != "DELETED") {
+    return;
   }
+  const bool is_deleted = (type == "DELETED");
+  std::vector<MetadataUpdater::ResourceMetadata> result_vector =
+      GetPodAndContainerMetadata(pod, collected_at, is_deleted);
+  callback(std::move(result_vector));
 }
 
 void KubernetesReader::WatchPods(MetadataUpdater::UpdateCallback callback)
@@ -999,11 +1000,14 @@ void KubernetesReader::NodeCallback(MetadataUpdater::UpdateCallback callback,
   const std::string type = watch->Get<json::String>("type");
   const json::Object* node = watch->Get<json::Object>("object");
   LOG(ERROR) << "Watch type: " << type << " object: " << *node;
-  if (type == "MODIFIED" || type == "ADDED") {
-    std::vector<MetadataUpdater::ResourceMetadata> result_vector;
-    result_vector.emplace_back(GetNodeMetadata(node->Clone(), collected_at));
-    callback(std::move(result_vector));
+  if (type != "MODIFIED" && type != "ADDED" && type != "DELETED") {
+    return;
   }
+  const bool is_deleted = (type == "DELETED");
+  std::vector<MetadataUpdater::ResourceMetadata> result_vector;
+  result_vector.emplace_back(
+      GetNodeMetadata(node->Clone(), collected_at, is_deleted));
+  callback(std::move(result_vector));
 }
 
 void KubernetesReader::WatchNode(MetadataUpdater::UpdateCallback callback)
