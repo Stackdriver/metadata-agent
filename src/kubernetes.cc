@@ -568,9 +568,9 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
 
 namespace {
 struct Watcher {
-  Watcher(std::function<void(json::value)> callback,
+  Watcher(std::function<void(json::value)> event_callback,
           std::unique_lock<std::mutex>&& completion, bool verbose)
-      : completion_(std::move(completion)), callback_(callback),
+      : completion_(std::move(completion)), event_callback_(event_callback),
         remaining_chunk_bytes_(0), verbose_(verbose) {}
   ~Watcher() {}  // Unlocks the completion_ lock.
   void operator()(const boost::iterator_range<const char*>& range,
@@ -701,7 +701,7 @@ struct Watcher {
 #ifdef VERBOSE
           LOG(DEBUG) << "Invoking callback('" << event_str << "')";
 #endif
-          callback_(std::move(event));
+          event_callback_(std::move(event));
 #ifdef VERBOSE
           LOG(DEBUG) << "callback('" << event_str << "') completed";
 #endif
@@ -716,15 +716,33 @@ struct Watcher {
   }
 
   std::unique_lock<std::mutex> completion_;
-  std::function<void(json::value)> callback_;
+  std::function<void(json::value)> event_callback_;
   std::string body_;
   size_t remaining_chunk_bytes_;
   bool verbose_;
 };
+
+void EventCallback(
+    std::function<void(const json::Object*, Timestamp, bool)> callback,
+    json::value raw_watch) throw(json::Exception) {
+  Timestamp collected_at = std::chrono::system_clock::now();
+
+  //LOG(ERROR) << "Watch callback: " << *raw_watch;
+  const json::Object* watch = raw_watch->As<json::Object>();
+  const std::string type = watch->Get<json::String>("type");
+  const json::Object* object = watch->Get<json::Object>("object");
+  LOG(ERROR) << "Watch type: " << type << " object: " << *object;
+  if (type != "MODIFIED" && type != "ADDED" && type != "DELETED") {
+    return;
+  }
+  const bool is_deleted = (type == "DELETED");
+  callback(object, collected_at, is_deleted);
+}
 }
 
 void KubernetesReader::WatchMaster(
-    const std::string& path, std::function<void(json::value)> callback) const
+    const std::string& path,
+    std::function<void(const json::Object*, Timestamp, bool)> callback) const
     throw(QueryException, json::Exception) {
   const std::string prefix((path.find('?') == std::string::npos) ? "?" : "&");
   const std::string watch_param(prefix + kWatchParam);
@@ -744,8 +762,8 @@ void KubernetesReader::WatchMaster(
     // A notification for watch completion.
     std::mutex completion_mutex;
     std::unique_lock<std::mutex> watch_completion(completion_mutex);
-    Watcher watcher(callback, std::move(watch_completion),
-                    config_.VerboseLogging());
+    Watcher watcher(std::bind(&EventCallback, callback, std::placeholders::_1),
+                    std::move(watch_completion), config_.VerboseLogging());
     http::client::response response = client.get(request, boost::ref(watcher));
     if (config_.VerboseLogging()) {
       LOG(INFO) << "Waiting for completion";
@@ -943,20 +961,10 @@ json::value KubernetesReader::FindTopLevelOwner(
   return FindTopLevelOwner(ns, GetOwner(ns, ref->As<json::Object>()));
 }
 
-void KubernetesReader::PodCallback(MetadataUpdater::UpdateCallback callback,
-                                   json::value raw_watch) const
+void KubernetesReader::PodCallback(
+    MetadataUpdater::UpdateCallback callback,
+    const json::Object* pod, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
-  Timestamp collected_at = std::chrono::system_clock::now();
-
-  //LOG(ERROR) << "Watch callback: " << *raw_watch;
-  const json::Object* watch = raw_watch->As<json::Object>();
-  const std::string type = watch->Get<json::String>("type");
-  const json::Object* pod = watch->Get<json::Object>("object");
-  LOG(ERROR) << "Watch type: " << type << " object: " << *pod;
-  if (type != "MODIFIED" && type != "ADDED" && type != "DELETED") {
-    return;
-  }
-  const bool is_deleted = (type == "DELETED");
   std::vector<MetadataUpdater::ResourceMetadata> result_vector =
       GetPodAndContainerMetadata(pod, collected_at, is_deleted);
   callback(std::move(result_vector));
@@ -981,7 +989,8 @@ void KubernetesReader::WatchPods(MetadataUpdater::UpdateCallback callback)
     WatchMaster(std::string(kKubernetesEndpointPath) + "/pods"
                 + node_selector + pod_label_selector,
                 std::bind(&KubernetesReader::PodCallback,
-                          this, callback, std::placeholders::_1));
+                          this, callback, std::placeholders::_1,
+                          std::placeholders::_2, std::placeholders::_3));
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
   } catch (const KubernetesReader::QueryException& e) {
@@ -990,20 +999,10 @@ void KubernetesReader::WatchPods(MetadataUpdater::UpdateCallback callback)
   LOG(INFO) << "Watch thread (pods) exiting";
 }
 
-void KubernetesReader::NodeCallback(MetadataUpdater::UpdateCallback callback,
-                                    json::value raw_watch) const
+void KubernetesReader::NodeCallback(
+    MetadataUpdater::UpdateCallback callback,
+    const json::Object* node, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
-  Timestamp collected_at = std::chrono::system_clock::now();
-
-  //LOG(ERROR) << "Watch callback: " << *raw_watch;
-  const json::Object* watch = raw_watch->As<json::Object>();
-  const std::string type = watch->Get<json::String>("type");
-  const json::Object* node = watch->Get<json::Object>("object");
-  LOG(ERROR) << "Watch type: " << type << " object: " << *node;
-  if (type != "MODIFIED" && type != "ADDED" && type != "DELETED") {
-    return;
-  }
-  const bool is_deleted = (type == "DELETED");
   std::vector<MetadataUpdater::ResourceMetadata> result_vector;
   result_vector.emplace_back(
       GetNodeMetadata(node->Clone(), collected_at, is_deleted));
@@ -1025,7 +1024,8 @@ void KubernetesReader::WatchNode(MetadataUpdater::UpdateCallback callback)
     WatchMaster(std::string(kKubernetesEndpointPath) + "/watch/nodes/"
                 + node_name,
                 std::bind(&KubernetesReader::NodeCallback,
-                          this, callback, std::placeholders::_1));
+                          this, callback, std::placeholders::_1,
+                          std::placeholders::_2, std::placeholders::_3));
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
   } catch (const KubernetesReader::QueryException& e) {

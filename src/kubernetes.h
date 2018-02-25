@@ -63,18 +63,19 @@ class KubernetesReader {
   // watches for parsed JSON responses. The path has to start with "/".
   // Invokes callback for every notification.
   void WatchMaster(
-    const std::string& path, std::function<void(json::value)> callback) const
+    const std::string& path,
+    std::function<void(const json::Object*, Timestamp, bool)> callback) const
     throw(QueryException, json::Exception);
 
-  // Node watcher callback.
+  // Node watch callback.
   void NodeCallback(
-      MetadataUpdater::UpdateCallback callback, json::value result) const
-      throw(json::Exception);
+      MetadataUpdater::UpdateCallback callback, const json::Object* node,
+      Timestamp collected_at, bool is_deleted) const throw(json::Exception);
 
-  // Pod watcher callback.
+  // Pod watch callback.
   void PodCallback(
-      MetadataUpdater::UpdateCallback callback, json::value result) const
-      throw(json::Exception);
+      MetadataUpdater::UpdateCallback callback, const json::Object* pod,
+      Timestamp collected_at, bool is_deleted) const throw(json::Exception);
 
   // Compute the associations for a given pod.
   json::value ComputePodAssociations(const json::Object* pod) const
