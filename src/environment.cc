@@ -18,6 +18,7 @@
 
 #include <boost/network/protocol/http/client.hpp>
 #include <fstream>
+#include <sstream>
 
 #include "format.h"
 #include "logging.h"
@@ -203,6 +204,36 @@ const std::string& Environment::KubernetesClusterName() const {
     }
   }
   return kubernetes_cluster_name_;
+}
+
+const std::string& Environment::KubernetesClusterLocation() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (kubernetes_cluster_location_.empty()) {
+    if (!config_.KubernetesClusterLocation().empty()) {
+      kubernetes_cluster_location_ = config_.KubernetesClusterLocation();
+    } else {
+      // Query the metadata server.
+      kubernetes_cluster_location_ =
+          GetMetadataString("instance/attributes/cluster-location");
+      // Fall back on kube-env for older clusters.
+      if (kubernetes_cluster_location_.empty()) {
+        // Get the kube-env.
+        const std::string kube_env =
+            GetMetadataString("instance/attributes/kube-env");
+        // kube-env is a list of NAME: VALUE pairs, one per line, unsorted.
+        // The actual location is in the ZONE variable.
+        // TODO: Refactor this into GetKubeEnv("ZONE") in kubernetes.cc.
+        std::istringstream in(kube_env);
+        for (std::string line; std::getline(in, line); ) {
+          if (line.find("ZONE: ") == 0) {
+            kubernetes_cluster_location_ = line.substr(line.find(':') + 2);
+            break;
+          }
+        }
+      }
+    }
+  }
+  return kubernetes_cluster_location_;
 }
 
 const std::string& Environment::CredentialsClientEmail() const {
