@@ -317,7 +317,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
     k8s_container_name,
   };
 
-  if (container_status) {
+  if (container_status && container_status->Has("containerID")) {
     std::size_t docker_prefix_length = sizeof(kDockerIdPrefix) - 1;
 
     const std::string docker_id =
