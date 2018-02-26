@@ -550,7 +550,7 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
   }
   try {
     http::client::response response = client.get(request);
-    if (status(response) != 200) {
+    if (status(response) >= 300) {
       throw boost::system::system_error(
           boost::system::errc::make_error_code(boost::system::errc::not_connected),
           format::Substitute("Server responded with '{{message}}' ({{code}})",

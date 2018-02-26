@@ -237,7 +237,7 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
                 << " body: " << request.body();
     }
     http::client::response response = client.post(request);
-    if (status(response) != 200) {
+    if (status(response) >= 300) {
       throw boost::system::system_error(
           boost::system::errc::make_error_code(boost::system::errc::not_connected),
           format::Substitute("Server responded with '{{message}}' ({{code}})",

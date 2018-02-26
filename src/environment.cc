@@ -86,7 +86,7 @@ std::string Environment::GetMetadataString(const std::string& path) const {
   request << boost::network::header("Metadata-Flavor", "Google");
   try {
     http::client::response response = client.get(request);
-    if (status(response) == 200) {
+    if (status(response) < 300) {
       return body(response);
     } else {
       throw boost::system::system_error(

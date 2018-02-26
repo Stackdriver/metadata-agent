@@ -178,7 +178,7 @@ void MetadataReporter::ReportMetadata() {
         LOG(INFO) << "Metadata request sent successfully";
       }
     } catch (const boost::system::system_error& e) {
-      LOG(ERROR) << "Unsuccessful: " << e.what();
+      LOG(ERROR) << "Metadata request unsuccessful: " << e.what();
     }
     std::this_thread::sleep_for(period_);
   }
@@ -210,7 +210,7 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
   request << boost::network::header("Authorization", auth_header);
   request << boost::network::body(request_body);
   http::client::response response = client.post(request);
-  if (status(response) != 200) {
+  if (status(response) >= 300) {
     throw boost::system::system_error(
         boost::system::errc::make_error_code(boost::system::errc::not_connected),
         format::Substitute("Server responded with '{{message}}' ({{code}})",
