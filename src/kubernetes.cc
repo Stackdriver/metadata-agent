@@ -572,39 +572,36 @@ struct Watcher {
   Watcher(std::function<void(json::value)> event_callback,
           std::unique_lock<std::mutex>&& completion, bool verbose)
       : completion_(std::move(completion)), event_callback_(event_callback),
-        remaining_chunk_bytes_(0), verbose_(verbose) {}
+        remaining_chunk_bytes_(0), verbose_(verbose), exception_() {}
   ~Watcher() {}  // Unlocks the completion_ lock.
+
+ private:
+  // A representation of all watch-related errors.
+  class WatcherException {
+   public:
+    WatcherException(const std::string& what) : explanation_(what) {}
+    const std::string& what() const { return explanation_; }
+   private:
+    std::string explanation_;
+  };
+
+ public:
   void operator()(const boost::iterator_range<const char*>& range,
                   const boost::system::error_code& error) {
     if (!error) {
-//#ifdef VERBOSE
-//      LOG(DEBUG) << "Watch notification: '"
-//                 << std::string(std::begin(range), std::end(range))
-//                 << "'";
-//#endif
-      boost::iterator_range<const char*> pos = range;
-      if (remaining_chunk_bytes_ != 0) {
-        pos = ReadNextChunk(pos);
-//#ifdef VERBOSE
-//        LOG(DEBUG) << "Read another chunk; body now is '" << body_ << "'; "
-//                   << remaining_chunk_bytes_ << " bytes remaining";
-//#endif
+      if (!exception_.empty()) {
+        // We've encountered an unrecoverable error -- just ignore the rest of
+        // the input.
+        return;
       }
 
-      if (remaining_chunk_bytes_ == 0) {
-        // Invoke the callback.
-        CompleteChunk();
-
-        // Process the next batch.
-        while (remaining_chunk_bytes_ == 0 &&
-               std::begin(pos) != std::end(pos)) {
-          pos = StartNewChunk(pos);
-        }
+      try {
 //#ifdef VERBOSE
-//        LOG(DEBUG) << "Started new chunk; " << remaining_chunk_bytes_
-//                   << " bytes remaining";
+//        LOG(DEBUG) << "Watch notification: '"
+//                   << std::string(std::begin(range), std::end(range))
+//                   << "'";
 //#endif
-
+        boost::iterator_range<const char*> pos = range;
         if (remaining_chunk_bytes_ != 0) {
           pos = ReadNextChunk(pos);
 //#ifdef VERBOSE
@@ -612,6 +609,32 @@ struct Watcher {
 //                     << remaining_chunk_bytes_ << " bytes remaining";
 //#endif
         }
+
+        if (remaining_chunk_bytes_ == 0) {
+          // Invoke the callback.
+          CompleteChunk();
+
+          // Process the next batch.
+          while (remaining_chunk_bytes_ == 0 &&
+                 std::begin(pos) != std::end(pos)) {
+            pos = StartNewChunk(pos);
+          }
+//#ifdef VERBOSE
+//          LOG(DEBUG) << "Started new chunk; " << remaining_chunk_bytes_
+//                     << " bytes remaining";
+//#endif
+
+          if (remaining_chunk_bytes_ != 0) {
+            pos = ReadNextChunk(pos);
+//#ifdef VERBOSE
+//            LOG(DEBUG) << "Read another chunk; body now is '" << body_ << "'; "
+//                       << remaining_chunk_bytes_ << " bytes remaining";
+//#endif
+          }
+        }
+      } catch (const WatcherException& e) {
+        LOG(ERROR) << "Callback got exception " << e.what();
+        exception_ = e.what();
       }
     } else {
       if (error == boost::asio::error::eof) {
@@ -628,9 +651,16 @@ struct Watcher {
     }
   }
 
+  // The watch callback may throw an exception. Because the watcher runs in a
+  // separate thread, the exception will be preserved when the watcher exits,
+  // and can be accessed via this function. An empty string is returned when
+  // there was no exception.
+  const std::string& exception() const { return exception_; }
+
  private:
   boost::iterator_range<const char*>
-  StartNewChunk(const boost::iterator_range<const char*>& range) {
+  StartNewChunk(const boost::iterator_range<const char*>& range)
+      throw(WatcherException) {
     if (remaining_chunk_bytes_ != 0) {
       LOG(ERROR) << "Starting new chunk with " << remaining_chunk_bytes_
                  << " bytes remaining";
@@ -651,15 +681,12 @@ struct Watcher {
 #endif
       return boost::iterator_range<const char*>(iter, end);
     } else if (iter == end) {
-      std::string line(begin, end);
-      LOG(ERROR) << "Invalid chunked encoding: '"
-                 << std::string(begin, end)
-                 << "'; exiting";
-      if (verbose_) {
-        LOG(INFO) << "Unlocking completion mutex";
-      }
-      completion_.unlock();
-      return boost::iterator_range<const char*>(end, end);
+      throw WatcherException(boost::algorithm::join(
+          std::vector<std::string>{
+              "Invalid chunked encoding: '",
+              std::string(begin, end),
+              "'; exiting"
+          }, ""));
     }
     std::string line(begin, iter);
     iter = std::next(iter, crlf.size());
@@ -672,10 +699,11 @@ struct Watcher {
   }
 
   boost::iterator_range<const char*>
-  ReadNextChunk(const boost::iterator_range<const char*>& range) {
+  ReadNextChunk(const boost::iterator_range<const char*>& range)
+      throw(WatcherException) {
     if (remaining_chunk_bytes_ == 0) {
       LOG(ERROR) << "Asked to read next chunk with no bytes remaining";
-      return range;
+      return range;  // TODO: should this throw an exception instead?
     }
 
     const std::string crlf("\r\n");
@@ -691,7 +719,7 @@ struct Watcher {
     return boost::iterator_range<const char*>(begin, end);
   }
 
-  void CompleteChunk() {
+  void CompleteChunk() throw(WatcherException) {
     if (body_.empty()) {
 #ifdef VERBOSE
       LOG(DEBUG) << "Skipping empty watch notification";
@@ -716,7 +744,7 @@ struct Watcher {
 //        LOG(DEBUG) << "All callbacks on '" << body_ << "' completed";
 //#endif
       } catch (const json::Exception& e) {
-        LOG(ERROR) << e.what();
+        throw WatcherException("JSON error: " + e.what());
       }
     }
   }
@@ -726,6 +754,7 @@ struct Watcher {
   std::string body_;
   size_t remaining_chunk_bytes_;
   bool verbose_;
+  std::string exception_;
 };
 
 void EventCallback(
@@ -775,6 +804,9 @@ void KubernetesReader::WatchMaster(
       LOG(INFO) << "Waiting for completion";
     }
     std::lock_guard<std::mutex> await_completion(completion_mutex);
+    if (!watcher.exception().empty()) {
+      throw QueryException(watcher.exception());
+    }
     if (config_.VerboseLogging()) {
       LOG(INFO) << "WatchMaster completed " << body(response);
     }
@@ -999,8 +1031,9 @@ void KubernetesReader::WatchPods(MetadataUpdater::UpdateCallback callback)
                           std::placeholders::_2, std::placeholders::_3));
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
+    LOG(ERROR) << "No more pod metadata will be collected";
   } catch (const KubernetesReader::QueryException& e) {
-    // Already logged.
+    LOG(ERROR) << "No more pod metadata will be collected";
   }
   LOG(INFO) << "Watch thread (pods) exiting";
 }
@@ -1034,8 +1067,9 @@ void KubernetesReader::WatchNode(MetadataUpdater::UpdateCallback callback)
                           std::placeholders::_2, std::placeholders::_3));
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
+    LOG(ERROR) << "No more node metadata will be collected";
   } catch (const KubernetesReader::QueryException& e) {
-    // Already logged.
+    LOG(ERROR) << "No more node metadata will be collected";
   }
   LOG(INFO) << "Watch thread (node) exiting";
 }
