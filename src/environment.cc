@@ -19,6 +19,7 @@
 #include <boost/network/protocol/http/client.hpp>
 #include <fstream>
 
+#include "format.h"
 #include "logging.h"
 
 namespace http = boost::network::http;
@@ -85,7 +86,15 @@ std::string Environment::GetMetadataString(const std::string& path) const {
   request << boost::network::header("Metadata-Flavor", "Google");
   try {
     http::client::response response = client.get(request);
-    return body(response);
+    if (status(response) < 300) {
+      return body(response);
+    } else {
+      throw boost::system::system_error(
+          boost::system::errc::make_error_code(boost::system::errc::not_connected),
+          format::Substitute("Server responded with '{{message}}' ({{code}})",
+                             {{"message", status_message(response)},
+                              {"code", format::str(status(response))}}));
+    }
   } catch (const boost::system::system_error& e) {
     LOG(ERROR) << "Exception: " << e.what()
                << ": '" << kGceMetadataServerAddress << path << "'";

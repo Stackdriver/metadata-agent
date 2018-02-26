@@ -21,6 +21,7 @@
 #include <boost/network/protocol/http/client.hpp>
 #include <chrono>
 
+#include "format.h"
 #include "instance.h"
 #include "json.h"
 #include "logging.h"
@@ -169,6 +170,13 @@ json::value DockerReader::QueryDocker(const std::string& path) const
   }
   try {
     http::local_client::response response = client.get(request);
+    if (status(response) >= 300) {
+      throw boost::system::system_error(
+          boost::system::errc::make_error_code(boost::system::errc::not_connected),
+          format::Substitute("Server responded with '{{message}}' ({{code}})",
+                             {{"message", status_message(response)},
+                              {"code", format::str(status(response))}}));
+    }
 #ifdef VERBOSE
     LOG(DEBUG) << "QueryDocker: Response: " << body(response);
 #endif

@@ -28,6 +28,7 @@
 #include <openssl/pkcs12.h>
 
 #include "base64.h"
+#include "format.h"
 #include "http_common.h"
 #include "json.h"
 #include "logging.h"
@@ -236,6 +237,13 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
                 << " body: " << request.body();
     }
     http::client::response response = client.post(request);
+    if (status(response) >= 300) {
+      throw boost::system::system_error(
+          boost::system::errc::make_error_code(boost::system::errc::not_connected),
+          format::Substitute("Server responded with '{{message}}' ({{code}})",
+                             {{"message", status_message(response)},
+                              {"code", format::str(status(response))}}));
+    }
     if (environment_.config().VerboseLogging()) {
       LOG(INFO) << "Token response: " << body(response);
     }
@@ -247,6 +255,9 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
     return parsed_token;
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
+    return nullptr;
+  } catch (const boost::system::system_error& e) {
+    LOG(ERROR) << "HTTP error: " << e.what();
     return nullptr;
   }
 }

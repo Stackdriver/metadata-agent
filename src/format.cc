@@ -20,6 +20,19 @@
 
 namespace format {
 
+namespace {
+template<class T>
+std::string AsString(T v) {
+  std::ostringstream out;
+  out << v;
+  return out.str();
+}
+}
+
+std::string str(int i) { return AsString(i); }
+std::string str(double d) { return AsString(d); }
+std::string str(bool b) { return AsString(b); }
+
 std::string Substitute(const std::string& format,
                        const std::map<std::string, std::string>&& params)
     throw(Exception) {
