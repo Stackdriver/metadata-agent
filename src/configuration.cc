@@ -33,6 +33,7 @@ constexpr const int kMetadataApiDefaultNumThreads = 3;
 constexpr const int kMetadataApiDefaultPort = 8000;
 constexpr const char kMetadataApiDefaultResourceTypeSeparator[] = ".";
 constexpr const int kMetadataReporterDefaultIntervalSeconds = 60;
+constexpr const int kMetadataReporterDefaultPurgeDeleted = false;
 constexpr const char kMetadataIngestionDefaultEndpointFormat[] =
     "https://stackdriver.googleapis.com/v1beta2/projects/{{project_id}}"
     "/resourceMetadata:batchUpdate";
@@ -70,6 +71,8 @@ MetadataAgentConfiguration::MetadataAgentConfiguration()
           kMetadataApiDefaultResourceTypeSeparator),
       metadata_reporter_interval_seconds_(
           kMetadataReporterDefaultIntervalSeconds),
+      metadata_reporter_purge_deleted_(
+          kMetadataReporterDefaultPurgeDeleted),
       metadata_ingestion_endpoint_format_(
           kMetadataIngestionDefaultEndpointFormat),
       metadata_ingestion_request_size_limit_bytes_(
@@ -147,6 +150,9 @@ void MetadataAgentConfiguration::ParseConfigFile(const std::string& filename) {
   metadata_reporter_interval_seconds_ =
       config["MetadataReporterIntervalSeconds"].as<int>(
           kMetadataReporterDefaultIntervalSeconds);
+  metadata_reporter_purge_deleted_ =
+      config["MetadataReporterPurgeDeleted"].as<bool>(
+          kMetadataReporterDefaultPurgeDeleted);
   metadata_ingestion_endpoint_format_ =
       config["MetadataIngestionEndpointFormat"].as<std::string>(
           kMetadataIngestionDefaultEndpointFormat);

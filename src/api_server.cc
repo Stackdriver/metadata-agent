@@ -66,7 +66,7 @@ class MetadataApiServer {
 
 class MetadataReporter {
  public:
-  MetadataReporter(const MetadataAgent& agent, double period_s);
+  MetadataReporter(MetadataAgent* agent, double period_s);
   ~MetadataReporter();
 
  private:
@@ -79,7 +79,7 @@ class MetadataReporter {
       std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata)
       throw (boost::system::system_error);
 
-  const MetadataAgent& agent_;
+  MetadataAgent* agent_;
   Environment environment_;
   OAuth2 auth_;
   // The reporting period in seconds.
@@ -151,9 +151,9 @@ MetadataApiServer::~MetadataApiServer() {
   }
 }
 
-MetadataReporter::MetadataReporter(const MetadataAgent& agent, double period_s)
+MetadataReporter::MetadataReporter(MetadataAgent* agent, double period_s)
     : agent_(agent),
-      environment_(agent.config_),
+      environment_(agent->config_),
       auth_(environment_),
       period_(period_s),
       reporter_thread_(&MetadataReporter::ReportMetadata, this) {}
@@ -169,13 +169,16 @@ void MetadataReporter::ReportMetadata() {
   std::this_thread::sleep_for(std::chrono::seconds(3));
   // TODO: Do we need to be able to stop this?
   while (true) {
-    if (agent_.config_.VerboseLogging()) {
+    if (agent_->config_.VerboseLogging()) {
       LOG(INFO) << "Sending metadata request to server";
     }
     try {
-      SendMetadata(agent_.GetMetadataMap());
-      if (agent_.config_.VerboseLogging()) {
+      SendMetadata(agent_->GetMetadataMap());
+      if (agent_->config_.VerboseLogging()) {
         LOG(INFO) << "Metadata request sent successfully";
+      }
+      if (agent_->config_.MetadataReporterPurgeDeleted()) {
+        agent_->PurgeDeletedEntries();
       }
     } catch (const boost::system::system_error& e) {
       LOG(ERROR) << "Metadata request unsuccessful: " << e.what();
@@ -229,20 +232,20 @@ void MetadataReporter::SendMetadata(
     std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata)
     throw (boost::system::system_error) {
   if (metadata.empty()) {
-    if (agent_.config_.VerboseLogging()) {
+    if (agent_->config_.VerboseLogging()) {
       LOG(INFO) << "No data to send";
     }
     return;
   }
 
-  if (agent_.config_.VerboseLogging()) {
+  if (agent_->config_.VerboseLogging()) {
     LOG(INFO) << "Sending request to the server";
   }
   const std::string project_id = environment_.NumericProjectId();
   // The endpoint template is expected to be of the form
   // "https://stackdriver.googleapis.com/.../projects/{{project_id}}/...".
   const std::string endpoint =
-      format::Substitute(agent_.config_.MetadataIngestionEndpointFormat(),
+      format::Substitute(agent_->config_.MetadataIngestionEndpointFormat(),
                          {{"project_id", project_id}});
   const std::string auth_header = auth_.GetAuthHeaderValue();
 
@@ -252,7 +255,7 @@ void MetadataReporter::SendMetadata(
   const int empty_size = empty_request->ToString().size();
 
   const int limit_bytes =
-      agent_.config_.MetadataIngestionRequestSizeLimitBytes();
+      agent_->config_.MetadataIngestionRequestSizeLimitBytes();
   int total_size = empty_size;
 
   std::vector<json::value> entries;
@@ -281,7 +284,7 @@ void MetadataReporter::SendMetadata(
     }
     if (total_size + size > limit_bytes) {
       SendMetadataRequest(std::move(entries), endpoint, auth_header,
-                          agent_.config_.VerboseLogging());
+                          agent_->config_.VerboseLogging());
       entries.clear();
       total_size = empty_size;
     }
@@ -290,7 +293,7 @@ void MetadataReporter::SendMetadata(
   }
   if (!entries.empty()) {
     SendMetadataRequest(std::move(entries), endpoint, auth_header,
-                        agent_.config_.VerboseLogging());
+                        agent_->config_.VerboseLogging());
   }
 }
 
@@ -345,12 +348,38 @@ std::map<MonitoredResource, MetadataAgent::Metadata>
   return result;
 }
 
+void MetadataAgent::PurgeDeletedEntries() {
+  std::lock_guard<std::mutex> lock(metadata_mu_);
+
+  for (auto it = metadata_map_.begin(); it != metadata_map_.end(); ) {
+    const MonitoredResource& resource = it->first;
+    const Metadata& entry = it->second;
+    if (entry.is_deleted) {
+      if (config_.VerboseLogging()) {
+        LOG(INFO) << "Purging metadata entry " << resource << "->{"
+                  << "version: " << entry.version << ", "
+                  << "is_deleted: " << entry.is_deleted << ", "
+                  << "created_at: " << rfc3339::ToString(entry.created_at)
+                  << ", "
+                  << "collected_at: " << rfc3339::ToString(entry.collected_at)
+                  << ", "
+                  << "metadata: " << *entry.metadata << ", "
+                  << "ignore: " << entry.ignore
+                  << "}";
+      }
+      it = metadata_map_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
 void MetadataAgent::start() {
   metadata_api_server_.reset(new MetadataApiServer(
       *this, config_.MetadataApiNumThreads(), "0.0.0.0",
       config_.MetadataApiPort()));
   reporter_.reset(new MetadataReporter(
-      *this, config_.MetadataReporterIntervalSeconds()));
+      this, config_.MetadataReporterIntervalSeconds()));
 }
 
 }

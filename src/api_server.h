@@ -104,6 +104,7 @@ class MetadataAgent {
   friend class MetadataReporter;
 
   std::map<MonitoredResource, Metadata> GetMetadataMap() const;
+  void PurgeDeletedEntries();
 
   const MetadataAgentConfiguration& config_;
 
