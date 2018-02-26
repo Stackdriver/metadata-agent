@@ -63,35 +63,36 @@ class KubernetesReader {
   // watches for parsed JSON responses. The path has to start with "/".
   // Invokes callback for every notification.
   void WatchMaster(
-    const std::string& path, std::function<void(json::value)> callback) const
+    const std::string& path,
+    std::function<void(const json::Object*, Timestamp, bool)> callback) const
     throw(QueryException, json::Exception);
 
-  // Node watcher callback.
+  // Node watch callback.
   void NodeCallback(
-      MetadataUpdater::UpdateCallback callback, json::value result) const
-      throw(json::Exception);
+      MetadataUpdater::UpdateCallback callback, const json::Object* node,
+      Timestamp collected_at, bool is_deleted) const throw(json::Exception);
 
-  // Pod watcher callback.
+  // Pod watch callback.
   void PodCallback(
-      MetadataUpdater::UpdateCallback callback, json::value result) const
-      throw(json::Exception);
+      MetadataUpdater::UpdateCallback callback, const json::Object* pod,
+      Timestamp collected_at, bool is_deleted) const throw(json::Exception);
 
   // Compute the associations for a given pod.
   json::value ComputePodAssociations(const json::Object* pod) const
       throw(json::Exception);
   // Given a node object, return the associated metadata.
   MetadataUpdater::ResourceMetadata GetNodeMetadata(
-      json::value raw_node, Timestamp collected_at) const
+      json::value raw_node, Timestamp collected_at, bool is_deleted) const
       throw(json::Exception);
   // Given a pod object, return the associated metadata.
   MetadataUpdater::ResourceMetadata GetPodMetadata(
-      json::value raw_pod, json::value associations, Timestamp collected_at)
-      const throw(json::Exception);
+      json::value raw_pod, json::value associations, Timestamp collected_at,
+      bool is_deleted) const throw(json::Exception);
   // Given a pod object and container info, return the container metadata.
   MetadataUpdater::ResourceMetadata GetContainerMetadata(
       const json::Object* pod, const json::Object* container_spec,
       const json::Object* container_status, json::value associations,
-      Timestamp collected_at) const throw(json::Exception);
+      Timestamp collected_at, bool is_deleted) const throw(json::Exception);
   // Given a pod object and container name, return the legacy resource.
   // The returned "metadata" field will be Metadata::IGNORED.
   MetadataUpdater::ResourceMetadata GetLegacyResource(
@@ -99,7 +100,7 @@ class KubernetesReader {
       throw(json::Exception);
   // Given a pod object, return the associated pod and container metadata.
   std::vector<MetadataUpdater::ResourceMetadata> GetPodAndContainerMetadata(
-      const json::Object* pod, Timestamp collected_at) const
+      const json::Object* pod, Timestamp collected_at, bool is_deleted) const
       throw(json::Exception);
 
   // Gets the name of the node the agent is running on.
