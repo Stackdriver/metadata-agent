@@ -961,6 +961,18 @@ json::value KubernetesReader::FindTopLevelOwner(
   return FindTopLevelOwner(ns, GetOwner(ns, ref->As<json::Object>()));
 }
 
+const bool KubernetesReader::IsConfigured() const {
+  try {
+    json::value raw_node = QueryMaster(
+        std::string(kKubernetesEndpointPath) + "/nodes");
+
+    return true;
+  } catch (const QueryException& e) {
+    // Already logged.
+    return false;
+  }
+}
+
 void KubernetesReader::PodCallback(
     MetadataUpdater::UpdateCallback callback,
     const json::Object* pod, Timestamp collected_at, bool is_deleted) const
@@ -1035,6 +1047,15 @@ void KubernetesReader::WatchNode(MetadataUpdater::UpdateCallback callback)
 }
 
 void KubernetesUpdater::start() {
+  if (!reader_.IsConfigured()) {
+    LOG(ERROR) << "Kubernetes reader is not configured properly.";
+    return;
+  }
+
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Kubernetes reader is configured properly.";
+  }
+
   PollingMetadataUpdater::start();
   if (config().KubernetesUseWatch()) {
     // Wrap the bind expression into a function to use as a bind argument.

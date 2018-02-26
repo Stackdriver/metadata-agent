@@ -38,6 +38,10 @@ class KubernetesReader {
   // A Kubernetes metadata query function.
   std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
+  // Validates that the reader is configured properly.
+  // Returns a bool that represents if it's configured properly.
+  const bool IsConfigured() const;
+
   // Node watcher.
   void WatchNode(MetadataUpdater::UpdateCallback callback) const;
 

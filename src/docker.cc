@@ -46,6 +46,17 @@ constexpr const char kDockerContainerResourcePrefix[] = "container";
 DockerReader::DockerReader(const MetadataAgentConfiguration& config)
     : config_(config), environment_(config) {}
 
+const bool DockerReader::IsConfigured() const {
+  try {
+    QueryDocker(std::string(kDockerEndpointPath) + "/json?all=true");
+
+    return true;
+  } catch (const QueryException& e) {
+    // Already logged.
+    return false;
+  }
+}
+
 MetadataUpdater::ResourceMetadata DockerReader::GetContainerMetadata(
     const json::Object* container, Timestamp collected_at) const
     throw(json::Exception) {
@@ -185,6 +196,19 @@ json::value DockerReader::QueryDocker(const std::string& path) const
     LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
     throw QueryException(endpoint + " -> " + e.what());
   }
+}
+
+void DockerUpdater::start() {
+  if (!reader_.IsConfigured()) {
+    LOG(ERROR) << "Docker reader is not configured properly.";
+    return;
+  }
+
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Docker reader is configured properly.";
+  }
+
+  PollingMetadataUpdater::start();
 }
 
 }

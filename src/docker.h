@@ -32,6 +32,10 @@ class DockerReader {
   // A Docker metadata query function.
   std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
+  // Validates that the reader is configured properly.
+  // Returns a bool that represents if it's configured properly.
+  const bool IsConfigured() const;
+
  private:
   // A representation of all query-related errors.
   class QueryException {
@@ -62,6 +66,8 @@ class DockerUpdater : public PollingMetadataUpdater {
       : reader_(server->config()), PollingMetadataUpdater(
           server, server->config().DockerUpdaterIntervalSeconds(),
           std::bind(&google::DockerReader::MetadataQuery, &reader_)) { }
+
+  void start();
  private:
   DockerReader reader_;
 };
