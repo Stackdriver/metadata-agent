@@ -822,6 +822,8 @@ void KubernetesReader::WatchMaster(
     }
     std::lock_guard<std::mutex> await_completion(completion_mutex);
     if (!watcher.exception().empty()) {
+      LOG(ERROR) << "Exception from the watcher thread: "
+                 << watcher.exception();
       throw QueryException(watcher.exception());
     }
     if (config_.VerboseLogging()) {
