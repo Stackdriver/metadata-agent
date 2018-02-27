@@ -67,7 +67,7 @@ export DISTRO
 PKG_NAME=stackdriver-metadata
 PKG_VERSION=0.0.16
 PKG_RELEASE=1
-PKG_MAINTAINER=Stackdriver Engineering <engineering@stackdriver.com>
+PKG_MAINTAINER=Stackdriver Agents <stackdriver-agents@google.com>
 
 DOCKER_VERSION=0.2
 DOCKER_IMAGE=us.gcr.io/container-monitoring-storage/stackdriver-metadata-agent
