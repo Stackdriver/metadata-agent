@@ -640,7 +640,7 @@ struct Watcher {
         }
       } catch (const WatcherException& e) {
         LOG(ERROR) << name_ << " => "
-                   << "Callback got exception " << e.what();
+                   << "Callback got exception: " << e.what();
         exception_ = e.what();
       }
     } else {
@@ -693,12 +693,9 @@ struct Watcher {
 #endif
       return boost::iterator_range<const char*>(iter, end);
     } else if (iter == end) {
-      throw WatcherException(boost::algorithm::join(
-          std::vector<std::string>{
-              "Invalid chunked encoding: '",
-              std::string(begin, end),
-              "'; exiting"
-          }, ""));
+      throw WatcherException("Invalid chunked encoding: '" +
+                             std::string(begin, end) +
+                             "'; exiting");
     }
     std::string line(begin, iter);
     iter = std::next(iter, crlf.size());
@@ -715,9 +712,8 @@ struct Watcher {
   ReadNextChunk(const boost::iterator_range<const char*>& range)
       throw(WatcherException) {
     if (remaining_chunk_bytes_ == 0) {
-      LOG(ERROR) << name_ << " => "
-                 << "Asked to read next chunk with no bytes remaining";
-      return range;  // TODO: should this throw an exception instead?
+      throw WatcherException(
+          "Asked to read next chunk with no bytes remaining");
     }
 
     const std::string crlf("\r\n");
