@@ -47,6 +47,7 @@ class InstanceUpdater : public PollingMetadataUpdater {
   InstanceUpdater(MetadataAgent* server)
       : reader_(server->config()), PollingMetadataUpdater(
           server, 
+          &reader_,
           "InstanceUpdater",
           server->config().InstanceUpdaterIntervalSeconds(),
           std::bind(&google::InstanceReader::MetadataQuery, &reader_)) { }
