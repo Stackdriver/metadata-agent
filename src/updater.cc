@@ -27,6 +27,10 @@ MetadataUpdater::MetadataUpdater(MetadataAgent* store)
 
 MetadataUpdater::~MetadataUpdater() {}
 
+bool MetadataUpdater::ValidateConfiguration() const {
+  return true;
+}
+
 PollingMetadataUpdater::PollingMetadataUpdater(
     MetadataAgent* store, double period_s,
     std::function<std::vector<ResourceMetadata>()> query_metadata)
@@ -42,7 +46,11 @@ PollingMetadataUpdater::~PollingMetadataUpdater() {
   }
 }
 
-void PollingMetadataUpdater::start() {
+bool PollingMetadataUpdater::start() {
+  if (!ValidateConfiguration()) {
+    return false;
+  }
+
   timer_.lock();
   if (config().VerboseLogging()) {
     LOG(INFO) << "Timer locked";
@@ -51,6 +59,8 @@ void PollingMetadataUpdater::start() {
     reporter_thread_ =
         std::thread(&PollingMetadataUpdater::PollForMetadata, this);
   }
+
+  return true;
 }
 
 void PollingMetadataUpdater::stop() {

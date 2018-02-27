@@ -22,11 +22,12 @@
 
 #include "configuration.h"
 #include "environment.h"
+#include "reader.h"
 #include "updater.h"
 
 namespace google {
 
-class DockerReader {
+class DockerReader : public MetadataReader {
  public:
   DockerReader(const MetadataAgentConfiguration& config);
   // A Docker metadata query function.
@@ -34,7 +35,7 @@ class DockerReader {
 
   // Validates that the reader is configured properly.
   // Returns a bool that represents if it's configured properly.
-  const bool IsConfigured() const;
+  bool ValidateConfiguration() const;
 
  private:
   // A representation of all query-related errors.
@@ -67,7 +68,9 @@ class DockerUpdater : public PollingMetadataUpdater {
           server, server->config().DockerUpdaterIntervalSeconds(),
           std::bind(&google::DockerReader::MetadataQuery, &reader_)) { }
 
-  void start();
+  // Validates that the reader is configured properly.
+  // Returns a bool that represents if it's configured properly.
+  bool ValidateConfiguration() const;
  private:
   DockerReader reader_;
 };

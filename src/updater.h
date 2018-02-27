@@ -53,8 +53,10 @@ class MetadataUpdater {
     return store_->config();
   }
 
+  virtual bool ValidateConfiguration() const;
+
   // Starts updating.
-  virtual void start() = 0;
+  virtual bool start() = 0;
 
   // Stops updating.
   virtual void stop() = 0;
@@ -86,7 +88,7 @@ class PollingMetadataUpdater : public MetadataUpdater {
       std::function<std::vector<ResourceMetadata>()> query_metadata);
   ~PollingMetadataUpdater();
 
-  void start();
+  bool start();
   void stop();
 
  private:
