@@ -22,8 +22,9 @@
 
 namespace google {
 
-MetadataUpdater::MetadataUpdater(MetadataAgent* store)
-    : store_(store) {}
+MetadataUpdater::MetadataUpdater(MetadataAgent* store, std::string name)
+    : store_(store),
+      name_(name) {}
 
 MetadataUpdater::~MetadataUpdater() {}
 
@@ -32,9 +33,9 @@ bool MetadataUpdater::ValidateConfiguration() const {
 }
 
 PollingMetadataUpdater::PollingMetadataUpdater(
-    MetadataAgent* store, double period_s,
+    MetadataAgent* store, std::string name, double period_s,
     std::function<std::vector<ResourceMetadata>()> query_metadata)
-    : MetadataUpdater(store),
+    : MetadataUpdater(store, name),
       period_(period_s),
       query_metadata_(query_metadata),
       timer_(),
@@ -48,6 +49,7 @@ PollingMetadataUpdater::~PollingMetadataUpdater() {
 
 bool PollingMetadataUpdater::start() {
   if (!ValidateConfiguration()) {
+    LOG(ERROR) << "Failed to validate configuration for " << name_;
     return false;
   }
 

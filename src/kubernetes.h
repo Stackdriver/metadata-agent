@@ -152,7 +152,9 @@ class KubernetesUpdater : public PollingMetadataUpdater {
  public:
   KubernetesUpdater(MetadataAgent* server)
       : reader_(server->config()), PollingMetadataUpdater(
-          server, server->config().KubernetesUpdaterIntervalSeconds(),
+          server, 
+          "KubernetesUpdater",
+          server->config().KubernetesUpdaterIntervalSeconds(),
           std::bind(&google::KubernetesReader::MetadataQuery, &reader_)) { }
   ~KubernetesUpdater() {
     if (node_watch_thread_.joinable()) {

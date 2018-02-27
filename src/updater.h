@@ -46,7 +46,7 @@ class MetadataUpdater {
     MetadataAgent::Metadata metadata;
   };
 
-  MetadataUpdater(MetadataAgent* store);
+  MetadataUpdater(MetadataAgent* store, std::string name);
   virtual ~MetadataUpdater();
 
   const MetadataAgentConfiguration& config() {
@@ -74,6 +74,8 @@ class MetadataUpdater {
   void UpdateMetadataCallback(ResourceMetadata&& result) {
     store_->UpdateMetadata(result.resource, std::move(result.metadata));
   }
+  
+  std::string name_;
 
  private:
   // The store for the metadata.
@@ -84,7 +86,7 @@ class MetadataUpdater {
 class PollingMetadataUpdater : public MetadataUpdater {
  public:
   PollingMetadataUpdater(
-      MetadataAgent* store, double period_s,
+      MetadataAgent* store, std::string name, double period_s,
       std::function<std::vector<ResourceMetadata>()> query_metadata);
   ~PollingMetadataUpdater();
 
