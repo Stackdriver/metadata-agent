@@ -574,7 +574,7 @@ struct Watcher {
           std::unique_lock<std::mutex>&& completion, bool verbose)
       : name_("Watcher(" + endpoint + ")"),
         completion_(std::move(completion)), event_callback_(event_callback),
-        remaining_chunk_bytes_(0), verbose_(verbose), exception_() {}
+        remaining_chunk_bytes_(0), verbose_(verbose), exception_message_() {}
   ~Watcher() {}  // Unlocks the completion_ lock.
 
  private:
@@ -591,7 +591,7 @@ struct Watcher {
   void operator()(const boost::iterator_range<const char*>& range,
                   const boost::system::error_code& error) {
     if (!error) {
-      if (!exception_.empty()) {
+      if (!exception_message_.empty()) {
         // We've encountered an unrecoverable error -- just ignore the rest of
         // the input.
         return;
@@ -641,7 +641,7 @@ struct Watcher {
       } catch (const WatcherException& e) {
         LOG(ERROR) << name_ << " => "
                    << "Callback got exception: " << e.what();
-        exception_ = e.what();
+        exception_message_ = e.what();
       }
     } else {
       if (error == boost::asio::error::eof) {
@@ -665,7 +665,7 @@ struct Watcher {
   // separate thread, the exception will be preserved when the watcher exits,
   // and can be accessed via this function. An empty string is returned when
   // there was no exception.
-  const std::string& exception() const { return exception_; }
+  const std::string& exception() const { return exception_message_; }
 
  private:
   boost::iterator_range<const char*>
@@ -770,7 +770,7 @@ struct Watcher {
   std::string body_;
   size_t remaining_chunk_bytes_;
   bool verbose_;
-  std::string exception_;
+  std::string exception_message_;
 };
 
 void EventCallback(
