@@ -963,8 +963,7 @@ json::value KubernetesReader::FindTopLevelOwner(
 
 bool KubernetesReader::ValidateConfiguration() const {
   try {
-    (void) QueryMaster(
-        std::string(kKubernetesEndpointPath) + "/nodes?limit=1");
+    (void) QueryMaster(std::string(kKubernetesEndpointPath) + "/nodes?limit=1");
   } catch (const QueryException& e) {
     // Already logged.
     return false;
