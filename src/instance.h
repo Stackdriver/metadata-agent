@@ -22,13 +22,12 @@
 
 #include "configuration.h"
 #include "environment.h"
-#include "reader.h"
 #include "resource.h"
 #include "updater.h"
 
 namespace google {
 
-class InstanceReader : public MetadataReader {
+class InstanceReader {
  public:
   InstanceReader(const MetadataAgentConfiguration& config);
   // A Instance metadata query function.

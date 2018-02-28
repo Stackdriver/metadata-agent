@@ -26,7 +26,6 @@ SRCS=\
      metadatad.cc \
      api_server.cc \
      configuration.cc \
-     reader.cc \
      updater.cc \
      instance.cc \
      docker.cc \

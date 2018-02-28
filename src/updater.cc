@@ -22,13 +22,22 @@
 
 namespace google {
 
-MetadataUpdater::MetadataUpdater(MetadataAgent* store, std::string name)
+MetadataUpdater::MetadataUpdater(MetadataAgent* store, const std::string& name)
     : store_(store), name_(name) {}
 
 MetadataUpdater::~MetadataUpdater() {}
 
-bool MetadataUpdater::ValidateConfiguration() const {
-  return true;
+void MetadataUpdater::start() {
+  if (!ValidateConfiguration()) {
+    LOG(ERROR) << "Failed to validate configuration for " << name_;
+    return;
+  }
+
+  StartUpdater();
+}
+
+void MetadataUpdater::stop() {
+  StopUpdater();
 }
 
 PollingMetadataUpdater::PollingMetadataUpdater(
@@ -46,25 +55,19 @@ PollingMetadataUpdater::~PollingMetadataUpdater() {
   }
 }
 
-bool PollingMetadataUpdater::start() {
-  if (!ValidateConfiguration()) {
-    LOG(ERROR) << "Failed to validate configuration for " << name_;
-    return false;
-  }
-
+void PollingMetadataUpdater::StartUpdater() {
   timer_.lock();
   if (config().VerboseLogging()) {
     LOG(INFO) << "Timer locked";
   }
+
   if (period_ > seconds::zero()) {
     reporter_thread_ =
         std::thread(&PollingMetadataUpdater::PollForMetadata, this);
   }
-
-  return true;
 }
 
-void PollingMetadataUpdater::stop() {
+void PollingMetadataUpdater::StopUpdater() {
   timer_.unlock();
   if (config().VerboseLogging()) {
     LOG(INFO) << "Timer unlocked";

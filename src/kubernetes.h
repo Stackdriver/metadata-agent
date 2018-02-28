@@ -28,12 +28,11 @@
 #include "configuration.h"
 #include "environment.h"
 #include "json.h"
-#include "reader.h"
 #include "updater.h"
 
 namespace google {
 
-class KubernetesReader : public MetadataReader {
+class KubernetesReader {
  public:
   KubernetesReader(const MetadataAgentConfiguration& config);
   // A Kubernetes metadata query function.
@@ -165,11 +164,9 @@ class KubernetesUpdater : public PollingMetadataUpdater {
     }
   }
 
-  // Validates that the reader is configured properly.
-  // Returns a bool that represents if it's configured properly.
+ protected:
   bool ValidateConfiguration() const;
-
-  bool start();
+  void StartUpdater();
 
  private:
   // Metadata watcher callback.

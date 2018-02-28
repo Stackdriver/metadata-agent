@@ -48,11 +48,7 @@ DockerReader::DockerReader(const MetadataAgentConfiguration& config)
 
 bool DockerReader::ValidateConfiguration() const {
   try {
-    const std::string container_filter(
-        config_.DockerContainerFilter().empty()
-        ? "" : "&" + config_.DockerContainerFilter());
-
-    QueryDocker(std::string(kDockerEndpointPath) + "/json?all=true&limit=1" + container_filter);
+    QueryDocker(std::string(kDockerEndpointPath) + "/json?all=true");
 
     return true;
   } catch (const QueryException& e) {
