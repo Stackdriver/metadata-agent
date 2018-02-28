@@ -961,7 +961,18 @@ json::value KubernetesReader::FindTopLevelOwner(
   return FindTopLevelOwner(ns, GetOwner(ns, ref->As<json::Object>()));
 }
 
-bool KubernetesReader::ValidateConfiguration() const {
+bool KubernetesReader::ValidatePodConnectivity() const {
+  try {
+    QueryMaster(std::string(kKubernetesEndpointPath) + "/pods?limit=1");
+
+    return true;
+  } catch (const QueryException& e) {
+    // Already logged.
+    return false;
+  }
+}
+
+bool KubernetesReader::ValidateNodeConnectivity() const {
   const std::string node_name = CurrentNode();
   if (node_name.empty()) {
     return false;
@@ -976,6 +987,10 @@ bool KubernetesReader::ValidateConfiguration() const {
     // Already logged.
     return false;
   }
+}
+
+bool KubernetesReader::ValidateConfiguration() const {
+  return ValidatePodConnectivity() && ValidateNodeConnectivity();
 }
 
 void KubernetesReader::PodCallback(
