@@ -49,10 +49,6 @@ class KubernetesReader {
   void WatchPods(MetadataUpdater::UpdateCallback callback) const;
 
  private:
-  bool ValidatePodConnectivity() const;
-  
-  bool ValidateNodeConnectivity() const;
-
   // A representation of all query-related errors.
   class QueryException {
    public:

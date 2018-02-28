@@ -54,7 +54,8 @@ bool DockerReader::ValidateConfiguration() const {
 
     // A limit may exist in the container_filter, however, the docker API only
     // uses the first limit provided in the query params.
-    QueryDocker(std::string(kDockerEndpointPath) + "/json?all=true&limit=1" + container_filter);
+    (void) QueryDocker(std::string(kDockerEndpointPath) + 
+        "/json?all=true&limit=1" + container_filter);
 
     return true;
   } catch (const QueryException& e) {

@@ -961,20 +961,9 @@ json::value KubernetesReader::FindTopLevelOwner(
   return FindTopLevelOwner(ns, GetOwner(ns, ref->As<json::Object>()));
 }
 
-bool KubernetesReader::ValidatePodConnectivity() const {
+bool KubernetesReader::ValidateConfiguration() const {
   try {
-    QueryMaster(std::string(kKubernetesEndpointPath) + "/pods?limit=1");
-
-    return true;
-  } catch (const QueryException& e) {
-    // Already logged.
-    return false;
-  }
-}
-
-bool KubernetesReader::ValidateNodeConnectivity() const {
-  try {
-    json::value raw_node = QueryMaster(
+    (void) QueryMaster(
         std::string(kKubernetesEndpointPath) + "/nodes?limit=1");
 
     return true;
@@ -982,15 +971,22 @@ bool KubernetesReader::ValidateNodeConnectivity() const {
     // Already logged.
     return false;
   }
-  
+
   const std::string node_name = CurrentNode();
   if (node_name.empty()) {
     return false;
   }
-}
+  
+  try {
+    (void) QueryMaster(std::string(kKubernetesEndpointPath) + "/pods?limit=1");
 
-bool KubernetesReader::ValidateConfiguration() const {
-  return ValidatePodConnectivity() && ValidateNodeConnectivity();
+    return true;
+  } catch (const QueryException& e) {
+    // Already logged.
+    return false;
+  }
+
+  return true;
 }
 
 void KubernetesReader::PodCallback(
@@ -1071,6 +1067,9 @@ bool KubernetesUpdater::ValidateConfiguration() const {
 }
 
 void KubernetesUpdater::StartUpdater() {
+  // The watch and polling implementations are mutually exclusive. Polling can
+  // only be used if watch is disabled and there is an established polling 
+  // interval.
   if (config().KubernetesUseWatch()) {
     // Wrap the bind expression into a function to use as a bind argument.
     UpdateCallback cb = std::bind(&KubernetesUpdater::MetadataCallback, this,
