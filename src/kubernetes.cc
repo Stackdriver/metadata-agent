@@ -965,22 +965,17 @@ bool KubernetesReader::ValidateConfiguration() const {
   try {
     (void) QueryMaster(
         std::string(kKubernetesEndpointPath) + "/nodes?limit=1");
-
-    return true;
   } catch (const QueryException& e) {
     // Already logged.
     return false;
   }
 
-  const std::string node_name = CurrentNode();
-  if (node_name.empty()) {
+  if (CurrentNode().empty()) {
     return false;
   }
-  
+
   try {
     (void) QueryMaster(std::string(kKubernetesEndpointPath) + "/pods?limit=1");
-
-    return true;
   } catch (const QueryException& e) {
     // Already logged.
     return false;
@@ -1067,9 +1062,6 @@ bool KubernetesUpdater::ValidateConfiguration() const {
 }
 
 void KubernetesUpdater::StartUpdater() {
-  // The watch and polling implementations are mutually exclusive. Polling can
-  // only be used if watch is disabled and there is an established polling 
-  // interval.
   if (config().KubernetesUseWatch()) {
     // Wrap the bind expression into a function to use as a bind argument.
     UpdateCallback cb = std::bind(&KubernetesUpdater::MetadataCallback, this,
@@ -1079,6 +1071,7 @@ void KubernetesUpdater::StartUpdater() {
     pod_watch_thread_ =
         std::thread(&KubernetesReader::WatchPods, &reader_, cb);
   } else {
+    // Only try to poll if watch is disabled.
     PollingMetadataUpdater::StartUpdater();
   }
 }
