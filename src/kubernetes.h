@@ -153,7 +153,6 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   KubernetesUpdater(MetadataAgent* server)
       : reader_(server->config()), PollingMetadataUpdater(
           server, 
-          &reader_,
           "KubernetesUpdater",
           server->config().KubernetesUpdaterIntervalSeconds(),
           std::bind(&google::KubernetesReader::MetadataQuery, &reader_)) { }
@@ -165,6 +164,10 @@ class KubernetesUpdater : public PollingMetadataUpdater {
       pod_watch_thread_.join();
     }
   }
+
+  // Validates that the reader is configured properly.
+  // Returns a bool that represents if it's configured properly.
+  bool ValidateConfiguration() const;
 
   bool start();
 

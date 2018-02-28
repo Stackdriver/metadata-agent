@@ -26,7 +26,6 @@
 #include <vector>
 
 #include "api_server.h"
-#include "reader.h"
 #include "resource.h"
 
 namespace google {
@@ -47,12 +46,14 @@ class MetadataUpdater {
     MetadataAgent::Metadata metadata;
   };
 
-  MetadataUpdater(MetadataAgent* store, MetadataReader* reader, const std::string& name);
+  MetadataUpdater(MetadataAgent* store, const std::string& name);
   virtual ~MetadataUpdater();
 
   const MetadataAgentConfiguration& config() {
     return store_->config();
   }
+
+  virtual bool ValidateConfiguration() const;
 
   // Starts updating.
   virtual bool start() = 0;
@@ -73,9 +74,8 @@ class MetadataUpdater {
   void UpdateMetadataCallback(ResourceMetadata&& result) {
     store_->UpdateMetadata(result.resource, std::move(result.metadata));
   }
-
+  
   std::string name_;
-  MetadataReader* reader_;
 
  private:
   // The store for the metadata.
@@ -86,7 +86,7 @@ class MetadataUpdater {
 class PollingMetadataUpdater : public MetadataUpdater {
  public:
   PollingMetadataUpdater(
-      MetadataAgent* store, MetadataReader* reader, const std::string& name, double period_s,
+      MetadataAgent* store, const std::string& name, double period_s,
       std::function<std::vector<ResourceMetadata>()> query_metadata);
   ~PollingMetadataUpdater();
 

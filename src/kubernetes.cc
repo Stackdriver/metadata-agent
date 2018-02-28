@@ -1051,6 +1051,10 @@ void KubernetesReader::WatchNode(MetadataUpdater::UpdateCallback callback)
   LOG(INFO) << "Watch thread (node) exiting";
 }
 
+bool KubernetesUpdater::ValidateConfiguration() const {
+  return reader_.ValidateConfiguration();
+}
+
 bool KubernetesUpdater::start() {
   if (!PollingMetadataUpdater::start()) {
     return false;

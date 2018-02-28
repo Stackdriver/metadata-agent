@@ -66,11 +66,13 @@ class DockerUpdater : public PollingMetadataUpdater {
   DockerUpdater(MetadataAgent* server)
       : reader_(server->config()), PollingMetadataUpdater(
           server, 
-          &reader_,
           "DockerUpdater", 
           server->config().DockerUpdaterIntervalSeconds(),
           std::bind(&google::DockerReader::MetadataQuery, &reader_)) { }
 
+  // Validates that the reader is configured properly.
+  // Returns a bool that represents if it's configured properly.
+  bool ValidateConfiguration() const;
  private:
   DockerReader reader_;
 };
