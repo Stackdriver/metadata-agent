@@ -22,15 +22,13 @@
 
 namespace google {
 
-MetadataUpdater::MetadataUpdater(MetadataAgent* store, MetadataReader* reader, std::string name)
-    : store_(store),
-      reader_(reader),
-      name_(name) {}
+MetadataUpdater::MetadataUpdater(MetadataAgent* store, MetadataReader* reader, const std::string& name)
+    : store_(store), reader_(reader), name_(name) {}
 
 MetadataUpdater::~MetadataUpdater() {}
 
 PollingMetadataUpdater::PollingMetadataUpdater(
-    MetadataAgent* store, MetadataReader* reader, std::string name, double period_s,
+    MetadataAgent* store, MetadataReader* reader, const std::string& name, double period_s,
     std::function<std::vector<ResourceMetadata>()> query_metadata)
     : MetadataUpdater(store, reader, name),
       period_(period_s),

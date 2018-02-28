@@ -47,7 +47,7 @@ class MetadataUpdater {
     MetadataAgent::Metadata metadata;
   };
 
-  MetadataUpdater(MetadataAgent* store, MetadataReader* reader, std::string name);
+  MetadataUpdater(MetadataAgent* store, MetadataReader* reader, const std::string& name);
   virtual ~MetadataUpdater();
 
   const MetadataAgentConfiguration& config() {
@@ -86,7 +86,7 @@ class MetadataUpdater {
 class PollingMetadataUpdater : public MetadataUpdater {
  public:
   PollingMetadataUpdater(
-      MetadataAgent* store, MetadataReader* reader, std::string name, double period_s,
+      MetadataAgent* store, MetadataReader* reader, const std::string& name, double period_s,
       std::function<std::vector<ResourceMetadata>()> query_metadata);
   ~PollingMetadataUpdater();
 

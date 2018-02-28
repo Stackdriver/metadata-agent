@@ -962,9 +962,14 @@ json::value KubernetesReader::FindTopLevelOwner(
 }
 
 bool KubernetesReader::ValidateConfiguration() const {
+  const std::string node_name = CurrentNode();
+  if (node_name.empty()) {
+    return false;
+  }
+
   try {
     json::value raw_node = QueryMaster(
-        std::string(kKubernetesEndpointPath) + "/nodes/" + CurrentNode());
+        std::string(kKubernetesEndpointPath) + "/nodes/" + node_name);
 
     return true;
   } catch (const QueryException& e) {
@@ -1047,7 +1052,7 @@ void KubernetesReader::WatchNode(MetadataUpdater::UpdateCallback callback)
 }
 
 bool KubernetesUpdater::start() {
-  if(!PollingMetadataUpdater::start()) {
+  if (!PollingMetadataUpdater::start()) {
     return false;
   }
 

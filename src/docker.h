@@ -33,7 +33,7 @@ class DockerReader : public MetadataReader {
   // A Docker metadata query function.
   std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
-  // Validates that the reader is configured properly.
+  // Validates the relevant configuration and returns true if it's correct.
   // Returns a bool that represents if it's configured properly.
   bool ValidateConfiguration() const;
 
