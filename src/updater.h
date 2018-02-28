@@ -84,10 +84,11 @@ class MetadataUpdater {
   void UpdateMetadataCallback(ResourceMetadata&& result) {
     store_->UpdateMetadata(result.resource, std::move(result.metadata));
   }
-  
-  std::string name_;
 
  private:
+  // The name of the updater provided by subclasses.
+  std::string name_;
+
   // The store for the metadata.
   MetadataAgent* store_;
 };

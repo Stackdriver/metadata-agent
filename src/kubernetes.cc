@@ -973,18 +973,18 @@ bool KubernetesReader::ValidatePodConnectivity() const {
 }
 
 bool KubernetesReader::ValidateNodeConnectivity() const {
-  const std::string node_name = CurrentNode();
-  if (node_name.empty()) {
-    return false;
-  }
-
   try {
     json::value raw_node = QueryMaster(
-        std::string(kKubernetesEndpointPath) + "/nodes/" + node_name);
+        std::string(kKubernetesEndpointPath) + "/nodes?limit=1");
 
     return true;
   } catch (const QueryException& e) {
     // Already logged.
+    return false;
+  }
+  
+  const std::string node_name = CurrentNode();
+  if (node_name.empty()) {
     return false;
   }
 }
