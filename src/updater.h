@@ -102,6 +102,7 @@ class PollingMetadataUpdater : public MetadataUpdater {
   ~PollingMetadataUpdater();
 
  protected:
+  bool ValidateConfiguration() const;
   void StartUpdater();
   void StopUpdater();
 

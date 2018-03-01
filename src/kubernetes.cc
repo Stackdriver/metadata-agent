@@ -969,14 +969,19 @@ bool KubernetesReader::ValidateConfiguration() const {
     return false;
   }
 
-  if (CurrentNode().empty()) {
+  try {
+    const std::string pod_label_selector(
+        config_.KubernetesPodLabelSelector().empty()
+        ? "" : "&" + config_.KubernetesPodLabelSelector());
+
+    (void) QueryMaster(std::string(kKubernetesEndpointPath) + "/pods?limit=1" +
+                       pod_label_selector);
+  } catch (const QueryException& e) {
+    // Already logged.
     return false;
   }
 
-  try {
-    (void) QueryMaster(std::string(kKubernetesEndpointPath) + "/pods?limit=1");
-  } catch (const QueryException& e) {
-    // Already logged.
+  if (CurrentNode().empty()) {
     return false;
   }
 
@@ -1057,6 +1062,10 @@ void KubernetesReader::WatchNode(MetadataUpdater::UpdateCallback callback)
 }
 
 bool KubernetesUpdater::ValidateConfiguration() const {
+  if (!PollingMetadataUpdater::ValidateConfiguration()) {
+    return false;
+  }
+
   return reader_.ValidateConfiguration();
 }
 
