@@ -46,6 +46,24 @@ constexpr const char kDockerContainerResourcePrefix[] = "container";
 DockerReader::DockerReader(const MetadataAgentConfiguration& config)
     : config_(config), environment_(config) {}
 
+bool DockerReader::ValidateConfiguration() const {
+  try {
+    const std::string container_filter(
+        config_.DockerContainerFilter().empty()
+        ? "" : "&" + config_.DockerContainerFilter());
+
+    // A limit may exist in the container_filter, however, the docker API only
+    // uses the first limit provided in the query params.
+    (void) QueryDocker(std::string(kDockerEndpointPath) + 
+                       "/json?all=true&limit=1" + container_filter);
+
+    return true;
+  } catch (const QueryException& e) {
+    // Already logged.
+    return false;
+  }
+}
+
 MetadataUpdater::ResourceMetadata DockerReader::GetContainerMetadata(
     const json::Object* container, Timestamp collected_at) const
     throw(json::Exception) {
@@ -185,6 +203,14 @@ json::value DockerReader::QueryDocker(const std::string& path) const
     LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
     throw QueryException(endpoint + " -> " + e.what());
   }
+}
+
+bool DockerUpdater::ValidateConfiguration() const {
+  if (!PollingMetadataUpdater::ValidateConfiguration()) {
+    return false;
+  }
+
+  return reader_.ValidateConfiguration();
 }
 
 }

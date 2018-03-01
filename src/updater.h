@@ -46,7 +46,7 @@ class MetadataUpdater {
     MetadataAgent::Metadata metadata;
   };
 
-  MetadataUpdater(MetadataAgent* store);
+  MetadataUpdater(MetadataAgent* store, const std::string& name);
   virtual ~MetadataUpdater();
 
   const MetadataAgentConfiguration& config() {
@@ -54,15 +54,27 @@ class MetadataUpdater {
   }
 
   // Starts updating.
-  virtual void start() = 0;
+  void start();
 
   // Stops updating.
-  virtual void stop() = 0;
+  void stop();
 
   using UpdateCallback =
       std::function<void(std::vector<MetadataUpdater::ResourceMetadata>&&)>;
 
  protected:
+  // Validates the relevant configuration and returns true if it's correct.
+  // Returns a bool that represents if it's configured properly.
+  virtual bool ValidateConfiguration() const {
+    return true;
+  }
+
+  // Internal method for starting the updater's logic.
+  virtual void StartUpdater() = 0;
+
+  // Internal method for stopping the updater's logic.
+  virtual void StopUpdater() = 0;
+
   // Updates the resource map in the store.
   void UpdateResourceCallback(const ResourceMetadata& result) {
     store_->UpdateResource(result.ids, result.resource);
@@ -74,6 +86,9 @@ class MetadataUpdater {
   }
 
  private:
+  // The name of the updater provided by subclasses.
+  std::string name_;
+
   // The store for the metadata.
   MetadataAgent* store_;
 };
@@ -82,12 +97,14 @@ class MetadataUpdater {
 class PollingMetadataUpdater : public MetadataUpdater {
  public:
   PollingMetadataUpdater(
-      MetadataAgent* store, double period_s,
+      MetadataAgent* store, const std::string& name, double period_s,
       std::function<std::vector<ResourceMetadata>()> query_metadata);
   ~PollingMetadataUpdater();
 
-  void start();
-  void stop();
+ protected:
+  bool ValidateConfiguration() const;
+  void StartUpdater();
+  void StopUpdater();
 
  private:
   using seconds = std::chrono::duration<double, std::chrono::seconds::period>;

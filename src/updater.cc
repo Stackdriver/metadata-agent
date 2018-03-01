@@ -22,15 +22,28 @@
 
 namespace google {
 
-MetadataUpdater::MetadataUpdater(MetadataAgent* store)
-    : store_(store) {}
+MetadataUpdater::MetadataUpdater(MetadataAgent* store, const std::string& name)
+    : store_(store), name_(name) {}
 
 MetadataUpdater::~MetadataUpdater() {}
 
+void MetadataUpdater::start() {
+  if (!ValidateConfiguration()) {
+    LOG(ERROR) << "Failed to validate configuration for " << name_;
+    return;
+  }
+
+  StartUpdater();
+}
+
+void MetadataUpdater::stop() {
+  StopUpdater();
+}
+
 PollingMetadataUpdater::PollingMetadataUpdater(
-    MetadataAgent* store, double period_s,
+    MetadataAgent* store, const std::string& name, double period_s,
     std::function<std::vector<ResourceMetadata>()> query_metadata)
-    : MetadataUpdater(store),
+    : MetadataUpdater(store, name),
       period_(period_s),
       query_metadata_(query_metadata),
       timer_(),
@@ -42,7 +55,11 @@ PollingMetadataUpdater::~PollingMetadataUpdater() {
   }
 }
 
-void PollingMetadataUpdater::start() {
+bool PollingMetadataUpdater::ValidateConfiguration() const {
+  return period_ >= seconds::zero();
+}
+
+void PollingMetadataUpdater::StartUpdater() {
   timer_.lock();
   if (config().VerboseLogging()) {
     LOG(INFO) << "Timer locked";
@@ -53,7 +70,7 @@ void PollingMetadataUpdater::start() {
   }
 }
 
-void PollingMetadataUpdater::stop() {
+void PollingMetadataUpdater::StopUpdater() {
   timer_.unlock();
   if (config().VerboseLogging()) {
     LOG(INFO) << "Timer unlocked";

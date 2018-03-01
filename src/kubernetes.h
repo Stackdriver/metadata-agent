@@ -38,6 +38,10 @@ class KubernetesReader {
   // A Kubernetes metadata query function.
   std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
+  // Validates the relevant configuration and returns true if it's correct.
+  // Returns a bool that represents if it's configured properly.
+  bool ValidateConfiguration() const;
+
   // Node watcher.
   void WatchNode(MetadataUpdater::UpdateCallback callback) const;
 
@@ -147,7 +151,8 @@ class KubernetesUpdater : public PollingMetadataUpdater {
  public:
   KubernetesUpdater(MetadataAgent* server)
       : reader_(server->config()), PollingMetadataUpdater(
-          server, server->config().KubernetesUpdaterIntervalSeconds(),
+          server, "KubernetesUpdater",
+          server->config().KubernetesUpdaterIntervalSeconds(),
           std::bind(&google::KubernetesReader::MetadataQuery, &reader_)) { }
   ~KubernetesUpdater() {
     if (node_watch_thread_.joinable()) {
@@ -158,7 +163,9 @@ class KubernetesUpdater : public PollingMetadataUpdater {
     }
   }
 
-  void start();
+ protected:
+  bool ValidateConfiguration() const;
+  void StartUpdater();
 
  private:
   // Metadata watcher callback.
