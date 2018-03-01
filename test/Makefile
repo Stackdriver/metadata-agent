@@ -6,6 +6,7 @@ GTEST_HEADERS=$(GTEST_DIR)/include/gtest/*.h \
               $(GTEST_DIR)/include/gtest/internal/*.h
 GTEST_SRCS_=$(GTEST_SOURCEDIR)/*.cc $(GTEST_SOURCEDIR)/*.h $(GTEST_HEADERS)
 
+# TODO: Factor out the common variables.
 CPP_NETLIB_DIR=$(LIBDIR)/cpp-netlib
 YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
 
@@ -14,49 +15,54 @@ CXXFLAGS=-std=c++11 -g -pthread
 
 # Where to find code under test.
 SRC_DIR=../src
-SRCS=\
-     $(SRC_DIR)/format.cc
-OBJS=$(subst src/,test/,$(subst .cc,.o,$(SRCS)))
 
 TEST_DIR=.
-TESTS=$(wildcard $(TEST_DIR)/*.cc)
-TEST_OBJS=$(TESTS:%.cc=%.o)
+TEST_SOURCES=$(wildcard $(TEST_DIR)/*_unittest.cc)
+TEST_OBJS=$(TEST_SOURCES:%.cc=%.o)
+TESTS=\
+      format_unittest
 
-GTEST_LIBS=gtest_main.a
+GTEST_LIB=gtest_lib.a
 
-all: build-googletest unittest
+all: $(TESTS)
+
+# TODO: Running the test prints "Running main() from gtest_main.cc".
+# Figure out how to fix this.
+test: $(TESTS)
+	@for t in $(TESTS); do \
+		echo "Running $$t"; \
+		./$$t; \
+	done
 
 clean:
-	rm -f unittest *.a *.o
+	$(RM) $(TESTS) $(GTEST_LIB) $(TEST_OBJS)
 
 purge: clean
+	$(RM) init-submodules
 	git submodule deinit -f $(GTEST_MODULE)
 
 init-submodules:
 	git submodule update --init $(GTEST_MODULE)
+	touch init-submodules
 
-$(GTEST_SRCS_): init-submodules
-$(GTEST_DIR)/Makefile: $(GTEST_SRCS_)
-	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
+
+$(SRC_DIR)/%.o: $(SRC_DIR)/%.cc
+	cd $(SRC_DIR) && $(MAKE) $(subst $@,$(SRC_DIR)/,)
+
+$(GTEST_SOURCEDIR)/gtest-all.cc $(GTEST_SOURCEDIR)/gtest_main.cc: init-submodules
+
+gtest-all.o: $(GTEST_SOURCEDIR)/gtest-all.cc
+	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c -o $@ \
 	    $(GTEST_SOURCEDIR)/gtest-all.cc
-	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
+
+gtest_main.o: $(GTEST_SOURCEDIR)/gtest_main.cc
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ \
 	    $(GTEST_SOURCEDIR)/gtest_main.cc
 
-$(GTEST_LIBS): build-googletest
+$(GTEST_LIB): gtest-all.o gtest_main.o
+	$(AR) $(ARFLAGS) $@ $^
 
-build-googletest: $(GTEST_DIR)/Makefile
-	$(AR) $(ARFLAGS) gtest_main.a gtest-all.o gtest_main.o
+format_unittest: $(GTEST_LIB) format_unittest.o $(SRC_DIR)/format.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -lpthread -o $@
 
-build-source: $(SRCS) $(GTEST_HEADERS)
-	$(CXX) $(CPPFLAGS) -I$(CPP_NETLIB_DIR) \
-	    -I$(YAML_CPP_DIR)/include $(CXXFLAGS) -c $(SRCS)
-
-build-test: $(TESTS) $(GTEST_HEADERS)
-	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c $(TESTS)
-
-$(OBJS): build-source
-$(TEST_OBJS): build-test
-unittest: $(GTEST_LIBS) $(OBJS) $(TEST_OBJS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
-
-.PHONY: all clean purge
+.PHONY: all test clean purge
