@@ -12,7 +12,7 @@ YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
 CPPFLAGS+=-isystem $(GTEST_DIR)/include
 CXXFLAGS=-std=c++11 -g -pthread
 
-# Where to find user code.
+# Where to find code under test.
 SRC_DIR=../src
 SRCS=\
      $(SRC_DIR)/format.cc
@@ -30,11 +30,10 @@ clean:
 	rm -f unittest *.a *.o
 
 purge: clean
-	git submodule deinit -f --all
+	git submodule deinit -f $(GTEST_MODULE)
 
 init-submodules:
-	git submodule init && \
-	    git submodule update
+	git submodule update --init $(GTEST_MODULE)
 
 $(GTEST_SRCS_): init-submodules
 $(GTEST_DIR)/Makefile: $(GTEST_SRCS_)
@@ -60,5 +59,4 @@ $(TEST_OBJS): build-test
 unittest: $(GTEST_LIBS) $(OBJS) $(TEST_OBJS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
 
-.PHONY: all clean purge init-submodules build-googletest build-source \
-	build-test unittest
+.PHONY: all clean purge
