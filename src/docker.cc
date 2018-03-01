@@ -206,6 +206,10 @@ json::value DockerReader::QueryDocker(const std::string& path) const
 }
 
 bool DockerUpdater::ValidateConfiguration() const {
+  if (!PollingMetadataUpdater::ValidateConfiguration()) {
+    return false;
+  }
+
   return reader_.ValidateConfiguration();
 }
 

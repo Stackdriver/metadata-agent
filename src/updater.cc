@@ -56,7 +56,7 @@ PollingMetadataUpdater::~PollingMetadataUpdater() {
 }
 
 bool PollingMetadataUpdater::ValidateConfiguration() const {
-  return period_ > seconds::zero();
+  return period_ >= seconds::zero();
 }
 
 void PollingMetadataUpdater::StartUpdater() {
@@ -64,9 +64,10 @@ void PollingMetadataUpdater::StartUpdater() {
   if (config().VerboseLogging()) {
     LOG(INFO) << "Timer locked";
   }
-
-  reporter_thread_ =
-      std::thread(&PollingMetadataUpdater::PollForMetadata, this);
+  if (period_ > seconds::zero()) {
+    reporter_thread_ =
+        std::thread(&PollingMetadataUpdater::PollForMetadata, this);
+  }
 }
 
 void PollingMetadataUpdater::StopUpdater() {
