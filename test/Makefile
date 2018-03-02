@@ -12,13 +12,15 @@ YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
 
 CPPFLAGS+=-isystem $(GTEST_DIR)/include
 CXXFLAGS=-std=c++11 -g -pthread
+LDFLAGS=$(CPPFLAGS)
+LDLIBS=-lpthread
 
 # Where to find code under test.
 SRC_DIR=../src
 
 TEST_DIR=.
 TEST_SOURCES=$(wildcard $(TEST_DIR)/*_unittest.cc)
-TEST_OBJS=$(TEST_SOURCES:%.cc=%.o)
+TEST_OBJS=$(TEST_SOURCES:$(TEST_DIR)/%.cc=%.o)
 TESTS=\
       format_unittest
 
@@ -52,7 +54,7 @@ $(SRC_DIR)/%.o: $(SRC_DIR)/%.cc
 $(GTEST_SOURCEDIR)/gtest-all.cc $(GTEST_SOURCEDIR)/gtest_main.cc: init-submodules
 
 gtest-all.o: $(GTEST_SOURCEDIR)/gtest-all.cc
-	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c -o $@ $^
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I$(GTEST_DIR) -o $@ $^
 
 gtest_main.o: $(GTEST_SOURCEDIR)/gtest_main.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $^
@@ -61,6 +63,6 @@ $(GTEST_LIB): gtest-all.o gtest_main.o
 	$(AR) $(ARFLAGS) $@ $^
 
 format_unittest: $(GTEST_LIB) format_unittest.o $(SRC_DIR)/format.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -lpthread -o $@
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 .PHONY: all test clean purge
