@@ -47,17 +47,15 @@ init-submodules:
 
 
 $(SRC_DIR)/%.o: $(SRC_DIR)/%.cc
-	cd $(SRC_DIR) && $(MAKE) $(subst $@,$(SRC_DIR)/,)
+	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
 $(GTEST_SOURCEDIR)/gtest-all.cc $(GTEST_SOURCEDIR)/gtest_main.cc: init-submodules
 
 gtest-all.o: $(GTEST_SOURCEDIR)/gtest-all.cc
-	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c -o $@ \
-	    $(GTEST_SOURCEDIR)/gtest-all.cc
+	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c -o $@ $^
 
 gtest_main.o: $(GTEST_SOURCEDIR)/gtest_main.cc
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ \
-	    $(GTEST_SOURCEDIR)/gtest_main.cc
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $^
 
 $(GTEST_LIB): gtest-all.o gtest_main.o
 	$(AR) $(ARFLAGS) $@ $^
