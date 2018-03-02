@@ -143,7 +143,7 @@ $(CPP_NETLIB_LIBS): build-cpp-netlib
 
 build-cpp-netlib: $(CPP_NETLIB_DIR)/Makefile
 	cd $(CPP_NETLIB_DIR) && \
-	$(MAKE) $(MAKEFLAGS)
+	$(MAKE)
 	touch build-cpp-netlib
 
 $(YAML_CPP_DIR)/Makefile: init-submodules
@@ -156,7 +156,7 @@ $(YAML_CPP_LIBS): build-yaml-cpp
 
 build-yaml-cpp: $(YAML_CPP_DIR)/Makefile
 	cd $(YAML_CPP_DIR) && \
-	$(MAKE) $(MAKEFLAGS)
+	$(MAKE)
 	touch build-yaml-cpp
 
 cpp-netlib: $(CPP_NETLIB_LIBS)
