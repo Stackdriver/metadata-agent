@@ -60,14 +60,25 @@ std::string ToString(const std::chrono::system_clock::time_point& t) {
 
 std::chrono::system_clock::time_point FromString(const std::string& s) {
   std::tm tm;
-  const char* end = strptime(s.c_str(), "%Y-%m-%dT%H:%M:%S", &tm);
-  if (end == nullptr || end - s.c_str() != s.find('.')) {
+  char* const end = strptime(s.c_str(), "%Y-%m-%dT%H:%M:%S", &tm);
+  if (end == nullptr) {
     // TODO
     return std::chrono::system_clock::time_point();
   }
   char* zone;
-  long ns = std::strtol(end + 1, &zone, 10);
-  if (zone <= end + 1 || *zone != 'Z' || *(zone+1) != '\0') {
+  long ns;
+  // Nanoseconds are optional.
+  if (end - s.c_str() == s.find('.')) {
+    ns = std::strtol(end + 1, &zone, 10);
+    if (zone <= end + 1) {
+      // TODO
+      return std::chrono::system_clock::time_point();
+    }
+  } else {
+    zone = end;
+    ns = 0;
+  }
+  if (*zone != 'Z' || *(zone+1) != '\0') {
     // TODO
     return std::chrono::system_clock::time_point();
   }
