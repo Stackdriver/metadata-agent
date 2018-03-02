@@ -58,28 +58,49 @@ std::string ToString(const std::chrono::system_clock::time_point& t) {
   return out.str();
 }
 
+namespace {
+
+long Exp10(std::size_t n) {
+  long result = 1;
+  for (size_t i = 0; i < n; ++i) {
+    result *= 10;
+  }
+  return result;
+}
+
+}
+
 std::chrono::system_clock::time_point FromString(const std::string& s) {
   std::tm tm;
   char* const end = strptime(s.c_str(), "%Y-%m-%dT%H:%M:%S", &tm);
   if (end == nullptr) {
-    // TODO
+    // TODO: Invalid time format.
     return std::chrono::system_clock::time_point();
   }
   char* zone;
   long ns;
-  // Nanoseconds are optional.
+  // Fractional seconds are optional.
   if (end - s.c_str() == s.find('.')) {
     ns = std::strtol(end + 1, &zone, 10);
-    if (zone <= end + 1) {
-      // TODO
+    std::size_t length = zone - (end + 1);
+    if (length == 0) {
+      // TODO: Unable to parse fractional seconds.
       return std::chrono::system_clock::time_point();
+    }
+    if (length > 9) {
+      // More digits than can be stored as nanoseconds.
+      // TODO: Should this round (std::lround)?
+      ns /= Exp10(length - 9);
+    } else if (length < 9) {
+      // Need to add trailing zeros.
+      ns *= Exp10(9 - length);
     }
   } else {
     zone = end;
     ns = 0;
   }
   if (*zone != 'Z' || *(zone+1) != '\0') {
-    // TODO
+    // TODO: Invalid timezone.
     return std::chrono::system_clock::time_point();
   }
   // Our UTC offset constant assumes no DST.
