@@ -12,7 +12,6 @@ YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
 
 CPPFLAGS+=-isystem $(GTEST_DIR)/include
 CXXFLAGS=-std=c++11 -g -pthread
-LDFLAGS=$(CPPFLAGS)
 LDLIBS=-lpthread
 
 # Where to find code under test.
@@ -54,7 +53,7 @@ $(SRC_DIR)/%.o: $(SRC_DIR)/%.cc
 $(GTEST_SOURCEDIR)/gtest-all.cc $(GTEST_SOURCEDIR)/gtest_main.cc: init-submodules
 
 gtest-all.o: $(GTEST_SOURCEDIR)/gtest-all.cc
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I$(GTEST_DIR) -o $@ $^
+	$(CXX) -c $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -o $@ $^
 
 gtest_main.o: $(GTEST_SOURCEDIR)/gtest_main.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $^
