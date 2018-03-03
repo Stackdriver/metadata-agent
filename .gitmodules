@@ -1,9 +1,12 @@
 [submodule "lib/cpp-netlib"]
 	path = lib/cpp-netlib
 	url = https://github.com/cpp-netlib/cpp-netlib
+	ignore = dirty
 [submodule "lib/yaml-cpp"]
 	path = lib/yaml-cpp
 	url = https://github.com/jbeder/yaml-cpp
+	ignore = dirty
 [submodule "lib/googletest"]
 	path = lib/googletest
 	url = https://github.com/google/googletest
+	ignore = dirty
