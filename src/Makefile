@@ -60,6 +60,9 @@ INSTALL_DATA=$(INSTALL) -m 644
 metadatad: $(LIBS) $(OBJS)
 	$(CXX) -o $@ $(LDFLAGS) $^ $(LDLIBS)
 
+test:
+	cd ../test && $(MAKE) test
+
 $(OBJS): init-submodules
 
 install: metadatad
