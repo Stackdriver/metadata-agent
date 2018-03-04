@@ -31,4 +31,31 @@ TEST(TimeTest, RoundtripViaString) {
   );
 }
 
+TEST(TimeTest, FromStringNoNanos) {
+  const std::chrono::system_clock::time_point t =
+      rfc3339::FromString("2018-03-03T01:23:45Z");
+  EXPECT_EQ(
+      "2018-03-03T01:23:45.000000000Z",
+      rfc3339::ToString(t)
+  );
+}
+
+TEST(TimeTest, FromStringFewerDigits) {
+  const std::chrono::system_clock::time_point t =
+      rfc3339::FromString("2018-03-03T01:23:45.6789Z");
+  EXPECT_EQ(
+      "2018-03-03T01:23:45.678900000Z",
+      rfc3339::ToString(t)
+  );
+}
+
+TEST(TimeTest, FromStringMoreDigits) {
+  const std::chrono::system_clock::time_point t =
+      rfc3339::FromString("2018-03-03T01:23:45.67890123456789Z");
+  EXPECT_EQ(
+      "2018-03-03T01:23:45.678901234Z",
+      rfc3339::ToString(t)
+  );
+}
+
 }
