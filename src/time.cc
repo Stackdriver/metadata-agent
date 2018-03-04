@@ -17,6 +17,7 @@
 #include "time.h"
 
 #include <cctype>
+#include <cmath>
 #include <cstdlib>
 #include <iomanip>
 #include <mutex>
@@ -59,51 +60,26 @@ std::string ToString(const std::chrono::system_clock::time_point& t) {
   return out.str();
 }
 
-namespace {
-
-long Exp10(std::size_t n) {
-  long result = 1;
-  for (size_t i = 0; i < n; ++i) {
-    result *= 10;
-  }
-  return result;
-}
-
-}
-
 std::chrono::system_clock::time_point FromString(const std::string& s) {
   std::tm tm;
-  char* const end = strptime(s.c_str(), "%Y-%m-%dT%H:%M:%S", &tm);
-  if (end == nullptr) {
+  const char* end = strptime(s.c_str(), "%Y-%m-%dT%H:%M:", &tm);
+  if (end == nullptr || !std::isdigit(*end)) {
     // TODO: Invalid time format.
     return std::chrono::system_clock::time_point();
   }
   char* zone;
-  long ns;
-  // Fractional seconds are optional.
-  if (end - s.c_str() == s.find('.') && std::isdigit(*(end + 1))) {
-    ns = std::strtol(end + 1, &zone, 10);
-    std::size_t length = zone - (end + 1);
-    if (length == 0) {
-      // TODO: Unable to parse fractional seconds.
-      return std::chrono::system_clock::time_point();
-    }
-    if (length > 9) {
-      // More digits than can be stored as nanoseconds.
-      // TODO: Should this round (std::lround)?
-      ns /= Exp10(length - 9);
-    } else if (length < 9) {
-      // Need to add trailing zeros.
-      ns *= Exp10(9 - length);
-    }
-  } else {
-    zone = end;
-    ns = 0;
+  long sec_i = std::strtol(end, nullptr, 10);
+  double seconds = std::strtod(end, &zone);
+  if (sec_i < 0 || sec_i != static_cast<long>(seconds)) {
+    // TODO: Seconds weren't decimal.
+    return std::chrono::system_clock::time_point();
   }
-  if (*zone != 'Z' || *(zone+1) != '\0') {
+  if (zone <= end || *zone != 'Z' || *(zone+1) != '\0') {
     // TODO: Invalid timezone.
     return std::chrono::system_clock::time_point();
   }
+  tm.tm_sec = sec_i;
+  long ns = std::lround((seconds - sec_i) * 10000000000) / 10;
   // Our UTC offset constant assumes no DST.
   tm.tm_isdst = 0;
   const std::time_t local_time = std::mktime(&tm);
