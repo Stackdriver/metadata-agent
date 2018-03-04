@@ -16,6 +16,7 @@
 
 #include "time.h"
 
+#include <cctype>
 #include <cstdlib>
 #include <iomanip>
 #include <mutex>
@@ -80,7 +81,7 @@ std::chrono::system_clock::time_point FromString(const std::string& s) {
   char* zone;
   long ns;
   // Fractional seconds are optional.
-  if (end - s.c_str() == s.find('.')) {
+  if (end - s.c_str() == s.find('.') && std::isdigit(*(end + 1))) {
     ns = std::strtol(end + 1, &zone, 10);
     std::size_t length = zone - (end + 1);
     if (length == 0) {
