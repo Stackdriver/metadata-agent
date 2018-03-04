@@ -31,8 +31,11 @@ namespace {
 // See http://stackoverflow.com/questions/4137748.
 int UTCOffset() {
   const std::time_t local = std::time(nullptr);
-  const std::time_t utc = std::mktime(std::gmtime(&local));
-  return utc - local;
+  std::tm utc_time = safe_gmtime(&local);
+  // Since we're only using this for conversion to UTC, always turn off DST.
+  utc_time.tm_isdst = 0;
+  const std::time_t utc = std::mktime(&utc_time);
+  return local - utc;
 }
 
 const int kUtcOffset = UTCOffset();
@@ -68,6 +71,8 @@ std::chrono::system_clock::time_point FromString(const std::string& s) {
     // TODO
     return std::chrono::system_clock::time_point();
   }
+  // Our UTC offset constant assumes no DST.
+  tm.tm_isdst = 0;
   const std::time_t local_time = std::mktime(&tm);
   const std::time_t utc_time = local_time + kUtcOffset;
   std::chrono::system_clock::time_point sec =
