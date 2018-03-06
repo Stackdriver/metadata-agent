@@ -89,6 +89,19 @@ This is the Stackdriver metadata agent.
        $ cd src
        $ make -j10
 
+# Testing
+
+1. Run all tests:
+
+       $ cd src
+       $ make test
+
+2. Run individual tests:
+
+       $ cd test
+       $ make <test_name>
+       $ ./<test_name>
+
 # Packaging
 
 1. Build the DEB package:
