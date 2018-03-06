@@ -67,8 +67,13 @@ std::chrono::system_clock::time_point FromString(const std::string& s) {
     // TODO: Invalid time format.
     return std::chrono::system_clock::time_point();
   }
+  char* point;
+  long sec_i = std::strtol(end, &point, 10);
+  if ((point - end) != 2) {
+    // TODO: Seconds wasn't 2 digits.
+    return std::chrono::system_clock::time_point();
+  }
   char* zone;
-  long sec_i = std::strtol(end, nullptr, 10);
   double seconds = std::strtod(end, &zone);
   if (sec_i < 0 || sec_i != static_cast<long>(seconds)) {
     // TODO: Seconds weren't decimal.
