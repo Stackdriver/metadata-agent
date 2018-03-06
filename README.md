@@ -2,6 +2,8 @@ This is the Stackdriver metadata agent.
 
 # Prerequisites
 
+## Ubuntu 14.04 (trusty)
+
 1. Install runtime dependencies:
 
        $ sudo apt-get install libyajl2 libboost-program-options1.55.0 \
@@ -15,15 +17,15 @@ This is the Stackdriver metadata agent.
          libboost-filesystem1.55-dev libboost-program-options1.55-dev \
          libboost-regex1.55-dev libboost-thread1.55-dev libboost-timer1.55-dev
 
-## Ubuntu 16.04 special edition
+## Ubuntu 16.04 (xenial)
 
-1. Install runtime dependencies (Ubuntu 16.04 special edition):
+1. Install runtime dependencies:
 
        $ sudo apt-get install libssl1.0.0 libyajl2 \
          libboost-program-options1.58.0 libboost-system1.58.0 \
          libboost-thread1.58.0
 
-2. Install build dependencies (Ubuntu 16.04 special edition):
+2. Install build dependencies:
 
        $ sudo apt-get install g++ cmake dpkg-dev libyajl-dev libssl-dev \
          libboost1.58-dev libboost-system1.58-dev libboost-atomic1.58-dev \
@@ -31,9 +33,25 @@ This is the Stackdriver metadata agent.
          libboost-filesystem1.58-dev libboost-program-options1.58-dev \
          libboost-regex1.58-dev libboost-thread1.58-dev libboost-timer1.58-dev
 
-## CentOS 7 special edition
+## Debian 9 (stretch)
 
-1. Install runtime dependencies (CentOS 7 special edition):
+1. Install runtime dependencies:
+
+       $ sudo apt-get install libssl1.0.2 libyajl2 \
+         libboost-program-options1.62.0 libboost-system1.62.0 \
+         libboost-thread1.62.0
+
+2. Install build dependencies:
+
+       $ sudo apt-get install g++ cmake dpkg-dev libyajl-dev libssl1.0-dev \
+         libboost1.62-dev libboost-system1.62-dev libboost-atomic1.62-dev \
+         libboost-chrono1.62-dev libboost-date-time1.62-dev \
+         libboost-filesystem1.62-dev libboost-program-options1.62-dev \
+         libboost-regex1.62-dev libboost-thread1.62-dev libboost-timer1.62-dev
+
+## CentOS 7
+
+1. Install runtime dependencies:
 
        $ sudo yum install -y yajl
        $ (cd /tmp && \
@@ -42,7 +60,7 @@ This is the Stackdriver metadata agent.
           curl -O ${VENDOR_URL}/boost-thread-1.54.0-1.el7.x86_64.rpm)
        $ sudo rpm --nodeps -ivp /tmp/boost-{system,thread}-1.54.0-1.el7.x86_64.rpm
 
-2. Install build dependencies (CentOS 7 special edition):
+2. Install build dependencies:
 
        $ sudo yum install -y gcc-c++ cmake rpm-build yajl-devel openssl-devel
        $ (cd /tmp && \
@@ -51,16 +69,16 @@ This is the Stackdriver metadata agent.
           curl -O ${VENDOR_URL}/boost-static-1.54.0-1.el7.x86_64.rpm)
        $ sudo rpm --nodeps -ivp /tmp/boost-{devel,static}-1.54.0-1.el7.x86_64.rpm
 
-## MacOS 10.12 special edition
+## MacOS 10.12
 
-1. Install runtime dependencies (MacOS 10.12 special edition):
+1. Install runtime dependencies:
 
        $ brew install boost -c++11 && \
          (cd /usr/local/lib && ln -s libboost_thread-mt.a libboost_thread.a && \
           ln -s libboost_thread-mt.dylib libboost_thread.dylib)
        $ brew install yajl
 
-2. Install build dependencies (MacOS 10.12 special edition):
+2. Install build dependencies:
 
        $ brew install cmake
 
