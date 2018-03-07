@@ -61,11 +61,16 @@ constexpr const char kDockerIdPrefix[] = "docker://";
 constexpr const char kServiceAccountDirectory[] =
     "/var/run/secrets/kubernetes.io/serviceaccount";
 
+// Returns the full path to the secret filename.
+std::string SecretPath(const std::string& secret) {
+  return std::string(kServiceAccountDirectory) + "/" + secret;
+}
+
 // Reads a Kubernetes service account secret file into the provided string.
 // Returns true if the file was read successfully.
 bool ReadServiceAccountSecret(
     const std::string& secret, std::string& destination, bool verbose) {
-  std::string filename(std::string(kServiceAccountDirectory) + "/" + secret);
+  std::string filename(SecretPath(secret));
   std::ifstream input(filename);
   if (!input.good()) {
     if (verbose) {
@@ -541,7 +546,8 @@ std::vector<MetadataUpdater::ResourceMetadata>
 json::value KubernetesReader::QueryMaster(const std::string& path) const
     throw(QueryException, json::Exception) {
   const std::string endpoint(config_.KubernetesEndpointHost() + path);
-  http::client client;
+  http::client client(
+      http::client::options().openssl_certificate(SecretPath("ca.crt")));
   http::client::request request(endpoint);
   request << boost::network::header(
       "Authorization", "Bearer " + KubernetesApiToken());
@@ -799,7 +805,8 @@ void KubernetesReader::WatchMaster(
   const std::string watch_param(prefix + kWatchParam);
   const std::string endpoint(
       config_.KubernetesEndpointHost() + path + watch_param);
-  http::client client;
+  http::client client(
+      http::client::options().openssl_certificate(SecretPath("ca.crt")));
   http::client::request request(endpoint);
   request << boost::network::header(
       "Authorization", "Bearer " + KubernetesApiToken());
