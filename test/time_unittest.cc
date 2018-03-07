@@ -58,6 +58,15 @@ TEST(TimeTest, FromStringMoreDigits) {
   );
 }
 
+TEST(TimeTest, FromStringLargeNanos) {
+  const std::chrono::system_clock::time_point t =
+      rfc3339::FromString("2018-03-03T01:23:45.9876543210987Z");
+  EXPECT_EQ(
+      "2018-03-03T01:23:45.987654321Z",
+      rfc3339::ToString(t)
+  );
+}
+
 TEST(TimeTest, FromStringPositiveNanos) {
   const std::chrono::system_clock::time_point t =
       rfc3339::FromString("2018-03-03T01:23:45.+678901234Z");
@@ -78,7 +87,7 @@ TEST(TimeTest, FromStringNegativeNanos) {
 
 TEST(TimeTest, FromStringPositiveSeconds) {
   const std::chrono::system_clock::time_point t =
-      rfc3339::FromString("2018-03-03T01:23:+45.678901234Z");
+      rfc3339::FromString("2018-03-03T01:23:+4.567890123Z");
   EXPECT_EQ(
       "1970-01-01T00:00:00.000000000Z",
       rfc3339::ToString(t)
@@ -87,7 +96,7 @@ TEST(TimeTest, FromStringPositiveSeconds) {
 
 TEST(TimeTest, FromStringNegativeSeconds) {
   const std::chrono::system_clock::time_point t =
-      rfc3339::FromString("2018-03-03T01:23:-45.678901234Z");
+      rfc3339::FromString("2018-03-03T01:23:-4.567890123Z");
   EXPECT_EQ(
       "1970-01-01T00:00:00.000000000Z",
       rfc3339::ToString(t)
@@ -133,6 +142,15 @@ TEST(TimeTest, FromStringInfSeconds) {
 TEST(TimeTest, FromStringTooManySeconds) {
   const std::chrono::system_clock::time_point t =
       rfc3339::FromString("2018-03-03T01:23:1045.678901234Z");
+  EXPECT_EQ(
+      "1970-01-01T00:00:00.000000000Z",
+      rfc3339::ToString(t)
+  );
+}
+
+TEST(TimeTest, FromStringScientificSeconds) {
+  const std::chrono::system_clock::time_point t =
+      rfc3339::FromString("2018-03-03T01:23:45e+0Z");
   EXPECT_EQ(
       "1970-01-01T00:00:00.000000000Z",
       rfc3339::ToString(t)
