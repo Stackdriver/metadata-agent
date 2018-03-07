@@ -75,7 +75,7 @@ std::chrono::system_clock::time_point FromString(const std::string& s) {
   }
   char* zone;
   double seconds = std::strtod(end, &zone);
-  if (sec_i < 0 || sec_i != static_cast<long>(seconds)) {
+  if (sec_i != static_cast<long>(seconds)) {
     // TODO: Seconds weren't decimal.
     return std::chrono::system_clock::time_point();
   }
@@ -84,6 +84,8 @@ std::chrono::system_clock::time_point FromString(const std::string& s) {
     return std::chrono::system_clock::time_point();
   }
   tm.tm_sec = sec_i;
+  static_assert(sizeof(long) == 8, "long is too small");
+  // Truncate to 9 digits by rounding to 10 and discarding the last one.
   long ns = std::lround((seconds - sec_i) * 10000000000) / 10;
   // Our UTC offset constant assumes no DST.
   tm.tm_isdst = 0;
