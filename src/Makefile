@@ -22,10 +22,12 @@ SED_EXTRA=-e 's/-Wall/-Wall -Wno-deprecated/'
 
 UNAME_S=$(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-  CXXFLAGS+= -Wno-deprecated-declarations -I/usr/local/include
+  CXXFLAGS+= -Wno-deprecated-declarations -Wno-c++14-extensions \
+      -I/usr/local/include
   LDFLAGS+= -L/usr/local/lib
   SED_I+= ''
-  SED_EXTRA+=-e 's/-Wall/-Wall -Wno-unused-local-typedef/'
+  SED_EXTRA+= -e \
+      's/-Wall/-Wall -Wno-deprecated-declarations -Wno-unused-local-typedef/'
 endif
 
 SRCS=\
