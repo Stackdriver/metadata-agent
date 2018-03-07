@@ -547,7 +547,9 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
     throw(QueryException, json::Exception) {
   const std::string endpoint(config_.KubernetesEndpointHost() + path);
   http::client client(
-      http::client::options().openssl_certificate(SecretPath("ca.crt")));
+      http::client::options()
+      .remove_chunk_markers(true)
+      .openssl_certificate(SecretPath("ca.crt")));
   http::client::request request(endpoint);
   request << boost::network::header(
       "Authorization", "Bearer " + KubernetesApiToken());
@@ -809,7 +811,9 @@ void KubernetesReader::WatchMaster(
   const std::string endpoint(
       config_.KubernetesEndpointHost() + path + watch_param);
   http::client client(
-      http::client::options().openssl_certificate(SecretPath("ca.crt")));
+      http::client::options()
+      .remove_chunk_markers(false)
+      .openssl_certificate(SecretPath("ca.crt")));
   http::client::request request(endpoint);
   request << boost::network::header(
       "Authorization", "Bearer " + KubernetesApiToken());
