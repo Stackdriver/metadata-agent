@@ -74,13 +74,23 @@ std::chrono::system_clock::time_point FromString(const std::string& s) {
     return std::chrono::system_clock::time_point();
   }
   char* zone;
-  double seconds = std::strtod(end, &zone);
-  if (sec_i != static_cast<long>(seconds)) {
-    // TODO: Seconds weren't decimal.
+  if (*point == '.') {
+    long nanos = std::strtol(point + 1, &zone, 10);
+    if (zone <= point + 1) {
+      // TODO: Missing nanoseconds.
+      return std::chrono::system_clock::time_point();
+    }
+  } else {
+    zone = point;
+  }
+  if (*zone != 'Z' || *(zone+1) != '\0') {
+    // TODO: Invalid timezone.
     return std::chrono::system_clock::time_point();
   }
-  if (zone <= end || *zone != 'Z' || *(zone+1) != '\0') {
-    // TODO: Invalid timezone.
+  char* d_end;
+  double seconds = std::strtod(end, &d_end);
+  if (d_end != zone) {
+    // TODO: Internal error.
     return std::chrono::system_clock::time_point();
   }
   tm.tm_sec = sec_i;
