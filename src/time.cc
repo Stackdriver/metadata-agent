@@ -26,6 +26,8 @@
 
 namespace google {
 
+namespace time {
+
 namespace rfc3339 {
 
 namespace {
@@ -117,6 +119,8 @@ std::tm safe_localtime(const std::time_t* t) {
 std::tm safe_gmtime(const std::time_t* t) {
   std::lock_guard<std::mutex> l(gmtime_mutex);
   return *std::gmtime(t);
+}
+
 }
 
 }

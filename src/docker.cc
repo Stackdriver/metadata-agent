@@ -83,7 +83,7 @@ MetadataUpdater::ResourceMetadata DockerReader::GetContainerMetadata(
 
     const std::string created_str =
         container_desc->Get<json::String>("Created");
-    Timestamp created_at = rfc3339::FromString(created_str);
+    Timestamp created_at = time::rfc3339::FromString(created_str);
 
     const json::Object* state = container_desc->Get<json::Object>("State");
     bool is_deleted = state->Get<json::Boolean>("Dead");
