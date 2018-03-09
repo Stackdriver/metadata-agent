@@ -21,7 +21,8 @@ TEST_DIR=.
 TEST_SOURCES=$(wildcard $(TEST_DIR)/*_unittest.cc)
 TEST_OBJS=$(TEST_SOURCES:$(TEST_DIR)/%.cc=%.o)
 TESTS=\
-      format_unittest
+      format_unittest\
+      base64_unittest
 
 GTEST_LIB=gtest_lib.a
 
@@ -62,6 +63,8 @@ $(GTEST_LIB): gtest-all.o gtest_main.o
 	$(AR) $(ARFLAGS) $@ $^
 
 format_unittest: $(GTEST_LIB) format_unittest.o $(SRC_DIR)/format.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+base64_unittest: $(GTEST_LIB) base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 .PHONY: all test clean purge
