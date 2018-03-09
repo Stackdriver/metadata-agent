@@ -17,12 +17,12 @@
 #define OAUTH2_H_
 
 #include <boost/network/message/directives/header.hpp>
-#include <chrono>
 #include <memory>
 #include <string>
 
 #include "environment.h"
 #include "json.h"
+#include "time.h"
 
 namespace google {
 
@@ -41,7 +41,7 @@ class OAuth2 {
 
   const Environment& environment_;
   std::string auth_header_value_;
-  std::chrono::time_point<std::chrono::system_clock> token_expiration_;
+  time_point token_expiration_;
 };
 
 template<class Request>

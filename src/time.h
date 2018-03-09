@@ -22,11 +22,14 @@
 
 namespace google {
 
+using time_point = std::chrono::time_point<std::chrono::system_clock,
+                                           std::chrono::nanoseconds>;
+
 namespace time {
 
 using seconds = std::chrono::duration<double, std::chrono::seconds::period>;
 
-inline double SecondsSinceEpoch(const std::chrono::system_clock::time_point& t) {
+inline double SecondsSinceEpoch(const time_point& t) {
   return std::chrono::duration_cast<std::chrono::seconds>(
       t.time_since_epoch()).count();
 }
@@ -34,8 +37,8 @@ inline double SecondsSinceEpoch(const std::chrono::system_clock::time_point& t) 
 namespace rfc3339 {
 
 // Time conversions.
-std::string ToString(const std::chrono::system_clock::time_point& t);
-std::chrono::system_clock::time_point FromString(const std::string& s);
+std::string ToString(const time_point& t);
+time_point FromString(const std::string& s);
 
 }
 
