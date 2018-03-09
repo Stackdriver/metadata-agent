@@ -24,6 +24,13 @@ namespace google {
 
 namespace time {
 
+using seconds = std::chrono::duration<double, std::chrono::seconds::period>;
+
+inline double SecondsSinceEpoch(const std::chrono::system_clock::time_point& t) {
+  return std::chrono::duration_cast<std::chrono::seconds>(
+      t.time_since_epoch()).count();
+}
+
 namespace rfc3339 {
 
 // Time conversions.

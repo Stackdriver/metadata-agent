@@ -27,6 +27,7 @@
 
 #include "api_server.h"
 #include "resource.h"
+#include "time.h"
 
 namespace google {
 
@@ -107,12 +108,11 @@ class PollingMetadataUpdater : public MetadataUpdater {
   void StopUpdater();
 
  private:
-  using seconds = std::chrono::duration<double, std::chrono::seconds::period>;
   // Metadata poller.
   void PollForMetadata();
 
   // The polling period in seconds.
-  seconds period_;
+  time::seconds period_;
 
   // The function to actually query for metadata.
   std::function<std::vector<ResourceMetadata>()> query_metadata_;

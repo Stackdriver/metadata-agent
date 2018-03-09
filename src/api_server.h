@@ -27,6 +27,7 @@
 #include "configuration.h"
 #include "json.h"
 #include "resource.h"
+#include "time.h"
 
 namespace google {
 

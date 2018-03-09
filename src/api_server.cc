@@ -70,7 +70,6 @@ class MetadataReporter {
   ~MetadataReporter();
 
  private:
-  using seconds = std::chrono::duration<double, std::chrono::seconds::period>;
   // Metadata reporter.
   void ReportMetadata();
 
@@ -83,7 +82,7 @@ class MetadataReporter {
   Environment environment_;
   OAuth2 auth_;
   // The reporting period in seconds.
-  seconds period_;
+  time::seconds period_;
   std::thread reporter_thread_;
 };
 
@@ -166,7 +165,7 @@ void MetadataReporter::ReportMetadata() {
   LOG(INFO) << "Metadata reporter started";
   // Wait for the first collection to complete.
   // TODO: Come up with a more robust synchronization mechanism.
-  std::this_thread::sleep_for(std::chrono::seconds(3));
+  std::this_thread::sleep_for(time::seconds(3));
   // TODO: Do we need to be able to stop this?
   while (true) {
     if (agent_->config_.VerboseLogging()) {
