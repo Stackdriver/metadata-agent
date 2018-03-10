@@ -22,7 +22,7 @@ namespace base64 {
 
 std::string Encode(const std::string &source);
 
-//std::string Decode(const std::string &source);
+std::string Decode(const std::string &source);
 
 }
 
