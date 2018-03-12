@@ -56,6 +56,7 @@ constexpr const char kKubernetesDefaultClusterName[] = "";
 constexpr const char kKubernetesDefaultClusterLocation[] = "";
 constexpr const char kKubernetesDefaultNodeName[] = "";
 constexpr const bool kKubernetesDefaultUseWatch = true;
+constexpr const bool kKubernetesDefaultClusterLevelMetadata = false;
 constexpr const char kDefaultInstanceId[] = "";
 constexpr const char kDefaultInstanceZone[] = "";
 
@@ -94,6 +95,8 @@ MetadataAgentConfiguration::MetadataAgentConfiguration()
       kubernetes_cluster_location_(kKubernetesDefaultClusterLocation),
       kubernetes_node_name_(kKubernetesDefaultNodeName),
       kubernetes_use_watch_(kKubernetesDefaultUseWatch),
+      kubernetes_cluster_level_metadata_(
+          kKubernetesDefaultClusterLevelMetadata),
       instance_id_(kDefaultInstanceId),
       instance_zone_(kDefaultInstanceZone) {}
 
@@ -198,6 +201,9 @@ void MetadataAgentConfiguration::ParseConfigFile(const std::string& filename) {
       config["KubernetesNodeName"].as<std::string>(kKubernetesDefaultNodeName);
   kubernetes_use_watch_ =
       config["KubernetesUseWatch"].as<bool>(kKubernetesDefaultUseWatch);
+  kubernetes_cluster_level_metadata_ =
+      config["KubernetesClusterLevelMetadata"].as<bool>(
+          kKubernetesDefaultClusterLevelMetadata);
   instance_id_ =
       config["InstanceId"].as<std::string>(kDefaultInstanceId);
   instance_zone_ =

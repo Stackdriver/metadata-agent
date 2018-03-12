@@ -128,6 +128,10 @@ class MetadataAgentConfiguration {
     std::lock_guard<std::mutex> lock(mutex_);
     return kubernetes_use_watch_;
   }
+  bool KubernetesClusterLevelMetadata() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return kubernetes_cluster_level_metadata_;
+  }
   // Common metadata updater options.
   const std::string& InstanceId() const {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -166,6 +170,7 @@ class MetadataAgentConfiguration {
   std::string kubernetes_cluster_location_;
   std::string kubernetes_node_name_;
   bool kubernetes_use_watch_;
+  bool kubernetes_cluster_level_metadata_;
   std::string instance_id_;
   std::string instance_zone_;
 };
