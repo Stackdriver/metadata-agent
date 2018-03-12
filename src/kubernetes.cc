@@ -169,23 +169,29 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
           ? top_level_controller->Get<json::String>("kind")
           : "Pod";
 
-  // TODO: What about pods that are not scheduled yet?
-  const json::Object* spec = pod->Get<json::Object>("spec");
-  const std::string node_name = spec->Get<json::String>("nodeName");
-
   json::value instance_resource =
       InstanceReader::InstanceResource(environment_).ToJSON();
 
+  std::unique_ptr<json::Object> raw_associations(new json::Object({
+    {"infrastructureResource", std::move(instance_resource)},
+    {"controllers", json::object({
+      {"topLevelControllerType", json::string(top_level_kind)},
+      {"topLevelControllerName", json::string(top_level_name)},
+    })},
+  }));
+
+  const json::Object* spec = pod->Get<json::Object>("spec");
+  if (spec->Has("nodeName")) {
+    // Pods that have been scheduled will have a nodeName.
+    raw_associations->emplace(std::make_pair(
+      "nodeName",
+      json::string(spec->Get<json::String>("nodeName"))
+    ));
+  }
+
   return json::object({
     {"version", json::string(config_.MetadataIngestionRawContentVersion())},
-    {"raw", json::object({
-      {"infrastructureResource", std::move(instance_resource)},
-      {"controllers", json::object({
-        {"topLevelControllerType", json::string(top_level_kind)},
-        {"topLevelControllerName", json::string(top_level_name)},
-      })},
-      {"nodeName", json::string(node_name)},
-    })},
+    {"raw", json::value(std::move(raw_associations))},
   });
 }
 
@@ -454,11 +460,14 @@ std::vector<MetadataUpdater::ResourceMetadata>
   }
   std::vector<MetadataUpdater::ResourceMetadata> result;
 
-  const std::string node_name = CurrentNode();
+  const std::string current_node = CurrentNode();
 
   if (config_.VerboseLogging()) {
-    LOG(INFO) << "Current node is " << node_name;
+    LOG(INFO) << "Current node is " << current_node;
   }
+
+  const std::string node_name(
+      config_.KubernetesClusterLevelMetadata() ? "" : current_node);
 
   try {
     json::value raw_node = QueryMaster(
@@ -502,10 +511,13 @@ std::vector<MetadataUpdater::ResourceMetadata>
         const std::string pod_id = metadata->Get<json::String>("uid");
 
         const json::Object* spec = pod->Get<json::Object>("spec");
-        const std::string pod_node_name = spec->Get<json::String>("nodeName");
-        if (pod_node_name != node_name) {
-          LOG(ERROR) << "Internal error; pod's node " << pod_node_name
-                     << " not the same as agent node " << node_name;
+
+        if (!node_name.empty()) {
+          const std::string pod_node_name = spec->Get<json::String>("nodeName");
+          if (pod_node_name != node_name) {
+            LOG(ERROR) << "Internal error; pod's node " << pod_node_name
+                       << " not the same as agent node " << node_name;
+          }
         }
 
         const json::Object* status = pod->Get<json::Object>("status");
@@ -1161,14 +1173,17 @@ void KubernetesUpdater::StartUpdater() {
       LOG(INFO) << "Current node is " << current_node;
     }
 
+    const std::string watched_node(
+        config().KubernetesClusterLevelMetadata() ? "" : current_node);
+
     auto cb = [=](std::vector<MetadataUpdater::ResourceMetadata>&& results) {
       MetadataCallback(std::move(results));
     };
     node_watch_thread_ = std::thread([=]() {
-      reader_.WatchNodes(current_node, cb);
+      reader_.WatchNodes(watched_node, cb);
     });
     pod_watch_thread_ = std::thread([=]() {
-      reader_.WatchPods(current_node, cb);
+      reader_.WatchPods(watched_node, cb);
     });
   } else {
     // Only try to poll if watch is disabled.
