@@ -1139,6 +1139,12 @@ void KubernetesReader::WatchNodes(
   LOG(INFO) << "Watch thread (node) exiting";
 }
 
+KubernetesUpdater::KubernetesUpdater(MetadataAgent* server)
+    : reader_(server->config()), PollingMetadataUpdater(
+        server, "KubernetesUpdater",
+        server->config().KubernetesUpdaterIntervalSeconds(),
+        [=]() { return reader_.MetadataQuery(); }) { }
+
 bool KubernetesUpdater::ValidateConfiguration() const {
   if (!PollingMetadataUpdater::ValidateConfiguration()) {
     return false;
