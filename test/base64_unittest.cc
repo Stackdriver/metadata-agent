@@ -23,6 +23,30 @@ TEST(EncodeTest, TwoPhantom) {
   EXPECT_EQ("dGVzdA", base64::Encode("test"));
 }
 
+TEST(DecodeTest, EmptyDecode) {
+  EXPECT_EQ("", base64::Decode(""));
+}
+
+TEST(DecodeTest, SimpleDecode) {
+  EXPECT_EQ("tes", base64::Decode("dGVz"));
+}
+
+TEST(DecodeTest, OnePadding) {
+  EXPECT_EQ("test0", base64::Decode("dGVzdDA="));
+}
+
+TEST(DecodeTest, OnePhantom) {
+  EXPECT_EQ("test0", base64::Decode("dGVzdDA"));
+}
+
+TEST(DecodeTest, TwoPadding) {
+  EXPECT_EQ("test", base64::Decode("dGVzdA=="));
+}
+
+TEST(DecodeTest, TwoPhantom) {
+  EXPECT_EQ("test", base64::Decode("dGVzdA"));
+}
+
 TEST(RoundTripTest, FullString) {
   EXPECT_EQ("tes", base64::Decode(base64::Encode("tes")));
 }
