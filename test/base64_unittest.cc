@@ -4,33 +4,23 @@
 namespace {
 
 TEST(EncodeTest, EmptyEncode) {
-  EXPECT_EQ(
-      "",
-      base64::Encode("")
-  );
+  EXPECT_EQ("", base64::Encode(""));
 }
 
 TEST(EncodeTest, SimpleEncode) {
-  EXPECT_EQ(
-      "dGVz",
-      base64::Encode("tes")
-  );
+  EXPECT_EQ("dGVz", base64::Encode("tes"));
 }
 
-//Base64 encodings typically pad messages to ensure output length % 4 == 0, our
-//implementation does not
-TEST(EncodeTest, NoPaddingEncode) {
-  EXPECT_EQ(
-      "dGVzdDA",
-      base64::Encode("test0")
-  );
+// Base64 encoders typically pad messages to ensure output length % 4 == 0. To
+// acheive this, encoders will pad messages with either one or two "=".  Our
+// implementation does not do this.  The following two tests ensure that
+// base64::Encode does not append one or two "=".
+TEST(EncodeTest, OnePhantom) {
+  EXPECT_EQ("dGVzdDA", base64::Encode("test0"));
 }
 
-TEST(EncodeTest, NoDoublePaddingEncode) {
-  EXPECT_EQ(
-      "dGVzdA",
-      base64::Encode("test")
-  );
+TEST(EncodeTest, TwoPhantom) {
+  EXPECT_EQ("dGVzdA", base64::Encode("test"));
 }
 
 TEST(RoundTripTest, FullString) {
