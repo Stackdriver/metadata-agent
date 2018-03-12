@@ -33,4 +33,16 @@ TEST(EncodeTest, NoDoublePaddingEncode) {
   );
 }
 
+TEST(RoundTripTest, FullString) {
+  EXPECT_EQ("tes", base64::Decode(base64::Encode("tes")));
+}
+
+TEST(RoundTripTest, OnePhantom) {
+  EXPECT_EQ("test0", base64::Decode(base64::Encode("test0")));
+}
+
+TEST(RoundTripTest, TwoPhantoms) {
+  EXPECT_EQ("test", base64::Decode(base64::Encode("test")));
+}
+
 } // namespace
