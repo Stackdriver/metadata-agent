@@ -21,7 +21,7 @@ TEST_DIR=.
 TEST_SOURCES=$(wildcard $(TEST_DIR)/*_unittest.cc)
 TEST_OBJS=$(TEST_SOURCES:$(TEST_DIR)/%.cc=%.o)
 TESTS=\
-      format_unittest\
+      format_unittest \
       base64_unittest
 
 GTEST_LIB=gtest_lib.a

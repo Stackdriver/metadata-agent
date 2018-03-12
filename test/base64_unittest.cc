@@ -4,34 +4,32 @@
 namespace {
 
 TEST(EncodeTest, EmptyEncode) {
-  const std::string empty_str("");
   EXPECT_EQ(
       "",
-      base64::Encode(empty_str)
+      base64::Encode("")
   );
 }
 
 TEST(EncodeTest, SimpleEncode) {
-  const std::string simple_str("tes");
   EXPECT_EQ(
       "dGVz",
-      base64::Encode(simple_str)
+      base64::Encode("tes")
   );
 }
 
+//Base64 encodings typically pad messages to ensure output length % 4 == 0, our
+//implementation does not
 TEST(EncodeTest, NoPaddingEncode) {
-  const std::string simple_str("test0");
   EXPECT_EQ(
       "dGVzdDA",
-      base64::Encode(simple_str)
+      base64::Encode("test0")
   );
 }
 
 TEST(EncodeTest, NoDoublePaddingEncode) {
-  const std::string simple_str("test");
   EXPECT_EQ(
       "dGVzdA",
-      base64::Encode(simple_str)
+      base64::Encode("test")
   );
 }
 
