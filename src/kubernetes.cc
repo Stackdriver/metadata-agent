@@ -466,13 +466,24 @@ std::vector<MetadataUpdater::ResourceMetadata>
       config_.KubernetesClusterLevelMetadata() ? "" : current_node);
 
   try {
-    json::value raw_node = QueryMaster(
+    json::value raw_nodes = QueryMaster(
         std::string(kKubernetesEndpointPath) + "/nodes/" + node_name);
     Timestamp collected_at = std::chrono::system_clock::now();
 
-    const json::Object* node = raw_node->As<json::Object>();
-    result.emplace_back(
-        GetNodeMetadata(node, collected_at, /*is_deleted=*/false));
+    if (!node_name.empty()) {
+      // It's a single node object -- fake a NodeList.
+      raw_nodes.reset(json::object({
+        {"items", json::array({std::move(raw_nodes)})},
+      }).release());
+    }
+
+    const json::Object* nodelist = raw_nodes->As<json::Object>();
+    const json::Array* nodes_array = nodelist->Get<json::Array>("items");
+    for (const json::value& raw_node : *nodes_array) {
+      const json::Object* node = raw_node->As<json::Object>();
+      result.emplace_back(
+          GetNodeMetadata(node, collected_at, /*is_deleted=*/false));
+    }
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
   } catch (const QueryException& e) {
