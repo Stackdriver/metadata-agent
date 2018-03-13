@@ -65,8 +65,7 @@ void PollingMetadataUpdater::StartUpdater() {
     LOG(INFO) << "Timer locked";
   }
   if (period_ > seconds::zero()) {
-    reporter_thread_ =
-        std::thread(&PollingMetadataUpdater::PollForMetadata, this);
+    reporter_thread_ = std::thread([=]() { PollForMetadata(); });
   }
 }
 

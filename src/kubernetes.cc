@@ -833,7 +833,9 @@ void KubernetesReader::WatchMaster(
     std::mutex completion_mutex;
     std::unique_lock<std::mutex> watch_completion(completion_mutex);
     Watcher watcher(endpoint,
-                    std::bind(&EventCallback, callback, std::placeholders::_1),
+                    [=](json::value raw_watch) {
+                      EventCallback(callback, std::move(raw_watch));
+                    },
                     std::move(watch_completion), config_.VerboseLogging());
     http::client::response response = client.get(request, boost::ref(watcher));
     if (config_.VerboseLogging()) {
@@ -1085,11 +1087,12 @@ void KubernetesReader::WatchPods(
       ? "" : "&" + config_.KubernetesPodLabelSelector());
 
   try {
-    WatchMaster(std::string(kKubernetesEndpointPath) + "/pods"
-                + node_selector + pod_label_selector,
-                std::bind(&KubernetesReader::PodCallback,
-                          this, callback, std::placeholders::_1,
-                          std::placeholders::_2, std::placeholders::_3));
+    WatchMaster(
+        std::string(kKubernetesEndpointPath) + "/pods" + node_selector
+        + pod_label_selector,
+        [=](const json::Object* pod, Timestamp collected_at, bool is_deleted) {
+          PodCallback(callback, pod, collected_at, is_deleted);
+        });
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
     LOG(ERROR) << "No more pod metadata will be collected";
@@ -1117,11 +1120,11 @@ void KubernetesReader::WatchNodes(
 
   try {
     // TODO: There seems to be a Kubernetes API bug with watch=true.
-    WatchMaster(std::string(kKubernetesEndpointPath) + "/watch/nodes/"
-                + node_name,
-                std::bind(&KubernetesReader::NodeCallback,
-                          this, callback, std::placeholders::_1,
-                          std::placeholders::_2, std::placeholders::_3));
+    WatchMaster(
+        std::string(kKubernetesEndpointPath) + "/watch/nodes/" + node_name,
+        [=](const json::Object* node, Timestamp collected_at, bool is_deleted) {
+          NodeCallback(callback, node, collected_at, is_deleted);
+        });
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
     LOG(ERROR) << "No more node metadata will be collected";
@@ -1135,7 +1138,7 @@ KubernetesUpdater::KubernetesUpdater(MetadataAgent* server)
     : reader_(server->config()), PollingMetadataUpdater(
         server, "KubernetesUpdater",
         server->config().KubernetesUpdaterIntervalSeconds(),
-        std::bind(&google::KubernetesReader::MetadataQuery, &reader_)) { }
+        [=]() { return reader_.MetadataQuery(); }) { }
 
 bool KubernetesUpdater::ValidateConfiguration() const {
   if (!PollingMetadataUpdater::ValidateConfiguration()) {
@@ -1157,12 +1160,15 @@ void KubernetesUpdater::StartUpdater() {
         config().KubernetesClusterLevelMetadata() ? "" : current_node);
 
     // Wrap the bind expression into a function to use as a bind argument.
-    UpdateCallback cb = std::bind(&KubernetesUpdater::MetadataCallback, this,
-                                  std::placeholders::_1);
-    node_watch_thread_ =
-        std::thread(&KubernetesReader::WatchNodes, &reader_, watched_node, cb);
-    pod_watch_thread_ =
-        std::thread(&KubernetesReader::WatchPods, &reader_, watched_node, cb);
+    auto cb = [=](std::vector<MetadataUpdater::ResourceMetadata>&& results) {
+      MetadataCallback(std::move(results));
+    };
+    node_watch_thread_ = std::thread([=]() {
+      reader_.WatchNodes(watched_node, cb);
+    });
+    pod_watch_thread_ = std::thread([=]() {
+      reader_.WatchPods(watched_node, cb);
+    });
   } else {
     // Only try to poll if watch is disabled.
     PollingMetadataUpdater::StartUpdater();
