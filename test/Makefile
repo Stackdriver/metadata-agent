@@ -9,10 +9,14 @@ GTEST_SRCS_=$(GTEST_SOURCEDIR)/*.cc $(GTEST_SOURCEDIR)/*.h $(GTEST_HEADERS)
 # TODO: Factor out the common variables.
 CPP_NETLIB_DIR=$(LIBDIR)/cpp-netlib
 YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
+YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
 
-CPPFLAGS+=-isystem $(GTEST_DIR)/include
+YAML_CPP_LIBS=$(YAML_CPP_LIBDIR)/libyaml-cpp.a
+
+CPPFLAGS+=-isystem $(GTEST_DIR)/include -I$(YAML_CPP_DIR)/include
 CXXFLAGS=-std=c++11 -g -pthread
-LDLIBS=-lpthread
+LDLIBS=-lpthread -lboost_program_options -lyaml-cpp
+LDFLAGS=-L$(YAML_CPP_LIBDIR)
 
 # Where to find code under test.
 SRC_DIR=../src
@@ -22,6 +26,7 @@ TEST_SOURCES=$(wildcard $(TEST_DIR)/*_unittest.cc)
 TEST_OBJS=$(TEST_SOURCES:$(TEST_DIR)/%.cc=%.o)
 TESTS=\
       base64_unittest \
+      configuration_unittest \
       format_unittest \
       time_unittest
 
@@ -48,6 +53,9 @@ init-submodules:
 	git submodule update --init $(GTEST_MODULE)
 	touch init-submodules
 
+$(YAML_CPP_LIBS):
+	cd $(SRC_DIR) && $(MAKE) $@
+
 $(SRC_DIR)/%.o: $(SRC_DIR)/%.cc
 	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
@@ -66,7 +74,8 @@ format_unittest: $(GTEST_LIB) format_unittest.o $(SRC_DIR)/format.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 base64_unittest: $(GTEST_LIB) base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-
+configuration_unittest: $(GTEST_LIB) $(YAML_CPP_LIBS) configuration_unittest.o $(SRC_DIR)/configuration.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 time_unittest: $(GTEST_LIB) time_unittest.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 

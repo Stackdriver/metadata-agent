@@ -19,6 +19,7 @@
 #include <boost/program_options.hpp>
 #include <iostream>
 #include <map>
+#include <fstream>
 
 #include <yaml-cpp/yaml.h>
 
@@ -132,10 +133,15 @@ int MetadataAgentConfiguration::ParseArguments(int ac, char** av) {
 }
 
 void MetadataAgentConfiguration::ParseConfigFile(const std::string& filename) {
-  std::lock_guard<std::mutex> lock(mutex_);
   if (filename.empty()) return;
 
-  YAML::Node config = YAML::LoadFile(filename);
+  std::ifstream input(filename);
+  ParseConfiguration(input);
+}
+
+void MetadataAgentConfiguration::ParseConfiguration(std::istream& input) {
+  YAML::Node config = YAML::Load(input);
+  std::lock_guard<std::mutex> lock(mutex_);
   project_id_ =
       config["ProjectId"].as<std::string>(kDefaultProjectId);
   credentials_file_ =
