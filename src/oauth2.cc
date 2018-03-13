@@ -32,6 +32,7 @@
 #include "http_common.h"
 #include "json.h"
 #include "logging.h"
+#include "time.h"
 
 namespace http = boost::network::http;
 
@@ -138,13 +139,6 @@ std::string Sign(const std::string& data, const PKey& pkey) {
   return std::string(reinterpret_cast<char*>(result.get()), actual_result_size);
 }
 
-// TODO: Move this to the time library?
-double SecondsSinceEpoch(
-    const std::chrono::time_point<std::chrono::system_clock>& t) {
-  return std::chrono::duration_cast<std::chrono::seconds>(
-      t.time_since_epoch()).count();
-}
-
 }
 
 json::value OAuth2::ComputeTokenFromCredentials() const {
@@ -209,8 +203,8 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
       {"iss", json::string(service_account_email)},
       {"scope", json::string("https://www.googleapis.com/auth/monitoring")},
       {"aud", json::string("https://www.googleapis.com/oauth2/v3/token")},
-      {"iat", json::number(SecondsSinceEpoch(now))},
-      {"exp", json::number(SecondsSinceEpoch(exp))},
+      {"iat", json::number(time::SecondsSinceEpoch(now))},
+      {"exp", json::number(time::SecondsSinceEpoch(exp))},
     });
     if (environment_.config().VerboseLogging()) {
       LOG(INFO) << "claim_set = " << claim_set_object->ToString();
