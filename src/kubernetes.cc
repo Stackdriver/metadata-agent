@@ -1159,7 +1159,6 @@ void KubernetesUpdater::StartUpdater() {
     const std::string watched_node(
         config().KubernetesClusterLevelMetadata() ? "" : current_node);
 
-    // Wrap the bind expression into a function to use as a bind argument.
     auto cb = [=](std::vector<MetadataUpdater::ResourceMetadata>&& results) {
       MetadataCallback(std::move(results));
     };
