@@ -91,12 +91,11 @@ KubernetesReader::KubernetesReader(const MetadataAgentConfiguration& config)
     : config_(config), environment_(config) {}
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
-    json::value raw_node, Timestamp collected_at, bool is_deleted) const
+    const json::Object* node, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
   const std::string cluster_name = environment_.KubernetesClusterName();
   const std::string location = environment_.KubernetesClusterLocation();
 
-  const json::Object* node = raw_node->As<json::Object>();
   const json::Object* metadata = node->Get<json::Object>("metadata");
   const std::string node_name = metadata->Get<json::String>("name");
   const std::string created_str =
@@ -122,7 +121,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
       })},
       {"api", json::object({
         {"version", json::string(kKubernetesApiVersion)},
-        {"raw", std::move(raw_node)},
+        {"raw", node->Clone()},
       })},
     })},
   });
@@ -196,12 +195,10 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
 }
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
-    json::value raw_pod, json::value associations, Timestamp collected_at,
+    const json::Object* pod, json::value associations, Timestamp collected_at,
     bool is_deleted) const throw(json::Exception) {
   const std::string cluster_name = environment_.KubernetesClusterName();
   const std::string location = environment_.KubernetesClusterLocation();
-
-  const json::Object* pod = raw_pod->As<json::Object>();
 
   const json::Object* metadata = pod->Get<json::Object>("metadata");
   const std::string namespace_name = metadata->Get<json::String>("namespace");
@@ -448,8 +445,7 @@ KubernetesReader::GetPodAndContainerMetadata(
   }
 
   result.emplace_back(
-      GetPodMetadata(pod->Clone(), std::move(associations), collected_at,
-                     is_deleted));
+      GetPodMetadata(pod, std::move(associations), collected_at, is_deleted));
   return std::move(result);
 }
 
@@ -474,8 +470,9 @@ std::vector<MetadataUpdater::ResourceMetadata>
         std::string(kKubernetesEndpointPath) + "/nodes/" + node_name);
     Timestamp collected_at = std::chrono::system_clock::now();
 
-    result.emplace_back(GetNodeMetadata(std::move(raw_node), collected_at,
-                                        /*is_deleted=*/false));
+    const json::Object* node = raw_node->As<json::Object>();
+    result.emplace_back(
+        GetNodeMetadata(node, collected_at, /*is_deleted=*/false));
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
   } catch (const QueryException& e) {
@@ -1123,8 +1120,7 @@ void KubernetesReader::NodeCallback(
     const json::Object* node, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
   std::vector<MetadataUpdater::ResourceMetadata> result_vector;
-  result_vector.emplace_back(
-      GetNodeMetadata(node->Clone(), collected_at, is_deleted));
+  result_vector.emplace_back(GetNodeMetadata(node, collected_at, is_deleted));
   callback(std::move(result_vector));
 }
 

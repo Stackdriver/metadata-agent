@@ -94,11 +94,11 @@ class KubernetesReader {
       throw(json::Exception);
   // Given a node object, return the associated metadata.
   MetadataUpdater::ResourceMetadata GetNodeMetadata(
-      json::value raw_node, Timestamp collected_at, bool is_deleted) const
+      const json::Object* node, Timestamp collected_at, bool is_deleted) const
       throw(json::Exception);
   // Given a pod object, return the associated metadata.
   MetadataUpdater::ResourceMetadata GetPodMetadata(
-      json::value raw_pod, json::value associations, Timestamp collected_at,
+      const json::Object* pod, json::value associations, Timestamp collected_at,
       bool is_deleted) const throw(json::Exception);
   // Given a pod object and container info, return the container metadata.
   MetadataUpdater::ResourceMetadata GetContainerMetadata(
