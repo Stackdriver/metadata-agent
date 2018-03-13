@@ -1049,9 +1049,13 @@ void KubernetesReader::PodCallback(
     MetadataUpdater::UpdateCallback callback,
     const json::Object* pod, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
-  std::vector<MetadataUpdater::ResourceMetadata> result_vector =
-      GetPodAndContainerMetadata(pod, collected_at, is_deleted);
-  callback(std::move(result_vector));
+  try {
+    std::vector<MetadataUpdater::ResourceMetadata> result_vector =
+        GetPodAndContainerMetadata(pod, collected_at, is_deleted);
+    callback(std::move(result_vector));
+  } catch (const json::Exception& e) {
+    LOG(ERROR) << e.what();
+  }
 }
 
 void KubernetesReader::WatchPods(MetadataUpdater::UpdateCallback callback)
