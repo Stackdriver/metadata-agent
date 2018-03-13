@@ -16,6 +16,8 @@
 
 #include "base64.h"
 
+#include <vector>
+
 namespace base64 {
 
 namespace {
@@ -27,21 +29,23 @@ constexpr const unsigned char base64url_chars[] =
 std::string Encode(const std::string &source) {
   std::string result;
 #if 0
-  const std::size_t remainder = source.size() % 3;
+  const std::size_t remainder = (source.size() - 1) % 3;
   for (std::size_t i = 0; i < source.size(); i += 3) {
+    const bool one_more = i < source.size() - 3 || remainder > 0;
+    const bool two_more = i < source.size() - 3 || remainder > 1;
     const unsigned char c0 = source[i];
-    const unsigned char c1 = remainder > 0 ? source[i + 1] : 0u;
-    const unsigned char c2 = remainder > 1 ? source[i + 2] : 0u;
+    const unsigned char c1 = one_more ? source[i + 1] : 0u;
+    const unsigned char c2 = two_more ? source[i + 2] : 0u;
     result.push_back(base64url_chars[0x3f & c0 >> 2]);
-    result.push_back(base64url_chars[0x3f & c0 << 4 | c1 >> 4]);
-    if (remainder > 0) {
-      result.push_back(base64url_chars[0x3f & c1 << 2 | c2 >> 6]);
+    result.push_back(base64url_chars[(0x3f & c0 << 4) | c1 >> 4]);
+    if (one_more) {
+      result.push_back(base64url_chars[(0x3f & c1 << 2) | c2 >> 6]);
     }
-    if (remainder > 1) {
+    if (two_more) {
       result.push_back(base64url_chars[0x3f & c2]);
     }
   }
-#endif
+#else
   unsigned int code_buffer = 0;
   int code_buffer_size = -6;
   for (unsigned char c : source) {
@@ -57,30 +61,29 @@ std::string Encode(const std::string &source) {
     code_buffer_size += 8;
     result.push_back(base64url_chars[(code_buffer >> code_buffer_size) & 0x3f]);
   }
+#endif
   // No padding needed.
   return result;
 }
 
-#if 0
 std::string Decode(const std::string &source) {
   std::string result;
 
-  std::vector<int> T(256,-1);
-  for (int i=0; i<64; i++) T[base64url_chars[i]] = i;
+  std::vector<int> T(256, -1);
+  for (int i = 0; i < 64; i++) T[base64url_chars[i]] = i;
 
-  int val=0, valb=-8;
-  for (uchar c : source) {
+  int val = 0, shift = -8;
+  for (char c : source) {
     if (T[c] == -1) break;
-    val = (val<<6) + T[c];
-    valb += 6;
-    if (valb>=0) {
-      result.push_back(char((val>>valb)&0xFF));
-      valb-=8;
+    val = (val << 6) + T[c];
+    shift += 6;
+    if (shift >= 0) {
+      result.push_back(char((val >> shift) & 0xFF));
+      shift -= 8;
     }
   }
   return result;
 }
-#endif
 
 }
 
