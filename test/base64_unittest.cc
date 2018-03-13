@@ -12,7 +12,7 @@ TEST(EncodeTest, SimpleEncode) {
 }
 
 // Base64 encoders typically pad messages to ensure output length % 4 == 0. To
-// acheive this, encoders will pad messages with either one or two "=". Our
+// achieve this, encoders will pad messages with either one or two "=". Our
 // implementation does not do this. The following two tests ensure that
 // base64::Encode does not append one or two "=".
 TEST(EncodeTest, OnePhantom) {
