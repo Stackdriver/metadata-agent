@@ -9,10 +9,16 @@ GTEST_SRCS_=$(GTEST_SOURCEDIR)/*.cc $(GTEST_SOURCEDIR)/*.h $(GTEST_HEADERS)
 # TODO: Factor out the common variables.
 CPP_NETLIB_DIR=$(LIBDIR)/cpp-netlib
 YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
+YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
+SUBMODULE_DIRS=$(CPP_NETLIB_DIR) $(YAML_CPP_DIR)
 
+YAML_CPP_LIBS=$(YAML_CPP_LIBDIR)/libyaml-cpp.a
+
+CMAKE=cmake
 CPPFLAGS+=-isystem $(GTEST_DIR)/include
-CXXFLAGS=-std=c++11 -g -pthread
-LDLIBS=-lpthread
+CXXFLAGS=-std=c++11 -g -pthread -I$(YAML_CPP_DIR)/include
+LDLIBS=-lpthread -lboost_program_options -lyaml-cpp
+LDFLAGS=-L$(YAML_CPP_LIBDIR)
 
 # Where to find code under test.
 SRC_DIR=../src
@@ -22,7 +28,8 @@ TEST_SOURCES=$(wildcard $(TEST_DIR)/*_unittest.cc)
 TEST_OBJS=$(TEST_SOURCES:$(TEST_DIR)/%.cc=%.o)
 TESTS=\
       format_unittest \
-      base64_unittest
+      base64_unittest \
+      configuration_unittest
 
 GTEST_LIB=gtest_lib.a
 
@@ -47,6 +54,20 @@ init-submodules:
 	git submodule update --init $(GTEST_MODULE)
 	touch init-submodules
 
+$(YAML_CPP_DIR)/Makefile: init-submodules
+	cd $(YAML_CPP_DIR) && \
+	$(CMAKE) -DMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
+	    -DMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
+	    -DYAML_CPP_BUILD_TOOLS=OFF
+
+$(YAML_CPP_LIBS): build-yaml-cpp
+
+build-yaml-cpp: $(YAML_CPP_DIR)/Makefile
+	cd $(YAML_CPP_DIR) && \
+	$(MAKE)
+	touch build-yaml-cpp
+
+yaml-cpp: $(YAML_CPP_LIBS)
 
 $(SRC_DIR)/%.o: $(SRC_DIR)/%.cc
 	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
@@ -67,4 +88,7 @@ format_unittest: $(GTEST_LIB) format_unittest.o $(SRC_DIR)/format.o
 base64_unittest: $(GTEST_LIB) base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
-.PHONY: all test clean purge
+configuration_unittest: $(GTEST_LIB) configuration_unittest.o $(SRC_DIR)/configuration.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+
+.PHONY: all test clean purge yaml-cpp

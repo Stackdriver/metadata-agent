@@ -19,12 +19,16 @@
 #include <mutex>
 #include <string>
 
+#include <yaml-cpp/yaml.h>
+
 namespace google {
 
 class MetadataAgentConfiguration {
  public:
   MetadataAgentConfiguration();
   int ParseArguments(int ac, char** av);
+  void ParseConfigFile(const std::string& filename);
+  void ParseYamlConfig(YAML::Node config);
 
   // Shared configuration.
   const std::string& ProjectId() const {
@@ -139,8 +143,6 @@ class MetadataAgentConfiguration {
   }
 
  private:
-  void ParseConfigFile(const std::string& filename);
-
   mutable std::mutex mutex_;
   std::string project_id_;
   std::string credentials_file_;

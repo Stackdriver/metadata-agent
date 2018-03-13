@@ -20,8 +20,6 @@
 #include <iostream>
 #include <map>
 
-#include <yaml-cpp/yaml.h>
-
 namespace google {
 
 namespace {
@@ -132,10 +130,14 @@ int MetadataAgentConfiguration::ParseArguments(int ac, char** av) {
 }
 
 void MetadataAgentConfiguration::ParseConfigFile(const std::string& filename) {
-  std::lock_guard<std::mutex> lock(mutex_);
   if (filename.empty()) return;
 
   YAML::Node config = YAML::LoadFile(filename);
+  ParseYamlConfig(config);
+}
+
+void MetadataAgentConfiguration::ParseYamlConfig(YAML::Node config) {
+  std::lock_guard<std::mutex> lock(mutex_);
   project_id_ =
       config["ProjectId"].as<std::string>(kDefaultProjectId);
   credentials_file_ =
