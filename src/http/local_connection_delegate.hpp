@@ -9,8 +9,8 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 
 #include <functional>
-
 #include <boost/asio/local/stream_protocol.hpp>
+#include <boost/asio/streambuf.hpp>
 
 namespace boost {
 namespace network {
@@ -18,26 +18,23 @@ namespace http {
 namespace impl {
 
 struct local_connection_delegate {
-  // TODO: this is similar enough to connection_delegate that it may be possible to refactor.
+  // TODO(igorp): this is similar enough to connection_delegate that it may be possible to refactor.
   virtual void connect(boost::asio::local::stream_protocol::endpoint &endpoint,
-                       std::function<void(system::error_code const &)> handler) = 0;
+                       std::function<void(boost::system::error_code const &)> handler) = 0;
   virtual void write(
-      asio::streambuf &command_streambuf,
-      std::function<void(system::error_code const &, size_t)> handler) = 0;
+      boost::asio::streambuf &command_streambuf,
+      std::function<void(boost::system::error_code const &, size_t)> handler) = 0;
   virtual void read_some(
-      asio::mutable_buffers_1 const &read_buffer,
-      std::function<void(system::error_code const &, size_t)> handler) = 0;
+      boost::asio::mutable_buffers_1 const &read_buffer,
+      std::function<void(boost::system::error_code const &, size_t)> handler) = 0;
   virtual void disconnect() = 0;
-  virtual ~local_connection_delegate() {}
+  virtual ~local_connection_delegate() = default;
 };
 
-} /* impl */
-
-} /* http */
-
-} /* network */
-
-} /* boost */
+}  // namespace impl
+}  // namespace http
+}  // namespace network
+}  // namespace boost
 
 #endif /* BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_CONNECTION_LOCAL_CONNECTION_DELEGATE_HPP_ \
           */

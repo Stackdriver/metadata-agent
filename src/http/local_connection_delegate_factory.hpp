@@ -8,8 +8,8 @@
 // (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 
-#include <boost/optional.hpp>
 #include <boost/network/traits/string.hpp>
+#include <boost/optional/optional.hpp>
 #include "local_connection_delegate.hpp"
 #include "local_normal_delegate.hpp"
 #include "local_tags.hpp"
@@ -26,29 +26,28 @@ struct local_normal_delegate;
 
 template<> struct connection_delegate_factory<Tag> {
   typedef std::shared_ptr<local_connection_delegate> connection_delegate_ptr;
-  typedef string<Tag>::type string_type;
+  typedef typename string<Tag>::type string_type;
 
-  // This is the factory method that actually returns the delegate
-  // instance.
-  // TODO Support passing in proxy settings when crafting connections.
+  // This is the factory method that actually returns the delegate instance.
+  // TODO(dberris): Support passing in proxy settings when crafting connections.
   static connection_delegate_ptr new_connection_delegate(
       boost::asio::io_service& service, bool https, bool always_verify_peer,
       optional<string_type> certificate_filename,
       optional<string_type> verify_path, optional<string_type> certificate_file,
       optional<string_type> private_key_file, optional<string_type> ciphers,
-      long ssl_options) {
+      optional<string_type> sni_hostname, long ssl_options) {
     connection_delegate_ptr delegate;
-    delegate.reset(new local_normal_delegate(service));
+    delegate = std::make_shared<local_normal_delegate>(service);
     return delegate;
   }
 };
 
 #undef Tag
 
-} /* impl */
-} /* http */
-} /* network */
-} /* boost */
+}  // namespace impl
+}  // namespace http
+}  // namespace network
+}  // namespace boost
 
 #endif /* BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_LOCAL_CONNECTION_DELEGATE_FACTORY_HPP_20170307 \
           */

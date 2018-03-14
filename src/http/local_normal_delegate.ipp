@@ -12,6 +12,7 @@
 #include <boost/asio/local/stream_protocol.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/write.hpp>
+#include <boost/asio/buffer.hpp>
 
 #include "local_normal_delegate.hpp"
 
@@ -42,15 +43,11 @@ void boost::network::http::impl::local_normal_delegate::read_some(
 void boost::network::http::impl::local_normal_delegate::disconnect() {
   if (socket_.get() && socket_->is_open()) {
     boost::system::error_code ignored;
-    socket_->shutdown(
-        boost::asio::local::stream_protocol::socket::shutdown_both, ignored);
+    socket_->shutdown(boost::asio::local::stream_protocol::socket::shutdown_both, ignored);
     if (!ignored) {
       socket_->close(ignored);
     }
   }
 }
 
-boost::network::http::impl::local_normal_delegate::~local_normal_delegate() {}
-
-#endif /* BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_CONNECTION_LOCAL_NORMAL_DELEGATE_IPP_20170307 \
-          */
+#endif // BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_CONNECTION_LOCAL_NORMAL_DELEGATE_IPP_20170307
