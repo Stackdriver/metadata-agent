@@ -510,7 +510,7 @@ std::vector<MetadataUpdater::ResourceMetadata>
         const json::Object* status = pod->Get<json::Object>("status");
 
         const json::Array* container_specs = spec->Get<json::Array>("containers");
-        if (spec->Has("containerStatuses")) {
+        if (status->Has("containerStatuses")) {
           const json::Array* container_statuses =
               status->Get<json::Array>("containerStatuses");
           if (container_specs->size() != container_statuses->size()) {
@@ -521,7 +521,7 @@ std::vector<MetadataUpdater::ResourceMetadata>
                        << pod_id << "(" << pod_name << ")";
           }
         } else {
-          LOG(ERROR) << "Container statuses do not exist in spec for pod "
+          LOG(ERROR) << "Container statuses do not exist in status for pod "
                      << pod_id << "(" << pod_name << ")";
         }
 
