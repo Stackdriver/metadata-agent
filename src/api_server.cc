@@ -70,7 +70,6 @@ class MetadataReporter {
   ~MetadataReporter();
 
  private:
-  using seconds = std::chrono::duration<double, std::chrono::seconds::period>;
   // Metadata reporter.
   void ReportMetadata();
 
@@ -83,7 +82,7 @@ class MetadataReporter {
   Environment environment_;
   OAuth2 auth_;
   // The reporting period in seconds.
-  seconds period_;
+  time::seconds period_;
   std::thread reporter_thread_;
 };
 
@@ -166,7 +165,7 @@ void MetadataReporter::ReportMetadata() {
   LOG(INFO) << "Metadata reporter started";
   // Wait for the first collection to complete.
   // TODO: Come up with a more robust synchronization mechanism.
-  std::this_thread::sleep_for(std::chrono::seconds(3));
+  std::this_thread::sleep_for(time::seconds(3));
   // TODO: Do we need to be able to stop this?
   while (true) {
     if (agent_->config_.VerboseLogging()) {
@@ -271,8 +270,8 @@ void MetadataReporter::SendMetadata(
           {"rawContentVersion", json::string(metadata.version)},
           {"rawContent", std::move(metadata.metadata)},
           {"state", json::string(metadata.is_deleted ? "DELETED" : "ACTIVE")},
-          {"createTime", json::string(rfc3339::ToString(metadata.created_at))},
-          {"collectTime", json::string(rfc3339::ToString(metadata.collected_at))},
+          {"createTime", json::string(time::rfc3339::ToString(metadata.created_at))},
+          {"collectTime", json::string(time::rfc3339::ToString(metadata.collected_at))},
         });
     // TODO: This is probably all kinds of inefficient...
     const int size = metadata_entry->ToString().size();
@@ -322,8 +321,8 @@ void MetadataAgent::UpdateMetadata(const MonitoredResource& resource,
     LOG(INFO) << "Updating metadata map " << resource << "->{"
               << "version: " << entry.version << ", "
               << "is_deleted: " << entry.is_deleted << ", "
-              << "created_at: " << rfc3339::ToString(entry.created_at) << ", "
-              << "collected_at: " << rfc3339::ToString(entry.collected_at)
+              << "created_at: " << time::rfc3339::ToString(entry.created_at) << ", "
+              << "collected_at: " << time::rfc3339::ToString(entry.collected_at)
               << ", "
               << "metadata: " << *entry.metadata << ", "
               << "ignore: " << entry.ignore
@@ -359,9 +358,9 @@ void MetadataAgent::PurgeDeletedEntries() {
         LOG(INFO) << "Purging metadata entry " << resource << "->{"
                   << "version: " << entry.version << ", "
                   << "is_deleted: " << entry.is_deleted << ", "
-                  << "created_at: " << rfc3339::ToString(entry.created_at)
+                  << "created_at: " << time::rfc3339::ToString(entry.created_at)
                   << ", "
-                  << "collected_at: " << rfc3339::ToString(entry.collected_at)
+                  << "collected_at: " << time::rfc3339::ToString(entry.collected_at)
                   << ", "
                   << "metadata: " << *entry.metadata << ", "
                   << "ignore: " << entry.ignore

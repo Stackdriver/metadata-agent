@@ -56,7 +56,7 @@ PollingMetadataUpdater::~PollingMetadataUpdater() {
 }
 
 bool PollingMetadataUpdater::ValidateConfiguration() const {
-  return period_ >= seconds::zero();
+  return period_ >= time::seconds::zero();
 }
 
 void PollingMetadataUpdater::StartUpdater() {
@@ -64,7 +64,7 @@ void PollingMetadataUpdater::StartUpdater() {
   if (config().VerboseLogging()) {
     LOG(INFO) << "Timer locked";
   }
-  if (period_ > seconds::zero()) {
+  if (period_ > time::seconds::zero()) {
     reporter_thread_ =
         std::thread(&PollingMetadataUpdater::PollForMetadata, this);
   }
@@ -100,7 +100,7 @@ void PollingMetadataUpdater::PollForMetadata() {
       }
       if (config().VerboseLogging()) {
         LOG(INFO) << " Timer unlock timed out after "
-                  << std::chrono::duration_cast<seconds>(now - start).count()
+                  << std::chrono::duration_cast<time::seconds>(now - start).count()
                   << "s (good)";
       }
       start = now;

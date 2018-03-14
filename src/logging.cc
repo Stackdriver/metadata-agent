@@ -30,7 +30,7 @@ Logger::Logger(const char* file, int line, Severity severity, LogStream* stream)
 {
   const std::time_t now_c =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-  std::tm local_time = safe_localtime(&now_c);
+  std::tm local_time = time::safe_localtime(&now_c);
   // GCC 4.x does not implement std::put_time. Sigh.
   char time_val[20];
   std::strftime(time_val, sizeof(time_val), "%m%d %H:%M:%S ", &local_time);

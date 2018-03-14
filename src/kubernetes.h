@@ -66,7 +66,9 @@ class KubernetesReader {
   // Issues a Kubernetes master API query at a given path and
   // watches for parsed JSON responses. The path has to start with "/".
   // Invokes callback for every notification.
+  // The name is for logging purposes.
   void WatchMaster(
+    const std::string& name,
     const std::string& path,
     std::function<void(const json::Object*, Timestamp, bool)> callback) const
     throw(QueryException, json::Exception);

@@ -27,6 +27,7 @@
 #include "configuration.h"
 #include "json.h"
 #include "resource.h"
+#include "time.h"
 
 namespace google {
 
@@ -37,7 +38,7 @@ class MetadataApiServer;
 class MetadataReporter;
 
 // A timestamp type.
-using Timestamp = std::chrono::time_point<std::chrono::system_clock>;
+using Timestamp = time_point;
 
 // Stores the metadata mapping and runs the metadata tasks.
 class MetadataAgent {
