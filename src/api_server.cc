@@ -20,6 +20,7 @@
 #include <boost/network/protocol/http/client.hpp>
 #include <boost/network/protocol/http/server.hpp>
 #include <boost/range/irange.hpp>
+#include <memory>
 #include <ostream>
 #include <thread>
 
@@ -53,7 +54,7 @@ class MetadataApiServer {
    public:
     Handler(const MetadataAgent& agent);
     void operator()(const HttpServer::request& request,
-                    HttpServer::response& response);
+                    std::shared_ptr<HttpServer::connection> conn);
     void log(const HttpServer::string_type& info);
    private:
     const MetadataAgent& agent_;
@@ -90,7 +91,7 @@ MetadataApiServer::Handler::Handler(const MetadataAgent& agent)
     : agent_(agent) {}
 
 void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
-                                            HttpServer::response& response) {
+                                            std::shared_ptr<HttpServer::connection> conn) {
   static const std::string kPrefix = "/monitoredResource/";
   // The format for the local metadata API request is:
   //   {host}:{port}/monitoredResource/{id}
@@ -111,15 +112,14 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
       if (agent_.config_.VerboseLogging()) {
         LOG(WARNING) << "No matching resource for " << id;
       }
-      response = HttpServer::response::stock_reply(
-          HttpServer::response::not_found, "");
+      conn->set_status(HttpServer::connection::not_found);
     } else {
       const MonitoredResource& resource = result->second;
       if (agent_.config_.VerboseLogging()) {
         LOG(INFO) << "Found resource for " << id << ": " << resource;
       }
-      response = HttpServer::response::stock_reply(
-          HttpServer::response::ok, resource.ToJSON()->ToString());
+      conn->set_status(HttpServer::connection::ok);
+      conn->write(resource.ToJSON()->ToString());
     }
   }
 }

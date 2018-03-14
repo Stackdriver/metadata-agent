@@ -830,7 +830,7 @@ void KubernetesReader::WatchMaster(
         endpoint,
         std::bind(&BodyCallback, name, event_callback, std::placeholders::_1),
         std::move(watch_completion), config_.VerboseLogging());
-    http::client::response response = client.get(request, boost::ref(watcher));
+    http::client::response response = client.get(request, std::ref(watcher));
     if (config_.VerboseLogging()) {
       LOG(INFO) << "Waiting for completion";
     }
