@@ -401,15 +401,18 @@ KubernetesReader::GetPodAndContainerMetadata(
   const json::Object* status = pod->Get<json::Object>("status");
 
   const json::Array* container_specs = spec->Get<json::Array>("containers");
-  const json::Array* container_statuses =
-      status->Get<json::Array>("containerStatuses");
 
   // Move the container statuses into a map from name to status.
   std::map<std::string, const json::Object*> container_status_by_name;
-  for (const json::value& c_status : *container_statuses) {
-    const json::Object* container_status = c_status->As<json::Object>();
-    const std::string name = container_status->Get<json::String>("name");
-    container_status_by_name.emplace(name, container_status);
+  if (status->Has("containerStatuses")) {
+    const json::Array* container_statuses =
+        status->Get<json::Array>("containerStatuses");
+
+    for (const json::value& c_status : *container_statuses) {
+      const json::Object* container_status = c_status->As<json::Object>();
+      const std::string name = container_status->Get<json::String>("name");
+      container_status_by_name.emplace(name, container_status);
+    }
   }
 
   for (const json::value& c_spec : *container_specs) {
@@ -507,13 +510,18 @@ std::vector<MetadataUpdater::ResourceMetadata>
         const json::Object* status = pod->Get<json::Object>("status");
 
         const json::Array* container_specs = spec->Get<json::Array>("containers");
-        const json::Array* container_statuses =
-            status->Get<json::Array>("containerStatuses");
-        if (container_specs->size() != container_statuses->size()) {
-          LOG(ERROR) << "Container specs and statuses arrays "
-                     << "have different sizes: "
-                     << container_specs->size() << " vs "
-                     << container_statuses->size() << " for pod "
+        if (spec->Has("containerStatuses")) {
+          const json::Array* container_statuses =
+              status->Get<json::Array>("containerStatuses");
+          if (container_specs->size() != container_statuses->size()) {
+            LOG(ERROR) << "Container specs and statuses arrays "
+                       << "have different sizes: "
+                       << container_specs->size() << " vs "
+                       << container_statuses->size() << " for pod "
+                       << pod_id << "(" << pod_name << ")";
+          }
+        } else {
+          LOG(ERROR) << "Container statuses do not exist in spec for pod "
                      << pod_id << "(" << pod_name << ")";
         }
 
