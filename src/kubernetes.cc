@@ -205,8 +205,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
       metadata->Get<json::String>("creationTimestamp");
   Timestamp created_at = time::rfc3339::FromString(created_str);
 
-  const json::Object* status = pod->Get<json::Object>("status");
-
   const MonitoredResource k8s_pod("k8s_pod", {
     {"cluster_name", cluster_name},
     {"namespace_name", namespace_name},
@@ -506,6 +504,8 @@ std::vector<MetadataUpdater::ResourceMetadata>
           LOG(ERROR) << "Internal error; pod's node " << pod_node_name
                      << " not the same as agent node " << node_name;
         }
+
+        const json::Object* status = pod->Get<json::Object>("status");
 
         const json::Array* container_specs = spec->Get<json::Array>("containers");
         const json::Array* container_statuses =
