@@ -10,7 +10,6 @@ GTEST_SRCS_=$(GTEST_SOURCEDIR)/*.cc $(GTEST_SOURCEDIR)/*.h $(GTEST_HEADERS)
 CPP_NETLIB_DIR=$(LIBDIR)/cpp-netlib
 YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
 YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
-SUBMODULE_DIRS=$(CPP_NETLIB_DIR) $(YAML_CPP_DIR)
 
 YAML_CPP_LIBS=$(YAML_CPP_LIBDIR)/libyaml-cpp.a
 
@@ -56,13 +55,8 @@ init-submodules:
 	git submodule update --init $(GTEST_MODULE)
 	touch init-submodules
 
-$(YAML_CPP_DIR)/Makefile: init-submodules
-	cd $(YAML_CPP_DIR) && \
-	$(CMAKE) -DMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
-	    -DMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
-	    -DYAML_CPP_BUILD_TOOLS=OFF
-
-$(YAML_CPP_LIBS): build-yaml-cpp
+$(YAML_CPP_LIBS):
+	cd $(SRC_DIR) && $(MAKE) $@
 
 build-yaml-cpp: $(YAML_CPP_DIR)/Makefile
 	cd $(YAML_CPP_DIR) && \

@@ -19,6 +19,9 @@
 #include <boost/program_options.hpp>
 #include <iostream>
 #include <map>
+#include <fstream>
+
+#include <yaml-cpp/yaml.h>
 
 namespace google {
 
@@ -131,12 +134,14 @@ int MetadataAgentConfiguration::ParseArguments(int ac, char** av) {
 
 void MetadataAgentConfiguration::ParseConfigFile(const std::string& filename) {
   if (filename.empty()) return;
+  std::ifstream ifs;
+  ifs.open (filename, std::ifstream::in);
 
-  YAML::Node config = YAML::LoadFile(filename);
-  ParseYamlConfig(config);
+  ParseConfiguration(ifs);
 }
 
-void MetadataAgentConfiguration::ParseYamlConfig(YAML::Node config) {
+void MetadataAgentConfiguration::ParseConfiguration(std::istream& input) {
+  YAML::Node config = YAML::Load(input);
   std::lock_guard<std::mutex> lock(mutex_);
   project_id_ =
       config["ProjectId"].as<std::string>(kDefaultProjectId);
