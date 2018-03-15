@@ -29,7 +29,7 @@ TESTS=\
       base64_unittest \
       format_unittest \
       base64_unittest \
-      configuration_unittest
+      configuration_unittest \
       time_unittest
 
 GTEST_LIB=gtest_lib.a
@@ -58,13 +58,6 @@ init-submodules:
 $(YAML_CPP_LIBS):
 	cd $(SRC_DIR) && $(MAKE) $@
 
-build-yaml-cpp: $(YAML_CPP_DIR)/Makefile
-	cd $(YAML_CPP_DIR) && \
-	$(MAKE)
-	touch build-yaml-cpp
-
-yaml-cpp: $(YAML_CPP_LIBS)
-
 $(SRC_DIR)/%.o: $(SRC_DIR)/%.cc
 	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
@@ -83,7 +76,7 @@ format_unittest: $(GTEST_LIB) format_unittest.o $(SRC_DIR)/format.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 base64_unittest: $(GTEST_LIB) base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-configuration_unittest: $(GTEST_LIB) configuration_unittest.o $(SRC_DIR)/configuration.o
+configuration_unittest: $(GTEST_LIB) configuration_unittest.o $(SRC_DIR)/configuration.o $(YAML_CPP_LIBS)
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 time_unittest: $(GTEST_LIB) time_unittest.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@

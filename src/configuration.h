@@ -142,6 +142,7 @@ class MetadataAgentConfiguration {
   friend class MetadataAgentConfigurationTest;
   void ParseConfigFile(const std::string& filename);
   void ParseConfiguration(std::istream& input);
+
   mutable std::mutex mutex_;
   std::string project_id_;
   std::string credentials_file_;
