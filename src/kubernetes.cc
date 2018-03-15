@@ -206,8 +206,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
   Timestamp created_at = time::rfc3339::FromString(created_str);
 
   const json::Object* status = pod->Get<json::Object>("status");
-  const std::string started_str = status->Get<json::String>("startTime");
-  Timestamp started_at = time::rfc3339::FromString(started_str);
 
   const MonitoredResource k8s_pod("k8s_pod", {
     {"cluster_name", cluster_name},
