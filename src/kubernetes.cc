@@ -521,8 +521,8 @@ std::vector<MetadataUpdater::ResourceMetadata>
                        << pod_id << "(" << pod_name << ")";
           }
         } else {
-          LOG(ERROR) << "Container statuses do not exist in status for pod "
-                     << pod_id << "(" << pod_name << ")";
+          LOG(INFO) << "Container statuses do not exist in status for pod "
+                    << pod_id << "(" << pod_name << ")";
         }
 
         // TODO: find is_deleted.
