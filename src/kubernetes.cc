@@ -548,7 +548,6 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
   const std::string endpoint(config_.KubernetesEndpointHost() + path);
   http::client client(
       http::client::options()
-      .remove_chunk_markers(true)
       .openssl_certificate(SecretPath("ca.crt")));
   http::client::request request(endpoint);
   request << boost::network::header(
