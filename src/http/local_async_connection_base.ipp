@@ -1,6 +1,10 @@
 #ifndef BOOST_NETWORK_PROTOCOL_HTTP_IMPL_LOCAL_ASYNC_CONNECTION_BASE_IPP_20170307
 #define BOOST_NETWORK_PROTOCOL_HTTP_IMPL_LOCAL_ASYNC_CONNECTION_BASE_IPP_20170307
 
+// Note: This file is mostly a copy of
+// boost/network/protocol/http/client/connection/async_base.hpp,
+// except for the specialized bits.
+
 // Copyright 2017 Igor Peshansky (igorp@google.com).
 // Copryight 2013-2017 Google, Inc.
 // Copyright 2010 Dean Michael Berris <dberris@google.com>

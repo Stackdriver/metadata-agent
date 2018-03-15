@@ -1,6 +1,10 @@
 #ifndef BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_CONNECTION_LOCAL_CONNECTION_DELEGATE_HPP_
 #define BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_CONNECTION_LOCAL_CONNECTION_DELEGATE_HPP_
 
+// Note: This file is mostly a copy of
+// boost/network/protocol/http/client/connection/connection_delegate.hpp,
+// except for the specialized bits.
+
 // Copyright 2011 Dean Michael Berris (dberris@google.com).
 // Copyright 2017 Igor Peshansky (igorp@google.com).
 // Copyright 2011-2017 Google, Inc.

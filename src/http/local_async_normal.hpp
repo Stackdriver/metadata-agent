@@ -1,6 +1,10 @@
 #ifndef BOOST_NETWORK_PROTOCOL_HTTP_IMPL_HTTP_LOCAL_ASYNC_CONNECTION_HPP_20170307
 #define BOOST_NETWORK_PROTOCOL_HTTP_IMPL_HTTP_LOCAL_ASYNC_CONNECTION_HPP_20170307
 
+// Note: This file is mostly a copy of
+// boost/network/protocol/http/client/connection/async_normal.hpp,
+// except for the specialized bits.
+
 // Copyright 2010 (C) Dean Michael Berris
 // Copyright 2010 (C) Sinefunc, Inc.
 // Copyright 2011 Dean Michael Berris (dberris@google.com).
