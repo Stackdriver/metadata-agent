@@ -507,8 +507,6 @@ std::vector<MetadataUpdater::ResourceMetadata>
                      << " not the same as agent node " << node_name;
         }
 
-        const json::Object* status = pod->Get<json::Object>("status");
-
         const json::Array* container_specs = spec->Get<json::Array>("containers");
         const json::Array* container_statuses =
             status->Get<json::Array>("containerStatuses");
