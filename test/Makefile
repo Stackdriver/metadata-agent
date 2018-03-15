@@ -76,9 +76,9 @@ format_unittest: $(GTEST_LIB) format_unittest.o $(SRC_DIR)/format.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 base64_unittest: $(GTEST_LIB) base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-configuration_unittest: $(GTEST_LIB) configuration_unittest.o $(SRC_DIR)/configuration.o $(YAML_CPP_LIBS)
+configuration_unittest: $(GTEST_LIB) $(YAML_CPP_LIBS) configuration_unittest.o $(SRC_DIR)/configuration.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 time_unittest: $(GTEST_LIB) time_unittest.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
-.PHONY: all test clean purge yaml-cpp
+.PHONY: all test clean purge

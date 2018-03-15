@@ -135,8 +135,8 @@ int MetadataAgentConfiguration::ParseArguments(int ac, char** av) {
 void MetadataAgentConfiguration::ParseConfigFile(const std::string& filename) {
   if (filename.empty()) return;
 
-  std::ifstream ifs(filename);
-  ParseConfiguration(ifs);
+  std::ifstream input(filename);
+  ParseConfiguration(input);
 }
 
 void MetadataAgentConfiguration::ParseConfiguration(std::istream& input) {
