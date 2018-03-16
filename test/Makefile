@@ -13,9 +13,8 @@ YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
 
 YAML_CPP_LIBS=$(YAML_CPP_LIBDIR)/libyaml-cpp.a
 
-CMAKE=cmake
-CPPFLAGS+=-isystem $(GTEST_DIR)/include
-CXXFLAGS=-std=c++11 -g -pthread -I$(YAML_CPP_DIR)/include
+CPPFLAGS+=-isystem $(GTEST_DIR)/include -I$(YAML_CPP_DIR)/include
+CXXFLAGS=-std=c++11 -g -pthread
 LDLIBS=-lpthread -lboost_program_options -lyaml-cpp
 LDFLAGS=-L$(YAML_CPP_LIBDIR)
 
@@ -27,9 +26,8 @@ TEST_SOURCES=$(wildcard $(TEST_DIR)/*_unittest.cc)
 TEST_OBJS=$(TEST_SOURCES:$(TEST_DIR)/%.cc=%.o)
 TESTS=\
       base64_unittest \
-      format_unittest \
-      base64_unittest \
       configuration_unittest \
+      format_unittest \
       time_unittest
 
 GTEST_LIB=gtest_lib.a
