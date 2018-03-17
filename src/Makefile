@@ -1,6 +1,8 @@
 LIBDIR=../lib
 CPP_NETLIB_DIR=$(LIBDIR)/cpp-netlib
 CPP_NETLIB_LIBDIR=$(CPP_NETLIB_DIR)/libs/network/src
+NETWORK_URI_DIR=$(CPP_NETLIB_DIR)/deps/uri
+NETWORK_URI_LIBDIR=$(NETWORK_URI_DIR)/src
 YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
 YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
 SUBMODULE_DIRS=$(CPP_NETLIB_DIR) $(YAML_CPP_DIR)
@@ -8,20 +10,23 @@ SUBMODULE_DIRS=$(CPP_NETLIB_DIR) $(YAML_CPP_DIR)
 SED_I=/usr/bin/env sed -i
 CMAKE=cmake
 CXXFLAGS=\
-    -std=c++11 -g -Wno-deprecated \
+    -std=c++11 -g -Wno-write-strings -Wno-deprecated \
     -DENABLE_DOCKER_METADATA -DENABLE_KUBERNETES_METADATA \
-    -I$(CPP_NETLIB_DIR) -I$(YAML_CPP_DIR)/include
-LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(YAML_CPP_LIBDIR)
-LDLIBS=-lcppnetlib-uri -lcppnetlib-client-connections -lboost_program_options \
-    -lboost_system -lboost_thread -lpthread -lyajl -lssl -lcrypto -lyaml-cpp
-SED_EXTRA=
+    -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include
+LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR)
+LDLIBS=\
+    -lcppnetlib-client-connections -lcppnetlib-server-parsers -lnetwork-uri \
+    -lboost_program_options -lboost_system -lboost_thread \
+    -lpthread -lyajl -lssl -lcrypto -lyaml-cpp
+SED_EXTRA=-e 's/-Wall/-Wall -Wno-deprecated/'
 
 UNAME_S=$(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-  CXXFLAGS+= -Wno-deprecated-declarations -I/usr/local/include
+  CXXFLAGS+= -Wno-deprecated-declarations -Wno-c++14-extensions \
+      -I/usr/local/include
   LDFLAGS+= -L/usr/local/lib
   SED_I+= ''
-  SED_EXTRA+=-e \
+  SED_EXTRA+= -e \
       's/-Wall/-Wall -Wno-deprecated-declarations -Wno-unused-local-typedef/'
 endif
 
@@ -46,8 +51,9 @@ SRCS=\
 OBJS=$(SRCS:%.cc=%.o)
 
 CPP_NETLIB_LIBS=\
-    $(CPP_NETLIB_LIBDIR)/libcppnetlib-uri.a \
-    $(CPP_NETLIB_LIBDIR)/libcppnetlib-client-connections.a
+    $(CPP_NETLIB_LIBDIR)/libcppnetlib-client-connections.a \
+    $(CPP_NETLIB_LIBDIR)/libcppnetlib-server-parsers.a \
+    $(NETWORK_URI_LIBDIR)/libnetwork-uri.a
 YAML_CPP_LIBS=\
     $(YAML_CPP_LIBDIR)/libyaml-cpp.a
 LIBS=$(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
@@ -135,7 +141,7 @@ purge: clean
 	git submodule deinit -f $(SUBMODULE_DIRS)
 
 init-submodules:
-	git submodule update --init $(SUBMODULE_DIRS)
+	git submodule update --init --recursive $(SUBMODULE_DIRS)
 	touch init-submodules
 
 $(CPP_NETLIB_DIR)/Makefile: init-submodules
@@ -143,7 +149,8 @@ $(CPP_NETLIB_DIR)/Makefile: init-submodules
 	$(SED_I) -e 's/unit_test_framework //' $(SED_EXTRA) CMakeLists.txt && \
 	$(CMAKE) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
 	    -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
-	    -DCPP-NETLIB_BUILD_TESTS=OFF -DCPP-NETLIB_BUILD_EXAMPLES=OFF
+	    -DCPP-NETLIB_BUILD_TESTS=OFF -DCPP-NETLIB_BUILD_EXAMPLES=OFF \
+	    -DUri_BUILD_TESTS=OFF -DUri_BUILD_DOCS=OFF
 
 $(CPP_NETLIB_LIBS): build-cpp-netlib
 

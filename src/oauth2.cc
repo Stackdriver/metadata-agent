@@ -18,7 +18,7 @@
 
 #define BOOST_NETWORK_ENABLE_HTTPS
 #include <boost/network/protocol/http/client.hpp>
-#include <boost/network/uri.hpp>
+#include <network/uri/detail/encode.hpp>
 #include <chrono>
 #include <cstdlib>
 #include <openssl/bio.h>
@@ -187,8 +187,8 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
     }
     http::client client;
     http::client::request request("https://www.googleapis.com/oauth2/v3/token");
-    std::string grant_type = boost::network::uri::encoded(
-        "urn:ietf:params:oauth:grant-type:jwt-bearer");
+    std::string grant_type = ::network::detail::encode_fragment(
+        std::string("urn:ietf:params:oauth:grant-type:jwt-bearer"));
     //std::string jwt_header = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9";
     //std::string jwt_header =
     //    base64::Encode("{\"alg\":\"RS256\",\"typ\":\"JWT\"}");

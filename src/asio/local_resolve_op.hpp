@@ -31,7 +31,8 @@
 #include <boost/asio/detail/operation.hpp>
 #include <boost/asio/detail/socket_ops.hpp>
 #include <boost/asio/detail/resolve_op.hpp>
-#include <boost/network/uri.hpp>
+#include <network/uri/detail/decode.hpp>
+#include <sstream>
 #include <sys/stat.h>
 
 #include "../logging.h"
@@ -85,7 +86,7 @@ public:
         o->ec_ = boost::asio::error::operation_aborted;
       else {
         //LOG(ERROR) << "async_resolve() " << o->query_.host_name();
-        std::string path = boost::network::uri::decoded(o->query_.host_name());
+        std::string path = ::network::detail::decode(o->query_.host_name());
         //LOG(ERROR) << "decoded " << path;
         struct stat buffer;
         int result = stat(path.c_str(), &buffer);
@@ -120,7 +121,7 @@ public:
       p.h = boost::asio::detail::addressof(handler.handler_);
       if (!o->ec_)
       {
-        std::string path = boost::network::uri::decoded(o->query_.host_name());
+        std::string path = ::network::detail::decode(o->query_.host_name());
         handler.arg2_ = iterator_type::create(
             Protocol::endpoint(path),
             path, o->query_.service_name());

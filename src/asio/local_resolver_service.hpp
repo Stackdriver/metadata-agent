@@ -30,7 +30,7 @@
 #include <boost/asio/detail/resolver_service_base.hpp>
 #include <boost/asio/detail/resolver_service.hpp>
 #include <boost/asio/detail/socket_ops.hpp>
-#include <boost/network/uri.hpp>
+#include <network/uri/detail/decode.hpp>
 #include <sys/stat.h>
 
 #include "../logging.h"
@@ -72,7 +72,7 @@ public:
       boost::system::error_code& ec)
   {
     //LOG(ERROR) << "resolve() " << query.host_name();
-    std::string path = boost::network::uri::decoded(query.host_name());
+    std::string path = ::network::detail::decode(query.host_name());
     //LOG(ERROR) << "decoded " << path;
     struct stat buffer;
     int result = stat(path.c_str(), &buffer);

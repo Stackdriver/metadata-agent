@@ -1,6 +1,10 @@
 #ifndef BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_CONNECTION_LOCAL_NORMAL_DELEGATE_20170307
 #define BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_CONNECTION_LOCAL_NORMAL_DELEGATE_20170307
 
+// Note: This file is mostly a copy of
+// boost/network/protocol/http/client/connection/normal_delegate.hpp,
+// except for the specialized bits.
+
 // Copyright 2011 Dean Michael Berris (dberris@google.com).
 // Copyright 2017 Igor Peshansky (igorp@google.com).
 // Copyright 2011-2017 Google, Inc.
@@ -27,16 +31,14 @@ struct local_normal_delegate : local_connection_delegate {
 
   void connect(boost::asio::local::stream_protocol::endpoint &endpoint,
                std::function<void(boost::system::error_code const &)> handler) override;
-  void write(
-      boost::asio::streambuf &command_streambuf,
-      std::function<void(boost::system::error_code const &, size_t)> handler)
+  void write(boost::asio::streambuf &command_streambuf,
+             std::function<void(boost::system::error_code const &, size_t)> handler)
       override;
-  void read_some(
-      boost::asio::mutable_buffers_1 const &read_buffer,
-      std::function<void(boost::system::error_code const &, size_t)> handler)
+  void read_some(boost::asio::mutable_buffers_1 const &read_buffer,
+                 std::function<void(boost::system::error_code const &, size_t)> handler)
       override;
   void disconnect() override;
-  ~local_normal_delegate() override;
+  ~local_normal_delegate() override = default;
 
   local_normal_delegate(local_normal_delegate const &) = delete;
   local_normal_delegate &operator=(local_normal_delegate) = delete;
@@ -46,17 +48,13 @@ struct local_normal_delegate : local_connection_delegate {
   std::unique_ptr<boost::asio::local::stream_protocol::socket> socket_;
 };
 
-} /* impl */
-
-} /* http */
-
-} /* network */
-
-} /* boost */
+}  // namespace impl
+}  // namespace http
+}  // namespace network
+}  // namespace boost
 
 #ifdef BOOST_NETWORK_NO_LIB
 #include "local_normal_delegate.ipp"
 #endif /* BOOST_NETWORK_NO_LIB */
 
-#endif /* BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_CONNECTION_LOCAL_NORMAL_DELEGATE_20110819 \
-          */
+#endif // BOOST_NETWORK_PROTOCOL_HTTP_CLIENT_CONNECTION_LOCAL_NORMAL_DELEGATE_20110819
