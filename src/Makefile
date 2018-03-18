@@ -7,6 +7,9 @@ YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
 YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
 SUBMODULE_DIRS=$(CPP_NETLIB_DIR) $(YAML_CPP_DIR)
 
+GIT=git
+GIT_VERSION=$(shell $(GIT) --version | grep -oh '[0-9]\+\.[0-9]\+\.[0-9]\+')
+
 SED_I=/usr/bin/env sed -i
 CMAKE=cmake
 CXXFLAGS=\
@@ -142,6 +145,18 @@ purge: clean
 
 init-submodules:
 	git submodule update --init --recursive $(SUBMODULE_DIRS)
+ifneq ($(findstring $(GIT_VERSION),2.7.0 2.7.1 2.7.2 2.7.3 2.7.4 2.7.5 2.7.6 2.8.0 2.8.1 2.8.2 2.8.3),)
+	# Git submodule recursive init was broken between 2.7.0 and 2.8.4
+	# (see https://marc.info/?l=git&m=145935867502974).
+	# Ubuntu Xenial comes with git 2.7.4.
+	@echo 'Fixing submodules for git $(GIT_VERSION)'
+	cd $(CPP_NETLIB_DIR) && $(SED_I) -e 's@/src/.git/@../../../../.git/@' \
+	    deps/*/.git
+	cd $(NETWORK_URI_DIR) && $(SED_I) -e 's@/src/.git/@../../../../../../.git/@' \
+	    deps/*/.git
+	cd $(CPP_NETLIB_DIR) && $(SED_I) -e 's@/src/.git/@../../../../../../../.git/@' \
+	    libs/network/doc/_ext/breathe/.git
+endif
 	touch init-submodules
 
 $(CPP_NETLIB_DIR)/Makefile: init-submodules
