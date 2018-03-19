@@ -26,6 +26,7 @@
 #include "environment.h"
 #include "json.h"
 #include "updater.h"
+#include "health_reporter.h"
 
 namespace google {
 

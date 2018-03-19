@@ -1103,6 +1103,7 @@ void KubernetesReader::PodCallback(
 void KubernetesReader::WatchPods(
     const std::string& node_name,
     MetadataUpdater::UpdateCallback callback) const {
+  HealthReporter healthReporter;
   LOG(INFO) << "Watch thread (pods) started for node "
             << (node_name.empty() ? "<unscheduled>" : node_name);
 
@@ -1126,6 +1127,7 @@ void KubernetesReader::WatchPods(
     LOG(ERROR) << "No more pod metadata will be collected";
   }
   LOG(INFO) << "Watch thread (pods) exiting";
+  healthReporter.SetUnhealthy("watch_pods");
 }
 
 void KubernetesReader::NodeCallback(
@@ -1140,6 +1142,7 @@ void KubernetesReader::NodeCallback(
 void KubernetesReader::WatchNodes(
     const std::string& node_name,
     MetadataUpdater::UpdateCallback callback) const {
+  HealthReporter healthReporter;
   LOG(INFO) << "Watch thread (node) started for node "
             << (node_name.empty() ? "<all>" : node_name);
 
@@ -1157,6 +1160,7 @@ void KubernetesReader::WatchNodes(
   } catch (const KubernetesReader::QueryException& e) {
     LOG(ERROR) << "No more node metadata will be collected";
   }
+  healthReporter.SetUnhealthy("node_callback");
   LOG(INFO) << "Watch thread (node) exiting";
 }
 
