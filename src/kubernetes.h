@@ -43,10 +43,16 @@ class KubernetesReader {
   bool ValidateConfiguration() const;
 
   // Node watcher.
-  void WatchNode(MetadataUpdater::UpdateCallback callback) const;
+  void WatchNodes(const std::string& node_name,
+                  MetadataUpdater::UpdateCallback callback) const;
 
   // Pod watcher.
-  void WatchPods(MetadataUpdater::UpdateCallback callback) const;
+  void WatchPods(const std::string& node_name,
+                 MetadataUpdater::UpdateCallback callback) const;
+
+  // Gets the name of the node the agent is running on.
+  // Returns an empty string if unable to find the current node.
+  const std::string& CurrentNode() const;
 
  private:
   // A representation of all query-related errors.
@@ -88,11 +94,11 @@ class KubernetesReader {
       throw(json::Exception);
   // Given a node object, return the associated metadata.
   MetadataUpdater::ResourceMetadata GetNodeMetadata(
-      json::value raw_node, Timestamp collected_at, bool is_deleted) const
+      const json::Object* node, Timestamp collected_at, bool is_deleted) const
       throw(json::Exception);
   // Given a pod object, return the associated metadata.
   MetadataUpdater::ResourceMetadata GetPodMetadata(
-      json::value raw_pod, json::value associations, Timestamp collected_at,
+      const json::Object* pod, json::value associations, Timestamp collected_at,
       bool is_deleted) const throw(json::Exception);
   // Given a pod object and container info, return the container metadata.
   MetadataUpdater::ResourceMetadata GetContainerMetadata(
@@ -108,10 +114,6 @@ class KubernetesReader {
   std::vector<MetadataUpdater::ResourceMetadata> GetPodAndContainerMetadata(
       const json::Object* pod, Timestamp collected_at, bool is_deleted) const
       throw(json::Exception);
-
-  // Gets the name of the node the agent is running on.
-  // Returns an empty string if unable to find the current node.
-  const std::string& CurrentNode() const;
 
   // Gets the Kubernetes master API token.
   // Returns an empty string if unable to find the token.
@@ -151,12 +153,7 @@ class KubernetesReader {
 
 class KubernetesUpdater : public PollingMetadataUpdater {
  public:
-  KubernetesUpdater(MetadataAgent* server)
-      : reader_(server->config()), PollingMetadataUpdater(
-          server, "KubernetesUpdater",
-          server->config().KubernetesUpdaterIntervalSeconds(),
-          [=]() { return reader_.MetadataQuery(); }) { }
-
+  KubernetesUpdater(MetadataAgent* server);
   ~KubernetesUpdater() {
     if (node_watch_thread_.joinable()) {
       node_watch_thread_.join();
