@@ -16,8 +16,6 @@
 
 //#include "config.h"
 
-#include <functional>
-
 #include "api_server.h"
 #include "configuration.h"
 #include "docker.h"
