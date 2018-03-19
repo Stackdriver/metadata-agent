@@ -1,5 +1,6 @@
 #include "../src/configuration.h"
 #include "gtest/gtest.h"
+#include "gmock/gmock.h"
 
 namespace google {
 
@@ -18,6 +19,8 @@ class MetadataAgentConfigurationTest : public ::testing::Test {
     EXPECT_EQ(".", config.MetadataApiResourceTypeSeparator());
     EXPECT_EQ(60, config.MetadataReporterIntervalSeconds());
     EXPECT_EQ(false, config.MetadataReporterPurgeDeleted());
+    EXPECT_THAT(config.MetadataReporterUserAgent(),
+                ::testing::StartsWith("metadata-agent/"));
     EXPECT_EQ("https://stackdriver.googleapis.com/"
               "v1beta2/projects/{{project_id}}/resourceMetadata:batchUpdate",
               config.MetadataIngestionEndpointFormat());
@@ -58,18 +61,20 @@ TEST_F(MetadataAgentConfigurationTest, PopulatedConfig) {
   ParseConfiguration(
       "ProjectId: TestProjectId\n"
       "MetadataApiNumThreads: 13\n"
-      "MetadataReporterPurgeDeleted: true"
+      "MetadataReporterPurgeDeleted: true\n"
+      "MetadataReporterUserAgent: \"foobar/foobaz\"\n"
   );
   EXPECT_EQ("TestProjectId", config.ProjectId());
   EXPECT_EQ(13, config.MetadataApiNumThreads());
   EXPECT_EQ(true, config.MetadataReporterPurgeDeleted());
+  EXPECT_EQ("foobar/foobaz", config.MetadataReporterUserAgent());
 }
 
 TEST_F(MetadataAgentConfigurationTest, CommentSkipped) {
   ParseConfiguration(
       "ProjectId: TestProjectId\n"
       "#MetadataApiNumThreads: 13\n"
-      "MetadataReporterPurgeDeleted: true"
+      "MetadataReporterPurgeDeleted: true\n"
   );
   EXPECT_EQ(3, config.MetadataApiNumThreads());
 }
@@ -79,7 +84,7 @@ TEST_F(MetadataAgentConfigurationTest, BlankLine) {
       "ProjectId: TestProjectId\n"
       "\n"
       "\n"
-      "MetadataReporterPurgeDeleted: true"
+      "MetadataReporterPurgeDeleted: true\n"
   );
   EXPECT_EQ("TestProjectId", config.ProjectId());
   EXPECT_EQ(true, config.MetadataReporterPurgeDeleted());

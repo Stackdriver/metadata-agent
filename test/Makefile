@@ -5,6 +5,7 @@ GTEST_SOURCEDIR=$(GTEST_DIR)/src
 GTEST_HEADERS=$(GTEST_DIR)/include/gtest/*.h \
               $(GTEST_DIR)/include/gtest/internal/*.h
 GTEST_SRCS_=$(GTEST_SOURCEDIR)/*.cc $(GTEST_SOURCEDIR)/*.h $(GTEST_HEADERS)
+GMOCK_DIR=$(LIBDIR)/googletest/googlemock
 
 # TODO: Factor out the common variables.
 CPP_NETLIB_DIR=$(LIBDIR)/cpp-netlib
@@ -13,7 +14,9 @@ YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
 
 YAML_CPP_LIBS=$(YAML_CPP_LIBDIR)/libyaml-cpp.a
 
-CPPFLAGS+=-isystem $(GTEST_DIR)/include -I$(YAML_CPP_DIR)/include
+CPPFLAGS+= \
+    -isystem $(GTEST_DIR)/include -I$(GMOCK_DIR)/include \
+    -I$(YAML_CPP_DIR)/include
 CXXFLAGS=-std=c++11 -g -pthread
 LDLIBS=-lpthread -lboost_program_options -lyaml-cpp
 LDFLAGS=-L$(YAML_CPP_LIBDIR)
