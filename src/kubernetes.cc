@@ -1078,15 +1078,11 @@ void KubernetesReader::PodCallback(
   callback(std::move(result_vector));
 }
 
-void KubernetesReader::WatchPods(MetadataUpdater::UpdateCallback callback)
-    const {
-  LOG(INFO) << "Watch thread (pods) started";
-
-  const std::string node_name = CurrentNode();
-
-  if (config_.VerboseLogging()) {
-    LOG(INFO) << "Current node is " << node_name;
-  }
+void KubernetesReader::WatchPods(
+    const std::string& node_name,
+    MetadataUpdater::UpdateCallback callback) const {
+  LOG(INFO) << "Watch thread (pods) started for node "
+            << (node_name.empty() ? "<unscheduled>" : node_name);
 
   const std::string node_selector(kNodeSelectorPrefix + node_name);
   const std::string pod_label_selector(
@@ -1120,15 +1116,11 @@ void KubernetesReader::NodeCallback(
   callback(std::move(result_vector));
 }
 
-void KubernetesReader::WatchNode(MetadataUpdater::UpdateCallback callback)
-    const {
-  LOG(INFO) << "Watch thread (node) started";
-
-  const std::string node_name = CurrentNode();
-
-  if (config_.VerboseLogging()) {
-    LOG(INFO) << "Current node is " << node_name;
-  }
+void KubernetesReader::WatchNodes(
+    const std::string& node_name,
+    MetadataUpdater::UpdateCallback callback) const {
+  LOG(INFO) << "Watch thread (node) started for node "
+            << (node_name.empty() ? "<all>" : node_name);
 
   try {
     // TODO: There seems to be a Kubernetes API bug with watch=true.
@@ -1157,11 +1149,21 @@ bool KubernetesUpdater::ValidateConfiguration() const {
 
 void KubernetesUpdater::StartUpdater() {
   if (config().KubernetesUseWatch()) {
+    const std::string current_node = reader_.CurrentNode();
+
+    if (config().VerboseLogging()) {
+      LOG(INFO) << "Current node is " << current_node;
+    }
+
     auto cb = [=](std::vector<MetadataUpdater::ResourceMetadata>&& results) {
       MetadataCallback(std::move(results));
     };
-    node_watch_thread_ = std::thread([=]() { reader_.WatchNode(cb); });
-    pod_watch_thread_ = std::thread([=]() { reader_.WatchPods(cb); });
+    node_watch_thread_ = std::thread([=]() {
+      reader_.WatchNodes(current_node, cb);
+    });
+    pod_watch_thread_ = std::thread([=]() {
+      reader_.WatchPods(current_node, cb);
+    });
   } else {
     // Only try to poll if watch is disabled.
     PollingMetadataUpdater::StartUpdater();
