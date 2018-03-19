@@ -1180,6 +1180,12 @@ void KubernetesUpdater::StartUpdater() {
       LOG(INFO) << "Current node is " << current_node;
     }
 
+    if (config().KubernetesClusterLevelMetadata()) {
+      LOG(INFO) << "Watching for cluster-level metadata";
+    } else {
+      LOG(INFO) << "Watching for node-level metadata";
+    }
+
     const std::string watched_node(
         config().KubernetesClusterLevelMetadata() ? "" : current_node);
 
