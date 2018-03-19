@@ -26,6 +26,13 @@
 namespace google {
 
 namespace {
+#ifndef AGENT_VERSION
+#define AGENT_VERSION 0.0
+#endif
+
+#define STRINGIFY_H(x) #x
+#define STRINGIFY(x) STRINGIFY_H(x)
+
 constexpr const char kConfigFileFlag[] = "config-file";
 
 constexpr const char kDefaultProjectId[] = "";
@@ -35,6 +42,8 @@ constexpr const int kMetadataApiDefaultPort = 8000;
 constexpr const char kMetadataApiDefaultResourceTypeSeparator[] = ".";
 constexpr const int kMetadataReporterDefaultIntervalSeconds = 60;
 constexpr const int kMetadataReporterDefaultPurgeDeleted = false;
+constexpr const char kMetadataReporterDefaultUserAgent[] =
+    "metadata-agent/" STRINGIFY(AGENT_VERSION);
 constexpr const char kMetadataIngestionDefaultEndpointFormat[] =
     "https://stackdriver.googleapis.com/v1beta2/projects/{{project_id}}"
     "/resourceMetadata:batchUpdate";
@@ -60,6 +69,8 @@ constexpr const bool kKubernetesDefaultUseWatch = true;
 constexpr const char kDefaultInstanceId[] = "";
 constexpr const char kDefaultInstanceZone[] = "";
 
+#undef STRINGIFY
+#undef STRINGIFY_H
 }
 
 MetadataAgentConfiguration::MetadataAgentConfiguration()
@@ -74,6 +85,8 @@ MetadataAgentConfiguration::MetadataAgentConfiguration()
           kMetadataReporterDefaultIntervalSeconds),
       metadata_reporter_purge_deleted_(
           kMetadataReporterDefaultPurgeDeleted),
+      metadata_reporter_user_agent_(
+          kMetadataReporterDefaultUserAgent),
       metadata_ingestion_endpoint_format_(
           kMetadataIngestionDefaultEndpointFormat),
       metadata_ingestion_request_size_limit_bytes_(
@@ -125,6 +138,10 @@ int MetadataAgentConfiguration::ParseArguments(int ac, char** av) {
 
   if (flags.count("help")) {
     std::cout << flags_desc << std::endl;
+    return 0;
+  }
+  if (flags.count("version")) {
+    std::cout << flags_desc << std::endl;
     return 1;
   }
 
@@ -159,6 +176,9 @@ void MetadataAgentConfiguration::ParseConfiguration(std::istream& input) {
   metadata_reporter_purge_deleted_ =
       config["MetadataReporterPurgeDeleted"].as<bool>(
           kMetadataReporterDefaultPurgeDeleted);
+  metadata_reporter_user_agent_ =
+      config["MetadataReporterUserAgent"].as<std::string>(
+          kMetadataReporterDefaultUserAgent);
   metadata_ingestion_endpoint_format_ =
       config["MetadataIngestionEndpointFormat"].as<std::string>(
           kMetadataIngestionDefaultEndpointFormat);

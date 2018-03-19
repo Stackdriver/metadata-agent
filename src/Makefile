@@ -1,3 +1,7 @@
+PKG_VERSION=0.0.17
+PKG_RELEASE=1
+DOCKER_VERSION=0.2
+
 LIBDIR=../lib
 CPP_NETLIB_DIR=$(LIBDIR)/cpp-netlib
 CPP_NETLIB_LIBDIR=$(CPP_NETLIB_DIR)/libs/network/src
@@ -9,10 +13,12 @@ SUBMODULE_DIRS=$(CPP_NETLIB_DIR) $(YAML_CPP_DIR)
 
 SED_I=/usr/bin/env sed -i
 CMAKE=cmake
-CXXFLAGS=\
-    -std=c++11 -g -Wno-write-strings -Wno-deprecated \
+CPPFLAGS=\
+    -DAGENT_VERSION='$(PKG_VERSION)-$(PKG_RELEASE)' \
     -DENABLE_DOCKER_METADATA -DENABLE_KUBERNETES_METADATA \
     -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include
+CXXFLAGS=\
+    -std=c++11 -g -Wno-write-strings -Wno-deprecated
 LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR)
 LDLIBS=\
     -lcppnetlib-client-connections -lcppnetlib-server-parsers -lnetwork-uri \
@@ -77,11 +83,8 @@ install: metadatad
 
 export DISTRO
 PKG_NAME=stackdriver-metadata
-PKG_VERSION=0.0.17
-PKG_RELEASE=1
 PKG_MAINTAINER=Stackdriver Agents <stackdriver-agents@google.com>
 
-DOCKER_VERSION=0.2
 DOCKER_IMAGE=us.gcr.io/container-monitoring-storage/stackdriver-metadata-agent
 DOCKER_TAG=$(DOCKER_VERSION)-$(PKG_VERSION)-$(PKG_RELEASE)
 

@@ -192,6 +192,7 @@ namespace {
 void SendMetadataRequest(std::vector<json::value>&& entries,
                          const std::string& endpoint,
                          const std::string& auth_header,
+                         const std::string& user_agent,
                          bool verbose_logging)
     throw (boost::system::system_error) {
   json::value update_metadata_request = json::object({
@@ -200,12 +201,14 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 
   if (verbose_logging) {
     LOG(INFO) << "About to send request: POST " << endpoint
+              << " User-Agent: " << user_agent
               << " " << *update_metadata_request;
   }
 
   http::client client;
   http::client::request request(endpoint);
   std::string request_body = update_metadata_request->ToString();
+  request << boost::network::header("User-Agent", user_agent);
   request << boost::network::header("Content-Length",
                                     std::to_string(request_body.size()));
   request << boost::network::header("Content-Type", "application/json");
@@ -247,6 +250,7 @@ void MetadataReporter::SendMetadata(
       format::Substitute(agent_->config_.MetadataIngestionEndpointFormat(),
                          {{"project_id", project_id}});
   const std::string auth_header = auth_.GetAuthHeaderValue();
+  const std::string user_agent = agent_->config_.MetadataReporterUserAgent();
 
   const json::value empty_request = json::object({
     {"entries", json::array({})},
@@ -282,7 +286,7 @@ void MetadataReporter::SendMetadata(
       continue;
     }
     if (total_size + size > limit_bytes) {
-      SendMetadataRequest(std::move(entries), endpoint, auth_header,
+      SendMetadataRequest(std::move(entries), endpoint, auth_header, user_agent,
                           agent_->config_.VerboseLogging());
       entries.clear();
       total_size = empty_size;
@@ -291,7 +295,7 @@ void MetadataReporter::SendMetadata(
     total_size += size;
   }
   if (!entries.empty()) {
-    SendMetadataRequest(std::move(entries), endpoint, auth_header,
+    SendMetadataRequest(std::move(entries), endpoint, auth_header, user_agent,
                         agent_->config_.VerboseLogging());
   }
 }
