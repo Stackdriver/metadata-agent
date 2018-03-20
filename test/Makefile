@@ -31,7 +31,7 @@ TESTS=\
       base64_unittest \
       configuration_unittest \
       format_unittest \
-      health_reporter_unittest \
+      health_checker_unittest \
       resource_unittest \
       time_unittest
 
@@ -85,7 +85,7 @@ resource_unittest: $(GTEST_LIB) resource_unittest.o $(SRC_DIR)/resource.o $(SRC_
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 time_unittest: $(GTEST_LIB) time_unittest.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-health_reporter_unittest: $(GTEST_LIB) health_reporter_unittest.o $(SRC_DIR)/health_reporter.o $(SRC_DIR)/configuration.o
+health_checker_unittest: $(GTEST_LIB) health_checker_unittest.o $(SRC_DIR)/health_checker.o $(SRC_DIR)/configuration.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 .PHONY: all test clean purge

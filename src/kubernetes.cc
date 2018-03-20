@@ -36,7 +36,7 @@
 #include "resource.h"
 #include "store.h"
 #include "time.h"
-#include "health_reporter.h"
+#include "health_checker.h"
 
 namespace http = boost::network::http;
 

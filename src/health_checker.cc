@@ -14,7 +14,7 @@
  * limitations under the License.
  **/
 
-#include "health_reporter.h"
+#include "health_checker.h"
 
 #include <fstream>
 #include <sstream>

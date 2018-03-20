@@ -59,7 +59,7 @@ SRCS=\
      time.cc \
      base64.cc \
      format.cc \
-     health_reporter.cc \
+     health_checker.cc \
      environment.cc
 OBJS=$(SRCS:%.cc=%.o)
 

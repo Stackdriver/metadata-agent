@@ -1,4 +1,4 @@
-#include "../src/health_reporter.h"
+#include "../src/health_checker.h"
 #include "gtest/gtest.h"
 #include <stdio.h>
 #include <sstream>
