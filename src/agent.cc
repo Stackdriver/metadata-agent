@@ -19,11 +19,12 @@
 #include "configuration.h"
 #include "api_server.h"
 #include "reporter.h"
+#include "health_checker.h"
 
 namespace google {
 
 MetadataAgent::MetadataAgent(const MetadataAgentConfiguration& config)
-    : config_(config), store_(config_) {}
+    : config_(config), store_(config_), health_checker_(config) {}
 
 MetadataAgent::~MetadataAgent() {}
 

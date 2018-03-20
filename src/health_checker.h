@@ -25,9 +25,11 @@ namespace google {
 // Collects and reports health information about the metadata agent.
 class HealthChecker {
  public:
-  HealthChecker(const MetadataAgentConfiguration& config) : HealthChecker("", config) {}
-  // Use this constructor for testing; a unique prefix will provide test isolation.
-  HealthChecker(const std::string &prefix, const MetadataAgentConfiguration& config);
+  HealthChecker(const MetadataAgentConfiguration& config) :
+    HealthChecker("", config) {}
+  // Use this constructor for testing; a unique prefix provides test isolation.
+  HealthChecker(const std::string &prefix,
+                const MetadataAgentConfiguration& config);
   void SetUnhealthy(const std::string &state_name);
 
  private:
@@ -41,12 +43,13 @@ class HealthChecker {
   bool CheckName(const std::string& state_name);
   void Touch(const std::string& path);
   bool Check(const std::string& path);
+  void InitialCleanup();
 
   std::vector<std::string> health_states_;
   const std::string state_prefix_;
   const MetadataAgentConfiguration& config_;
 };
 
-} // namespace google
+}  // namespace google
 
 #endif  // HEALTH_REPORTER_H_

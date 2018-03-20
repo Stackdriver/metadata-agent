@@ -26,8 +26,13 @@ namespace {
 constexpr const char kExternalReportFilename[] = "metadata_agent_unhealthy";
 }
 
-HealthChecker::HealthChecker(const std::string& prefix, const MetadataAgentConfiguration& config)
-  : state_prefix_(prefix), health_states_({"kubernetes_pod_thread", "kubernetes_node_thread"}), config_(config) {}
+HealthChecker::HealthChecker(const std::string& prefix,
+                             const MetadataAgentConfiguration& config)
+  : state_prefix_(prefix),
+    health_states_({"kubernetes_pod_thread", "kubernetes_node_thread"}),
+    config_(config) {
+  InitialCleanup();
+}
 
 void HealthChecker::SetUnhealthy(const std::string &state_name) {
   TouchName(state_name);
@@ -53,18 +58,21 @@ bool HealthChecker::IsHealthy() {
 
 std::string HealthChecker::MakeHealthCheckPath(const std::string& file_name) {
   if (config_.HealthCheckLocation().length() > 0) {
-    return boost::algorithm::join(std::vector<std::string>{config_.HealthCheckLocation(), file_name}, "/");
+    return boost::algorithm::join(
+        std::vector<std::string>{config_.HealthCheckLocation(), file_name},
+        "/");
   }
   return file_name;
 }
 
 std::string HealthChecker::Prefix(const std::string& state_name) {
-  return boost::algorithm::join(std::vector<std::string>{state_prefix_, state_name}, "_");
+  return boost::algorithm::join(
+      std::vector<std::string>{state_prefix_, state_name},
+      "_");
 }
 
 void HealthChecker::TouchName(const std::string& state_name) {
-  std::string intermediate(Prefix(state_name));
-  Touch(MakeHealthCheckPath(intermediate));
+  Touch(MakeHealthCheckPath(Prefix(state_name)));
 }
 
 void HealthChecker::Touch(const std::string& path) {
@@ -81,4 +89,8 @@ bool HealthChecker::Check(const std::string& path) {
     return f.good();
 }
 
-} // namespace google
+void HealthChecker::InitialCleanup() {
+  std::remove(MakeHealthCheckPath(Prefix(kExternalReportFilename)).c_str());
+}
+
+}  // namespace google

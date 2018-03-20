@@ -26,12 +26,11 @@ int main(int ac, char** av) {
   if (parse_result) {
     return parse_result < 0 ? 0 : parse_result;
   }
-
   google::MetadataAgent server(config);
 
   google::InstanceUpdater instance_updater(config, server.mutable_store());
   google::DockerUpdater docker_updater(config, server.mutable_store());
-  google::KubernetesUpdater kubernetes_updater(config, server.mutable_store());
+  google::KubernetesUpdater kubernetes_updater(config, server.health_checker(), server.mutable_store());
 
   instance_updater.start();
   docker_updater.start();
