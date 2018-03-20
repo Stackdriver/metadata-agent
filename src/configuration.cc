@@ -23,6 +23,14 @@
 
 #include <yaml-cpp/yaml.h>
 
+#ifndef AGENT_VERSION
+#define AGENT_VERSION 0.0
+#endif
+
+// https://gcc.gnu.org/onlinedocs/gcc-7.3.0/cpp/Stringizing.html
+#define STRINGIFY_H(x) #x
+#define STRINGIFY(x) STRINGIFY_H(x)
+
 namespace google {
 
 namespace {
@@ -35,6 +43,8 @@ constexpr const int kMetadataApiDefaultPort = 8000;
 constexpr const char kMetadataApiDefaultResourceTypeSeparator[] = ".";
 constexpr const int kMetadataReporterDefaultIntervalSeconds = 60;
 constexpr const int kMetadataReporterDefaultPurgeDeleted = false;
+constexpr const char kMetadataReporterDefaultUserAgent[] =
+    "metadata-agent/" STRINGIFY(AGENT_VERSION);
 constexpr const char kMetadataIngestionDefaultEndpointFormat[] =
     "https://stackdriver.googleapis.com/v1beta2/projects/{{project_id}}"
     "/resourceMetadata:batchUpdate";
@@ -60,7 +70,6 @@ constexpr const bool kKubernetesDefaultUseWatch = true;
 constexpr const bool kKubernetesDefaultClusterLevelMetadata = false;
 constexpr const char kDefaultInstanceId[] = "";
 constexpr const char kDefaultInstanceZone[] = "";
-
 }
 
 MetadataAgentConfiguration::MetadataAgentConfiguration()
@@ -75,6 +84,8 @@ MetadataAgentConfiguration::MetadataAgentConfiguration()
           kMetadataReporterDefaultIntervalSeconds),
       metadata_reporter_purge_deleted_(
           kMetadataReporterDefaultPurgeDeleted),
+      metadata_reporter_user_agent_(
+          kMetadataReporterDefaultUserAgent),
       metadata_ingestion_endpoint_format_(
           kMetadataIngestionDefaultEndpointFormat),
       metadata_ingestion_request_size_limit_bytes_(
@@ -106,6 +117,7 @@ int MetadataAgentConfiguration::ParseArguments(int ac, char** av) {
   boost::program_options::options_description flags_desc;
   flags_desc.add_options()
       ("help,h", "Print help message")
+      ("version,V", "Print the agent version")
       ("verbose,v", boost::program_options::bool_switch(&verbose_logging_),
            "Enable verbose logging")
       ;
@@ -121,18 +133,29 @@ int MetadataAgentConfiguration::ParseArguments(int ac, char** av) {
   boost::program_options::positional_options_description positional_desc;
   positional_desc.add(kConfigFileFlag, 1);
   boost::program_options::variables_map flags;
-  boost::program_options::store(
-      boost::program_options::command_line_parser(ac, av)
-          .options(all_desc).positional(positional_desc).run(), flags);
-  boost::program_options::notify(flags);
+  try {
+    boost::program_options::store(
+        boost::program_options::command_line_parser(ac, av)
+        .options(all_desc).positional(positional_desc).run(), flags);
+    boost::program_options::notify(flags);
 
-  if (flags.count("help")) {
-    std::cout << flags_desc << std::endl;
+    if (flags.count("help")) {
+      std::cout << flags_desc << std::endl;
+      return -1;
+    }
+    if (flags.count("version")) {
+      std::cout << "Stackdriver Metadata Agent v" << STRINGIFY(AGENT_VERSION)
+                << std::endl;
+      return -1;
+    }
+
+    ParseConfigFile(config_file);
+    return 0;
+  } catch (const boost::program_options::error& arg_error) {
+    std::cerr << arg_error.what() << std::endl;
+    std::cerr << flags_desc << std::endl;
     return 1;
   }
-
-  ParseConfigFile(config_file);
-  return 0;
 }
 
 void MetadataAgentConfiguration::ParseConfigFile(const std::string& filename) {
@@ -162,6 +185,9 @@ void MetadataAgentConfiguration::ParseConfiguration(std::istream& input) {
   metadata_reporter_purge_deleted_ =
       config["MetadataReporterPurgeDeleted"].as<bool>(
           kMetadataReporterDefaultPurgeDeleted);
+  metadata_reporter_user_agent_ =
+      config["MetadataReporterUserAgent"].as<std::string>(
+          kMetadataReporterDefaultUserAgent);
   metadata_ingestion_endpoint_format_ =
       config["MetadataIngestionEndpointFormat"].as<std::string>(
           kMetadataIngestionDefaultEndpointFormat);
@@ -217,3 +243,6 @@ void MetadataAgentConfiguration::ParseConfiguration(std::istream& input) {
 }
 
 }  // google
+
+#undef STRINGIFY
+#undef STRINGIFY_H
