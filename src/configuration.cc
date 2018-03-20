@@ -70,6 +70,8 @@ constexpr const bool kKubernetesDefaultUseWatch = true;
 constexpr const bool kKubernetesDefaultClusterLevelMetadata = false;
 constexpr const char kDefaultInstanceId[] = "";
 constexpr const char kDefaultInstanceZone[] = "";
+constexpr const char kDefaultHealthCheckLocation[] = "/tmp";
+
 }
 
 MetadataAgentConfiguration::MetadataAgentConfiguration()
@@ -240,6 +242,8 @@ void MetadataAgentConfiguration::ParseConfiguration(std::istream& input) {
       config["InstanceId"].as<std::string>(kDefaultInstanceId);
   instance_zone_ =
       config["InstanceZone"].as<std::string>(kDefaultInstanceZone);
+  health_check_location_ =
+      config["HealthCheckLocation"].as<std::string>(kDefaultHealthCheckLocation);
 }
 
 }  // google

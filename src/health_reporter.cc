@@ -15,50 +15,70 @@
  **/
 
 #include "health_reporter.h"
+
 #include <fstream>
 #include <sstream>
+#include <boost/algorithm/string/join.hpp>
+#include <iostream>
 
 namespace google {
-  const std::string external_report_filename = "metadata_agent_unhealthy";
+namespace {
+constexpr const char kExternalReportFilename[] = "metadata_agent_unhealthy";
+}
 
-  HealthReporter::HealthReporter() : HealthReporter::HealthReporter("") { }
+HealthChecker::HealthChecker(const std::string& prefix, const MetadataAgentConfiguration& config)
+  : state_prefix_(prefix), health_states_({"kubernetes_pod_thread", "kubernetes_node_thread"}), config_(config) {}
 
-  HealthReporter::HealthReporter(const std::string &prefix) : state_prefix(prefix) {
-    health_states.push_back("watch_pods");
-    health_states.push_back("node_callback");
+void HealthChecker::SetUnhealthy(const std::string &state_name) {
+  TouchName(state_name);
+  ReportHealth();
+}
+
+bool HealthChecker::ReportHealth() {
+  if (!IsHealthy()) {
+    TouchName(kExternalReportFilename);
+    return false;
   }
+  return true;
+}
 
-  void HealthReporter::SetUnhealthy(const std::string &state_name) {
-    std::ofstream healthfile (Prefix(state_name));
-    healthfile << "\n";
-    healthfile.close();
-
-    ReportHealth();
-  }
-
-  bool HealthReporter::ReportHealth() {
-    if(!GetTotalHealthState()) {
-      std::ofstream healthfile (Prefix(external_report_filename));
-      healthfile << "\n";
-      healthfile.close();
+bool HealthChecker::IsHealthy() {
+  for (const std::string& health_state : health_states_) {
+    if (CheckName(health_state)) {
       return false;
     }
-    return true;
   }
+  return true;
+}
 
-  bool HealthReporter::GetTotalHealthState() {
-    for (std::string healthState : health_states) {
-      std::ifstream f(Prefix(healthState));
-      if(f.good()) {
-        return false;
-      }
-    }
-    return true;
+std::string HealthChecker::MakeHealthCheckPath(const std::string& file_name) {
+  if (config_.HealthCheckLocation().length() > 0) {
+    return boost::algorithm::join(std::vector<std::string>{config_.HealthCheckLocation(), file_name}, "/");
   }
+  return file_name;
+}
 
-  std::string HealthReporter::Prefix(const std::string &state_name) {
-    std::ostringstream oss;
-    oss << state_prefix << "_" << state_name;
-    return oss.str();
-  }
+std::string HealthChecker::Prefix(const std::string& state_name) {
+  return boost::algorithm::join(std::vector<std::string>{state_prefix_, state_name}, "_");
+}
+
+void HealthChecker::TouchName(const std::string& state_name) {
+  std::string intermediate(Prefix(state_name));
+  Touch(MakeHealthCheckPath(intermediate));
+}
+
+void HealthChecker::Touch(const std::string& path) {
+    std::ofstream healthfile (path);
+    healthfile << "\n";
+}
+
+bool HealthChecker::CheckName(const std::string& state_name) {
+  return Check(MakeHealthCheckPath(Prefix(state_name)));
+}
+
+bool HealthChecker::Check(const std::string& path) {
+    std::ifstream f(path);
+    return f.good();
+}
+
 } // namespace google

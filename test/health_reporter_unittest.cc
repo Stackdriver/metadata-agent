@@ -5,72 +5,77 @@
 
 namespace google {
 
-class HealthReporterUnittest : public ::testing::Test {
+class HealthCheckerUnittest : public ::testing::Test {
  public:
-  HealthReporterUnittest() {}
-  ~HealthReporterUnittest() {
-    if(prefix.length() > 0) {
+  HealthCheckerUnittest() {
+    std::stringstream stream("HealthCheckLocation: ''");
+    config_.ParseConfiguration(stream);
+  }
+
+  ~HealthCheckerUnittest() {
+    if (prefix_.length() > 0) {
       std::ostringstream oss;
-      oss << prefix << "_metadata_agent_unhealthy";
+      oss << prefix_ << "_metadata_agent_unhealthy";
       std::remove(oss.str().c_str());
 
       oss.str("");
       oss.clear();
-      oss << prefix << "_node_callback";
+      oss << prefix_ << "_kubernetes_node_thread";
       std::remove(oss.str().c_str());
 
       oss.str("");
       oss.clear();
-      oss << prefix << "_watch_pods";
+      oss << prefix_ << "_kubernetes_pod_thread";
       std::remove(oss.str().c_str());
     }
   }
  protected:
-  void SetUnhealthy(HealthReporter healthReporter, const std::string &state_name) {
+  void SetUnhealthy(HealthChecker healthReporter, const std::string &state_name) {
     healthReporter.SetUnhealthy(state_name);
   }
 
-  bool ReportHealth(HealthReporter healthReporter) {
+  bool ReportHealth(HealthChecker healthReporter) {
     return healthReporter.ReportHealth();
   }
 
-  bool GetTotalHealthState(HealthReporter healthReporter) {
-    return healthReporter.GetTotalHealthState();
+  bool IsHealthy(HealthChecker healthReporter) {
+    return healthReporter.IsHealthy();
   }
 
-  std::string prefix;
+  std::string prefix_;
+  MetadataAgentConfiguration config_;
 };
 
-TEST_F(HealthReporterUnittest, DefaultHealthy) {
-  prefix = "DefaultHealthy";
-  HealthReporter healthReporter(prefix);
-  EXPECT_EQ(true, GetTotalHealthState(healthReporter));
+TEST_F(HealthCheckerUnittest, DefaultHealthy) {
+  prefix_ = "DefaultHealthy";
+  HealthChecker healthReporter(prefix_, config_);
+  EXPECT_TRUE(IsHealthy(healthReporter));
 }
 
-TEST_F(HealthReporterUnittest, SimpleFailure) {
-  prefix = "SimpleFailure";
-  HealthReporter healthReporter(prefix);
-  SetUnhealthy(healthReporter, "watch_pods");
-  EXPECT_EQ(false, GetTotalHealthState(healthReporter));
+TEST_F(HealthCheckerUnittest, SimpleFailure) {
+  prefix_ = "SimpleFailure";
+  HealthChecker healthReporter(prefix_, config_);
+  SetUnhealthy(healthReporter, "kubernetes_pod_thread");
+  EXPECT_FALSE(IsHealthy(healthReporter));
 }
 
-TEST_F(HealthReporterUnittest, MultiFailure) {
-  prefix = "MultiFailure";
-  HealthReporter healthReporter(prefix);
-  EXPECT_EQ(true, GetTotalHealthState(healthReporter));
-  SetUnhealthy(healthReporter, "watch_pods");
-  EXPECT_EQ(false, GetTotalHealthState(healthReporter));
-  SetUnhealthy(healthReporter, "node_callback");
-  EXPECT_EQ(false, GetTotalHealthState(healthReporter));
+TEST_F(HealthCheckerUnittest, MultiFailure) {
+  prefix_ = "MultiFailure";
+  HealthChecker healthReporter(prefix_, config_);
+  EXPECT_TRUE(IsHealthy(healthReporter));
+  SetUnhealthy(healthReporter, "kubernetes_pod_thread");
+  EXPECT_FALSE(IsHealthy(healthReporter));
+  SetUnhealthy(healthReporter, "kubernetes_node_thread");
+  EXPECT_FALSE(IsHealthy(healthReporter));
 }
 
-TEST_F(HealthReporterUnittest, NoRecovery) {
-  prefix = "NoRecovery";
-  HealthReporter healthReporter(prefix);
-  EXPECT_EQ(true, GetTotalHealthState(healthReporter));
-  SetUnhealthy(healthReporter, "watch_pods");
-  EXPECT_EQ(false, GetTotalHealthState(healthReporter));
-  SetUnhealthy(healthReporter, "watch_pods");
-  EXPECT_EQ(false, GetTotalHealthState(healthReporter));
+TEST_F(HealthCheckerUnittest, NoRecovery) {
+  prefix_ = "NoRecovery";
+  HealthChecker healthReporter(prefix_, config_);
+  EXPECT_TRUE(IsHealthy(healthReporter));
+  SetUnhealthy(healthReporter, "kubernetes_pod_thread");
+  EXPECT_FALSE(IsHealthy(healthReporter));
+  SetUnhealthy(healthReporter, "kubernetes_pod_thread");
+  EXPECT_FALSE(IsHealthy(healthReporter));
 }
 }  // namespace google

@@ -85,7 +85,7 @@ resource_unittest: $(GTEST_LIB) resource_unittest.o $(SRC_DIR)/resource.o $(SRC_
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 time_unittest: $(GTEST_LIB) time_unittest.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-health_reporter_unittest: $(GTEST_LIB) health_reporter_unittest.o $(SRC_DIR)/health_reporter.o
+health_reporter_unittest: $(GTEST_LIB) health_reporter_unittest.o $(SRC_DIR)/health_reporter.o $(SRC_DIR)/configuration.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 .PHONY: all test clean purge

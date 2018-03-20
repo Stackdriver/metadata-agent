@@ -36,6 +36,7 @@
 #include "resource.h"
 #include "store.h"
 #include "time.h"
+#include "health_reporter.h"
 
 namespace http = boost::network::http;
 
@@ -1104,6 +1105,7 @@ void KubernetesReader::WatchPods(
     const std::string& node_name,
     MetadataUpdater::UpdateCallback callback) const {
   HealthReporter healthReporter;
+  HealthChecker health_reporter(config_);
   LOG(INFO) << "Watch thread (pods) started for node "
             << (node_name.empty() ? "<unscheduled>" : node_name);
 
@@ -1126,8 +1128,8 @@ void KubernetesReader::WatchPods(
   } catch (const KubernetesReader::QueryException& e) {
     LOG(ERROR) << "No more pod metadata will be collected";
   }
+  health_reporter.SetUnhealthy("kubernetes_pod_thread");
   LOG(INFO) << "Watch thread (pods) exiting";
-  healthReporter.SetUnhealthy("watch_pods");
 }
 
 void KubernetesReader::NodeCallback(
@@ -1142,7 +1144,7 @@ void KubernetesReader::NodeCallback(
 void KubernetesReader::WatchNodes(
     const std::string& node_name,
     MetadataUpdater::UpdateCallback callback) const {
-  HealthReporter healthReporter;
+  HealthChecker health_reporter(config_);
   LOG(INFO) << "Watch thread (node) started for node "
             << (node_name.empty() ? "<all>" : node_name);
 
@@ -1160,7 +1162,7 @@ void KubernetesReader::WatchNodes(
   } catch (const KubernetesReader::QueryException& e) {
     LOG(ERROR) << "No more node metadata will be collected";
   }
-  healthReporter.SetUnhealthy("node_callback");
+  health_reporter.SetUnhealthy("kubernetes_node_thread");
   LOG(INFO) << "Watch thread (node) exiting";
 }
 

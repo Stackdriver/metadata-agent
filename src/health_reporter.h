@@ -16,29 +16,37 @@
 #ifndef HEALTH_REPORTER_H_
 #define HEALTH_REPORTER_H_
 
-#include "logging.h"
 #include <string>
 #include <vector>
+#include "configuration.h"
 
 namespace google {
 
-// Collects and reports health information about the metadata agent
-class HealthReporter {
+// Collects and reports health information about the metadata agent.
+class HealthChecker {
  public:
-  HealthReporter();
-  HealthReporter(const std::string &prefix);
+  HealthChecker(const MetadataAgentConfiguration& config) : HealthChecker("", config) {}
+  // Use this constructor for testing; a unique prefix will provide test isolation.
+  HealthChecker(const std::string &prefix, const MetadataAgentConfiguration& config);
   void SetUnhealthy(const std::string &state_name);
+
  private:
-  friend class HealthReporterUnittest;
+  friend class HealthCheckerUnittest;
 
   bool ReportHealth();
-  bool GetTotalHealthState();
+  bool IsHealthy();
+  std::string MakeHealthCheckPath(const std::string& file_name);
   std::string Prefix(const std::string &state_name);
+  void TouchName(const std::string& state_name);
+  bool CheckName(const std::string& state_name);
+  void Touch(const std::string& path);
+  bool Check(const std::string& path);
 
-  std::vector<std::string> health_states;
-  const std::string state_prefix;
+  std::vector<std::string> health_states_;
+  const std::string state_prefix_;
+  const MetadataAgentConfiguration& config_;
 };
 
-} // google namespace
+} // namespace google
 
 #endif  // HEALTH_REPORTER_H_
