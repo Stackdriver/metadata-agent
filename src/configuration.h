@@ -24,6 +24,11 @@ namespace google {
 class MetadataAgentConfiguration {
  public:
   MetadataAgentConfiguration();
+  // Parse the command line.
+  // A zero return value means that parsing succeeded and the program should
+  // proceed.  A positive return value means that parsing failed.  A negative
+  // value means that parsing succeeded, but all of the arguments were handled
+  // within the function and the program should exit with a success exit code.
   int ParseArguments(int ac, char** av);
 
   // Shared configuration.

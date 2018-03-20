@@ -23,9 +23,6 @@
 
 #include <yaml-cpp/yaml.h>
 
-namespace google {
-
-namespace {
 #ifndef AGENT_VERSION
 #define AGENT_VERSION 0.0
 #endif
@@ -34,6 +31,9 @@ namespace {
 #define STRINGIFY_H(x) #x
 #define STRINGIFY(x) STRINGIFY_H(x)
 
+namespace google {
+
+namespace {
 constexpr const char kConfigFileFlag[] = "config-file";
 
 constexpr const char kDefaultProjectId[] = "";
@@ -69,9 +69,6 @@ constexpr const char kKubernetesDefaultNodeName[] = "";
 constexpr const bool kKubernetesDefaultUseWatch = true;
 constexpr const char kDefaultInstanceId[] = "";
 constexpr const char kDefaultInstanceZone[] = "";
-
-#undef STRINGIFY
-#undef STRINGIFY_H
 }
 
 MetadataAgentConfiguration::MetadataAgentConfiguration()
@@ -117,6 +114,7 @@ int MetadataAgentConfiguration::ParseArguments(int ac, char** av) {
   boost::program_options::options_description flags_desc;
   flags_desc.add_options()
       ("help,h", "Print help message")
+      ("version,V", "Print the agent version")
       ("verbose,v", boost::program_options::bool_switch(&verbose_logging_),
            "Enable verbose logging")
       ;
@@ -132,22 +130,29 @@ int MetadataAgentConfiguration::ParseArguments(int ac, char** av) {
   boost::program_options::positional_options_description positional_desc;
   positional_desc.add(kConfigFileFlag, 1);
   boost::program_options::variables_map flags;
-  boost::program_options::store(
-      boost::program_options::command_line_parser(ac, av)
-          .options(all_desc).positional(positional_desc).run(), flags);
-  boost::program_options::notify(flags);
+  try {
+    boost::program_options::store(
+        boost::program_options::command_line_parser(ac, av)
+        .options(all_desc).positional(positional_desc).run(), flags);
+    boost::program_options::notify(flags);
 
-  if (flags.count("help")) {
-    std::cout << flags_desc << std::endl;
+    if (flags.count("help")) {
+      std::cout << flags_desc << std::endl;
+      return -1;
+    }
+    if (flags.count("version")) {
+      std::cout << "Stackdriver Metadata Agent v" << STRINGIFY(AGENT_VERSION)
+                << std::endl;
+      return -1;
+    }
+
+    ParseConfigFile(config_file);
     return 0;
-  }
-  if (flags.count("version")) {
-    std::cout << flags_desc << std::endl;
+  } catch (const boost::program_options::error& arg_error) {
+    std::cerr << arg_error.what() << std::endl;
+    std::cerr << flags_desc << std::endl;
     return 1;
   }
-
-  ParseConfigFile(config_file);
-  return 0;
 }
 
 void MetadataAgentConfiguration::ParseConfigFile(const std::string& filename) {
@@ -232,3 +237,6 @@ void MetadataAgentConfiguration::ParseConfiguration(std::istream& input) {
 }
 
 }  // google
+
+#undef STRINGIFY
+#undef STRINGIFY_H

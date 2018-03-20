@@ -28,7 +28,7 @@ int main(int ac, char** av) {
   google::MetadataAgentConfiguration config;
   int parse_result = config.ParseArguments(ac, av);
   if (parse_result) {
-    return parse_result;
+    return parse_result < 0 ? 0 : parse_result;
   }
 
   google::MetadataAgent server(config);
