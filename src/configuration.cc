@@ -30,6 +30,7 @@ namespace {
 #define AGENT_VERSION 0.0
 #endif
 
+// https://gcc.gnu.org/onlinedocs/gcc-7.3.0/cpp/Stringizing.html
 #define STRINGIFY_H(x) #x
 #define STRINGIFY(x) STRINGIFY_H(x)
 
