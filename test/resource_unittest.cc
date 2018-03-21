@@ -24,18 +24,16 @@ TEST(ResourceTest, BasicEquality) {
 }
 
 TEST(ResourceTest, BasicTypeComparison) {
-  google::MonitoredResource mr1("2", {});
-  google::MonitoredResource mr2("1", {});
+  google::MonitoredResource mr1("1", {});
+  google::MonitoredResource mr2("2", {});
 
-  EXPECT_LT("2", "1");
   EXPECT_LT(mr1, mr2);
 }
 
 TEST(ResourceTest, BasicLabelComparison) {
-  google::MonitoredResource mr1("", {{"b", "b"}});
-  google::MonitoredResource mr2("", {{"a", "a"}});
+  google::MonitoredResource mr1("", {{"a", "a"}});
+  google::MonitoredResource mr2("", {{"b", "b"}});
 
-  EXPECT_LT("b", "a");
   EXPECT_NE(mr1, mr2);
   EXPECT_LT(mr1, mr2);
 }
