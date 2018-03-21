@@ -156,6 +156,11 @@ class MetadataAgentConfiguration {
     return health_check_file_directory_;
   }
 
+  const std::string& HealthCheckExternalFileName() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return health_check_external_file_name_;
+  }
+
  private:
   friend class MetadataAgentConfigurationTest;
   friend class HealthCheckerUnittest;
@@ -193,6 +198,7 @@ class MetadataAgentConfiguration {
   std::string instance_id_;
   std::string instance_zone_;
   std::string health_check_file_directory_;
+  std::string health_check_external_file_name_;
 };
 
 }

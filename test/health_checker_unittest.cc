@@ -31,15 +31,15 @@ class HealthCheckerUnittest : public ::testing::Test {
     }
   }
  protected:
-  void SetUnhealthy(HealthChecker& healthChecker, const std::string& state_name) {
-    healthChecker.SetUnhealthy(state_name);
+  void SetUnhealthy(HealthChecker* healthChecker, const std::string& state_name) {
+    healthChecker->SetUnhealthy(state_name);
   }
 
-  bool ReportHealth(HealthChecker& healthChecker) {
-    return healthChecker.ReportHealth();
+  bool ReportHealth(HealthChecker* healthChecker) {
+    return healthChecker->ReportHealth();
   }
 
-  bool IsHealthy(HealthChecker& healthChecker) {
+  bool IsHealthy(const HealthChecker& healthChecker) const {
     return healthChecker.IsHealthy();
   }
 
@@ -63,7 +63,7 @@ TEST_F(HealthCheckerUnittest, DefaultHealthy) {
 TEST_F(HealthCheckerUnittest, SimpleFailure) {
   SetIsolationPath("SimpleFailure");
   HealthChecker healthChecker(config_);
-  SetUnhealthy(healthChecker, "kubernetes_pod_thread");
+  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
 }
 
@@ -71,9 +71,9 @@ TEST_F(HealthCheckerUnittest, MultiFailure) {
   SetIsolationPath("MultiFailure");
   HealthChecker healthChecker(config_);
   EXPECT_TRUE(IsHealthy(healthChecker));
-  SetUnhealthy(healthChecker, "kubernetes_pod_thread");
+  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
-  SetUnhealthy(healthChecker, "kubernetes_node_thread");
+  SetUnhealthy(&healthChecker, "kubernetes_node_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
 }
 
@@ -81,9 +81,9 @@ TEST_F(HealthCheckerUnittest, NoRecovery) {
   SetIsolationPath("NoRecovery");
   HealthChecker healthChecker(config_);
   EXPECT_TRUE(IsHealthy(healthChecker));
-  SetUnhealthy(healthChecker, "kubernetes_pod_thread");
+  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
-  SetUnhealthy(healthChecker, "kubernetes_pod_thread");
+  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
 }
 }  // namespace google

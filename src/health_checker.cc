@@ -22,9 +22,6 @@
 #include <sstream>
 
 namespace google {
-namespace {
-constexpr const char kExternalReportFilename[] = "metadata_agent_unhealthy";
-}
 
 HealthChecker::HealthChecker(const MetadataAgentConfiguration& config)
     : health_states_({"kubernetes_pod_thread", "kubernetes_node_thread"}),
@@ -39,7 +36,7 @@ void HealthChecker::SetUnhealthy(const std::string& state_name) {
 
 bool HealthChecker::ReportHealth() {
   if (!IsHealthy()) {
-    TouchName(kExternalReportFilename);
+    TouchName(config_.HealthCheckExternalFileName());
     return false;
   }
   return true;
@@ -81,7 +78,10 @@ bool HealthChecker::Check(const std::string& path) const {
 }
 
 void HealthChecker::InitialCleanup() {
-  std::remove(MakeHealthCheckPath(kExternalReportFilename).c_str());
+  std::remove(MakeHealthCheckPath(config_.HealthCheckExternalFileName()).c_str());
+  for (const std::string& health_state : health_states_) {
+    std::remove(MakeHealthCheckPath(health_state).c_str());
+  }
 }
 
 }  // namespace google

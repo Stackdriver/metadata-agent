@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  **/
-#ifndef HEALTH_REPORTER_H_
-#define HEALTH_REPORTER_H_
+#ifndef HEALTH_CHECKER_H_
+#define HEALTH_CHECKER_H_
 
 #include <string>
 #include <vector>
@@ -47,4 +47,4 @@ class HealthChecker {
 
 }  // namespace google
 
-#endif  // HEALTH_REPORTER_H_
+#endif  // HEALTH_CHECKER_H_
