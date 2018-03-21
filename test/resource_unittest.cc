@@ -5,8 +5,7 @@
 namespace {
 
 TEST(ResourceTest, Type) {
-  std::map<std::string, std::string> m;
-  google::MonitoredResource mr("some_resource", m);
+  google::MonitoredResource mr("some_resource", {});
   EXPECT_EQ("some_resource", mr.type());
 }
 
@@ -28,6 +27,7 @@ TEST(ResourceTest, BasicTypeComparison) {
   google::MonitoredResource mr1("2", {});
   google::MonitoredResource mr2("1", {});
 
+  EXPECT_LT("2", "1");
   EXPECT_LT(mr1, mr2);
 }
 
@@ -35,6 +35,7 @@ TEST(ResourceTest, BasicLabelComparison) {
   google::MonitoredResource mr1("", {{"b", "b"}});
   google::MonitoredResource mr2("", {{"a", "a"}});
 
+  EXPECT_LT("b", "a");
   EXPECT_NE(mr1, mr2);
   EXPECT_LT(mr1, mr2);
 }
