@@ -6,48 +6,37 @@ namespace {
 
 TEST(ResourceTest, Type) {
   std::map<std::string, std::string> m;
-  google::MonitoredResource mr("type", m);
-  EXPECT_EQ("type", mr.type());
+  google::MonitoredResource mr("some_resource", m);
+  EXPECT_EQ("some_resource", mr.type());
 }
 
 TEST(ResourceTest, Labels) {
-  std::map<std::string, std::string> m;
-  m["foo"] = "bar";
-  m["bar"] = "baz";
-  google::MonitoredResource mr("", m);
+  google::MonitoredResource mr("", {{"foo", "bar"}, {"bar", "baz"}});
   EXPECT_EQ(2, mr.labels().size());
   EXPECT_EQ("bar", mr.labels().at("foo"));
   EXPECT_EQ("baz", mr.labels().at("bar"));
 }
 
 TEST(ResourceTest, BasicEquality) {
-  std::map<std::string, std::string> m1;
-  std::map<std::string, std::string> m2;
-  google::MonitoredResource mr1("", m1);
-  google::MonitoredResource mr2("", m2);
+  google::MonitoredResource mr1("", {});
+  google::MonitoredResource mr2("", {});
 
-  EXPECT_TRUE(mr1 == mr2);
+  EXPECT_EQ(mr1, mr2);
 }
 
 TEST(ResourceTest, BasicTypeComparison) {
-  std::map<std::string, std::string> m1;
-  std::map<std::string, std::string> m2;
-  google::MonitoredResource mr1("2", m1);
-  google::MonitoredResource mr2("1", m2);
+  google::MonitoredResource mr1("2", {});
+  google::MonitoredResource mr2("1", {});
 
-  EXPECT_TRUE(mr1 < mr2);
+  EXPECT_LT(mr1, mr2);
 }
 
 TEST(ResourceTest, BasicLabelComparison) {
-  std::map<std::string, std::string> m1;
-  std::map<std::string, std::string> m2;
-  m1["b"] = "b";
-  m2["a"] = "a";
-  google::MonitoredResource mr1("", m1);
-  google::MonitoredResource mr2("", m2);
+  google::MonitoredResource mr1("", {{"b", "b"}});
+  google::MonitoredResource mr2("", {{"a", "a"}});
 
-  EXPECT_FALSE(mr1 == mr2);
-  EXPECT_TRUE(mr1 < mr2);
+  EXPECT_NE(mr1, mr2);
+  EXPECT_LT(mr1, mr2);
 }
 TEST(ResourceTest, BasicJson) {
   json::value target = json::object({
@@ -58,11 +47,8 @@ TEST(ResourceTest, BasicJson) {
     })}
   });
 
-  std::map<std::string, std::string> m;
-  m["a"] = "a";
-  m["b"] = "b";
-  google::MonitoredResource mr("test", m);
+  google::MonitoredResource mr("test", {{"a", "a"}, {"b", "b"}});
 
   EXPECT_EQ(target->ToString(), mr.ToJSON()->ToString());
 }
-} // namespace
+}  // namespace
