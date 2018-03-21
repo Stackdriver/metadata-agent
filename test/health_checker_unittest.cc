@@ -31,15 +31,15 @@ class HealthCheckerUnittest : public ::testing::Test {
     }
   }
  protected:
-  void SetUnhealthy(HealthChecker* healthChecker, const std::string& state_name) {
+  static void SetUnhealthy(HealthChecker* healthChecker, const std::string& state_name) {
     healthChecker->SetUnhealthy(state_name);
   }
 
-  bool ReportHealth(HealthChecker* healthChecker) {
+  static bool ReportHealth(HealthChecker* healthChecker) {
     return healthChecker->ReportHealth();
   }
 
-  bool IsHealthy(const HealthChecker& healthChecker) const {
+  static bool IsHealthy(const HealthChecker& healthChecker) {
     return healthChecker.IsHealthy();
   }
 

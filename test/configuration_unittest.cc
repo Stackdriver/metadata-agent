@@ -44,6 +44,7 @@ class MetadataAgentConfigurationTest : public ::testing::Test {
     EXPECT_EQ("", config.InstanceId());
     EXPECT_EQ("", config.InstanceZone());
     EXPECT_EQ("/tmp", config.HealthCheckFileDirectory());
+    EXPECT_EQ("metadata_agent_unhealthy", config.HealthCheckExternalFileName());
   }
 
   MetadataAgentConfiguration config;
@@ -64,13 +65,15 @@ TEST_F(MetadataAgentConfigurationTest, PopulatedConfig) {
       "MetadataApiNumThreads: 13\n"
       "MetadataReporterPurgeDeleted: true\n"
       "MetadataReporterUserAgent: \"foobar/foobaz\"\n"
-      "HealthCheckFileDirectory: /a/b/c"
+      "HealthCheckFileDirectory: /a/b/c\n"
+      "HealthCheckExternalFileName: test_name\n"
   );
   EXPECT_EQ("TestProjectId", config.ProjectId());
   EXPECT_EQ(13, config.MetadataApiNumThreads());
   EXPECT_EQ(true, config.MetadataReporterPurgeDeleted());
   EXPECT_EQ("foobar/foobaz", config.MetadataReporterUserAgent());
   EXPECT_EQ("/a/b/c", config.HealthCheckFileDirectory());
+  EXPECT_EQ("test_name", config.HealthCheckExternalFileName());
 }
 
 TEST_F(MetadataAgentConfigurationTest, CommentSkipped) {

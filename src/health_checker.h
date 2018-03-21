@@ -40,6 +40,7 @@ class HealthChecker {
   void Touch(const std::string& path);
   bool Check(const std::string& path) const;
   void InitialCleanup();
+  void InitialCreation();
 
   std::vector<std::string> health_states_;
   const MetadataAgentConfiguration& config_;

@@ -17,6 +17,7 @@
 #include "health_checker.h"
 
 #include <boost/algorithm/string/join.hpp>
+#include <boost/filesystem.hpp>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -82,6 +83,10 @@ void HealthChecker::InitialCleanup() {
   for (const std::string& health_state : health_states_) {
     std::remove(MakeHealthCheckPath(health_state).c_str());
   }
+}
+
+void HealthChecker::InitialCreation() {
+  boost::filesystem::create_directories(config_.HealthCheckFileDirectory());
 }
 
 }  // namespace google
