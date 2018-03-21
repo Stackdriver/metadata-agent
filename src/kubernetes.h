@@ -180,6 +180,7 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   void MetadataCallback(std::vector<ResourceMetadata>&& result_vector);
 
   KubernetesReader reader_;
+  HealthChecker* health_checker_;
   std::thread node_watch_thread_;
   std::thread pod_watch_thread_;
 };

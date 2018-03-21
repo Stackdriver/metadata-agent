@@ -86,6 +86,6 @@ resource_unittest: $(GTEST_LIB) resource_unittest.o $(SRC_DIR)/resource.o $(SRC_
 time_unittest: $(GTEST_LIB) time_unittest.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 health_checker_unittest: $(GTEST_LIB) health_checker_unittest.o $(SRC_DIR)/health_checker.o $(SRC_DIR)/configuration.o
-	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lboost_filesystem -lboost_system -o $@
 
 .PHONY: all test clean purge

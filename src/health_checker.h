@@ -18,6 +18,7 @@
 
 #include <string>
 #include <vector>
+
 #include "configuration.h"
 
 namespace google {
@@ -25,28 +26,22 @@ namespace google {
 // Collects and reports health information about the metadata agent.
 class HealthChecker {
  public:
-  HealthChecker(const MetadataAgentConfiguration& config) :
-    HealthChecker("", config) {}
-  // Use this constructor for testing; a unique prefix provides test isolation.
-  HealthChecker(const std::string &prefix,
-                const MetadataAgentConfiguration& config);
-  void SetUnhealthy(const std::string &state_name);
+  HealthChecker(const MetadataAgentConfiguration& config);
+  void SetUnhealthy(const std::string& state_name);
 
  private:
   friend class HealthCheckerUnittest;
 
   bool ReportHealth();
-  bool IsHealthy();
-  std::string MakeHealthCheckPath(const std::string& file_name);
-  std::string Prefix(const std::string &state_name);
+  bool IsHealthy() const;
+  std::string MakeHealthCheckPath(const std::string& file_name) const;
   void TouchName(const std::string& state_name);
-  bool CheckName(const std::string& state_name);
+  bool CheckName(const std::string& state_name) const;
   void Touch(const std::string& path);
-  bool Check(const std::string& path);
+  bool Check(const std::string& path) const;
   void InitialCleanup();
 
   std::vector<std::string> health_states_;
-  const std::string state_prefix_;
   const MetadataAgentConfiguration& config_;
 };
 

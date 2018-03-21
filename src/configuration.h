@@ -151,9 +151,9 @@ class MetadataAgentConfiguration {
     return instance_zone_;
   }
 
-  const std::string& HealthCheckLocation() const {
+  const std::string& HealthCheckFileDirectory() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    return health_check_location_;
+    return health_check_file_directory_;
   }
 
  private:
@@ -192,7 +192,7 @@ class MetadataAgentConfiguration {
   bool kubernetes_cluster_level_metadata_;
   std::string instance_id_;
   std::string instance_zone_;
-  std::string health_check_location_;
+  std::string health_check_file_directory_;
 };
 
 }
