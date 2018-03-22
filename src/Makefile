@@ -43,6 +43,7 @@ SRCS=\
      metadatad.cc \
      api_server.cc \
      store.cc \
+     reporter.cc \
      configuration.cc \
      updater.cc \
      instance.cc \
