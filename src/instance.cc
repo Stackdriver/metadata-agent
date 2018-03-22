@@ -19,8 +19,10 @@
 #include <boost/network/protocol/http/client.hpp>
 #include <chrono>
 
+#include "configuration.h"
 #include "json.h"
 #include "logging.h"
+#include "store.h"
 #include "time.h"
 
 namespace http = boost::network::http;

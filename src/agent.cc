@@ -17,6 +17,7 @@
 #include "agent.h"
 
 #include "api_server.h"
+#include "reporter.h"
 
 namespace google {
 
@@ -27,10 +28,10 @@ MetadataAgent::~MetadataAgent() {}
 
 void MetadataAgent::start() {
   metadata_api_server_.reset(new MetadataApiServer(
-      *this, config_.MetadataApiNumThreads(), "0.0.0.0",
+      config_, store_, config_.MetadataApiNumThreads(), "0.0.0.0",
       config_.MetadataApiPort()));
   reporter_.reset(new MetadataReporter(
-      this, config_.MetadataReporterIntervalSeconds()));
+      config_, &store_, config_.MetadataReporterIntervalSeconds()));
 }
 
 }

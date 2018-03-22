@@ -22,12 +22,14 @@
 #include <mutex>
 #include <string>
 
-#include "configuration.h"
 #include "json.h"
 #include "resource.h"
 #include "time.h"
 
 namespace google {
+
+// Configuration object.
+class MetadataAgentConfiguration;
 
 // A timestamp type.
 using Timestamp = time_point;

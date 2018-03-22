@@ -19,7 +19,7 @@
 #define BOOST_NETWORK_ENABLE_HTTPS
 #include <boost/network/protocol/http/client.hpp>
 
-#include "agent.h"
+#include "configuration.h"
 #include "format.h"
 #include "json.h"
 #include "logging.h"
@@ -29,9 +29,10 @@ namespace http = boost::network::http;
 
 namespace google {
 
-MetadataReporter::MetadataReporter(MetadataAgent* agent, double period_s)
-    : store_(agent->mutable_store()),
-      config_(agent->config()),
+MetadataReporter::MetadataReporter(const MetadataAgentConfiguration& config,
+                                   MetadataStore* store, double period_s)
+    : store_(store),
+      config_(config),
       environment_(config_),
       auth_(environment_),
       period_(period_s),

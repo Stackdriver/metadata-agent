@@ -31,9 +31,9 @@ int main(int ac, char** av) {
 
   google::MetadataAgent server(config);
 
-  google::InstanceUpdater instance_updater(&server);
-  google::DockerUpdater docker_updater(&server);
-  google::KubernetesUpdater kubernetes_updater(&server);
+  google::InstanceUpdater instance_updater(config, server.mutable_store());
+  google::DockerUpdater docker_updater(config, server.mutable_store());
+  google::KubernetesUpdater kubernetes_updater(config, server.mutable_store());
 
   instance_updater.start();
   docker_updater.start();

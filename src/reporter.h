@@ -23,7 +23,6 @@
 #include <string>
 #include <thread>
 
-#include "configuration.h"
 #include "environment.h"
 #include "json.h"
 #include "oauth2.h"
@@ -33,13 +32,14 @@
 
 namespace google {
 
-// Storage for the metadata mapping.
-class MetadataAgent;
+// Configuration object.
+class MetadataAgentConfiguration;
 
 // A periodic reporter of metadata to Stackdriver.
 class MetadataReporter {
  public:
-  MetadataReporter(MetadataAgent* agent, double period_s);
+  MetadataReporter(const MetadataAgentConfiguration& config,
+                   MetadataStore* store, double period_s);
   ~MetadataReporter();
 
  private:

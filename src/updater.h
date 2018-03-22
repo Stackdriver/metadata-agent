@@ -24,11 +24,14 @@
 #include <thread>
 #include <vector>
 
-#include "agent.h"
 #include "resource.h"
+#include "store.h"
 #include "time.h"
 
 namespace google {
+
+// Configuration object.
+class MetadataAgentConfiguration;
 
 // An abstract class for asynchronous updates of the metadata mapping.
 class MetadataUpdater {
@@ -46,7 +49,8 @@ class MetadataUpdater {
     MetadataStore::Metadata metadata;
   };
 
-  MetadataUpdater(MetadataAgent* agent, const std::string& name);
+  MetadataUpdater(const MetadataAgentConfiguration& config,
+                  MetadataStore* store, const std::string& name);
   virtual ~MetadataUpdater();
 
   // Starts updating.
@@ -99,7 +103,8 @@ class MetadataUpdater {
 class PollingMetadataUpdater : public MetadataUpdater {
  public:
   PollingMetadataUpdater(
-      MetadataAgent* agent, const std::string& name, double period_s,
+      const MetadataAgentConfiguration& config, MetadataStore* store,
+      const std::string& name, double period_s,
       std::function<std::vector<ResourceMetadata>()> query_metadata);
   ~PollingMetadataUpdater();
 

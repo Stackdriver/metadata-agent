@@ -18,12 +18,14 @@
 
 #include <chrono>
 
+#include "configuration.h"
 #include "logging.h"
 
 namespace google {
 
-MetadataUpdater::MetadataUpdater(MetadataAgent* agent, const std::string& name)
-    : config_(agent->config()), store_(agent->mutable_store()), name_(name) {}
+MetadataUpdater::MetadataUpdater(const MetadataAgentConfiguration& config,
+                                 MetadataStore* store, const std::string& name)
+    : config_(config), store_(store), name_(name) {}
 
 MetadataUpdater::~MetadataUpdater() {}
 
@@ -41,9 +43,10 @@ void MetadataUpdater::stop() {
 }
 
 PollingMetadataUpdater::PollingMetadataUpdater(
-    MetadataAgent* agent, const std::string& name, double period_s,
+    const MetadataAgentConfiguration& config, MetadataStore* store,
+    const std::string& name, double period_s,
     std::function<std::vector<ResourceMetadata>()> query_metadata)
-    : MetadataUpdater(agent, name),
+    : MetadataUpdater(config, store, name),
       period_(period_s),
       query_metadata_(query_metadata),
       timer_(),

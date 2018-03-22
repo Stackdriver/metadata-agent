@@ -16,6 +16,7 @@
 
 #include "store.h"
 
+#include "configuration.h"
 #include "logging.h"
 #include "time.h"
 

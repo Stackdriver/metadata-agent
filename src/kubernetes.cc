@@ -27,12 +27,14 @@
 #include <sstream>
 #include <tuple>
 
+#include "configuration.h"
 #include "format.h"
 #include "http_common.h"
 #include "instance.h"
 #include "json.h"
 #include "logging.h"
 #include "resource.h"
+#include "store.h"
 #include "time.h"
 
 namespace http = boost::network::http;
@@ -1158,10 +1160,11 @@ void KubernetesReader::WatchNodes(
   LOG(INFO) << "Watch thread (node) exiting";
 }
 
-KubernetesUpdater::KubernetesUpdater(MetadataAgent* server)
-    : reader_(server->config()), PollingMetadataUpdater(
-        server, "KubernetesUpdater",
-        server->config().KubernetesUpdaterIntervalSeconds(),
+KubernetesUpdater::KubernetesUpdater(const MetadataAgentConfiguration& config,
+                                     MetadataStore* store)
+    : reader_(config), PollingMetadataUpdater(
+        config, store, "KubernetesUpdater",
+        config.KubernetesUpdaterIntervalSeconds(),
         [=]() { return reader_.MetadataQuery(); }) { }
 
 bool KubernetesUpdater::ValidateConfiguration() const {

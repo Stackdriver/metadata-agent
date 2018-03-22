@@ -20,11 +20,16 @@
 
 #include <vector>
 
-#include "configuration.h"
 #include "environment.h"
 #include "updater.h"
 
 namespace google {
+
+// Configuration object.
+class MetadataAgentConfiguration;
+
+// Storage for the metadata mapping.
+class MetadataStore;
 
 class DockerReader {
  public:
@@ -62,10 +67,11 @@ class DockerReader {
 
 class DockerUpdater : public PollingMetadataUpdater {
  public:
-  DockerUpdater(MetadataAgent* server)
-      : reader_(server->config()), PollingMetadataUpdater(
-          server, "DockerUpdater",
-          server->config().DockerUpdaterIntervalSeconds(),
+  DockerUpdater(const MetadataAgentConfiguration& config,
+                MetadataStore* store)
+      : reader_(config), PollingMetadataUpdater(
+          config, store, "DockerUpdater",
+          config.DockerUpdaterIntervalSeconds(),
           [=]() { return reader_.MetadataQuery(); }) { }
 
  protected:

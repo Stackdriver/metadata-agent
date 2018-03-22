@@ -25,12 +25,17 @@
 #include <utility>
 #include <vector>
 
-#include "configuration.h"
 #include "environment.h"
 #include "json.h"
 #include "updater.h"
 
 namespace google {
+
+// Configuration object.
+class MetadataAgentConfiguration;
+
+// Storage for the metadata mapping.
+class MetadataStore;
 
 class KubernetesReader {
  public:
@@ -153,7 +158,8 @@ class KubernetesReader {
 
 class KubernetesUpdater : public PollingMetadataUpdater {
  public:
-  KubernetesUpdater(MetadataAgent* server);
+  KubernetesUpdater(const MetadataAgentConfiguration& config,
+                    MetadataStore* store);
   ~KubernetesUpdater() {
     if (node_watch_thread_.joinable()) {
       node_watch_thread_.join();

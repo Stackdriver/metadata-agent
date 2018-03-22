@@ -21,13 +21,15 @@
 #include <memory>
 
 #include "configuration.h"
-#include "reporter.h"
 #include "store.h"
 
 namespace google {
 
 // A server that implements the metadata agent API.
 class MetadataApiServer;
+
+// A periodic reporter of metadata to Stackdriver.
+class MetadataReporter;
 
 // Runs the metadata tasks.
 class MetadataAgent {

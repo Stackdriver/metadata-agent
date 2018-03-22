@@ -18,13 +18,16 @@
 
 #include <boost/range/irange.hpp>
 
+#include "configuration.h"
 #include "http_common.h"
 #include "logging.h"
+#include "store.h"
 
 namespace google {
 
-MetadataApiServer::Handler::Handler(const MetadataAgent& agent)
-    : config_(agent.config()), store_(agent.store()) {}
+MetadataApiServer::Handler::Handler(const MetadataAgentConfiguration& config,
+                                    const MetadataStore& store)
+    : config_(config), store_(store) {}
 
 void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
                                             std::shared_ptr<HttpServer::connection> conn) {
@@ -65,10 +68,11 @@ void MetadataApiServer::Handler::log(const HttpServer::string_type& info) {
 }
 
 
-MetadataApiServer::MetadataApiServer(const MetadataAgent& agent,
+MetadataApiServer::MetadataApiServer(const MetadataAgentConfiguration& config,
+                                     const MetadataStore& store,
                                      int server_threads,
                                      const std::string& host, int port)
-    : handler_(agent),
+    : handler_(config, store),
       server_(
           HttpServer::options(handler_)
               .address(host)
