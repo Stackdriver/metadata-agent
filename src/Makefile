@@ -42,6 +42,7 @@ endif
 SRCS=\
      metadatad.cc \
      api_server.cc \
+     store.cc \
      configuration.cc \
      updater.cc \
      instance.cc \
