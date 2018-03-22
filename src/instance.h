@@ -16,8 +16,6 @@
 #ifndef INSTANCE_H_
 #define INSTANCE_H_
 
-//#include "config.h"
-
 #include <vector>
 
 #include "environment.h"

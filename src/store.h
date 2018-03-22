@@ -16,8 +16,6 @@
 #ifndef STORE_H_
 #define STORE_H_
 
-//#include "config.h"
-
 #include <map>
 #include <mutex>
 #include <string>

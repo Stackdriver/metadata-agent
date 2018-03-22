@@ -16,8 +16,6 @@
 #ifndef KUBERNETES_H_
 #define KUBERNETES_H_
 
-//#include "config.h"
-
 #include <functional>
 #include <map>
 #include <mutex>

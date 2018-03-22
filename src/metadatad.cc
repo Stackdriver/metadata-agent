@@ -14,8 +14,6 @@
  * limitations under the License.
  **/
 
-//#include "config.h"
-
 #include "agent.h"
 #include "configuration.h"
 #include "docker.h"

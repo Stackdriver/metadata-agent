@@ -16,8 +16,6 @@
 #ifndef UPDATER_H_
 #define UPDATER_H_
 
-//#include "config.h"
-
 #include <functional>
 #include <mutex>
 #include <string>

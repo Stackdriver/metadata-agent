@@ -16,8 +16,6 @@
 #ifndef API_SERVER_H_
 #define API_SERVER_H_
 
-//#include "config.h"
-
 #define BOOST_NETWORK_ENABLE_HTTPS
 #include <boost/network/protocol/http/server.hpp>
 #include <memory>
