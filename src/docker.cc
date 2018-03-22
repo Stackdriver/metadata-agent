@@ -125,11 +125,11 @@ MetadataUpdater::ResourceMetadata DockerReader::GetContainerMetadata(
         std::vector<std::string>{resource_id, resource_name},
         resource,
 #ifdef ENABLE_DOCKER_METADATA
-        MetadataAgent::Metadata(config_.MetadataIngestionRawContentVersion(),
+        MetadataStore::Metadata(config_.MetadataIngestionRawContentVersion(),
                                 is_deleted, created_at, collected_at,
                                 std::move(raw_metadata))
 #else
-        MetadataAgent::Metadata::IGNORED()
+        MetadataStore::Metadata::IGNORED()
 #endif
     );
   } catch (const QueryException& e) {

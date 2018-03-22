@@ -136,11 +136,11 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
       std::vector<std::string>{k8s_node_name},
       k8s_node,
 #ifdef ENABLE_KUBERNETES_METADATA
-      MetadataAgent::Metadata(config_.MetadataIngestionRawContentVersion(),
+      MetadataStore::Metadata(config_.MetadataIngestionRawContentVersion(),
                               is_deleted, created_at, collected_at,
                               std::move(node_raw_metadata))
 #else
-      MetadataAgent::Metadata::IGNORED()
+      MetadataStore::Metadata::IGNORED()
 #endif
   );
 }
@@ -238,11 +238,11 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
       std::vector<std::string>{k8s_pod_id, k8s_pod_name},
       k8s_pod,
 #ifdef ENABLE_KUBERNETES_METADATA
-      MetadataAgent::Metadata(config_.MetadataIngestionRawContentVersion(),
+      MetadataStore::Metadata(config_.MetadataIngestionRawContentVersion(),
                               is_deleted, created_at, collected_at,
                               std::move(pod_raw_metadata))
 #else
-      MetadataAgent::Metadata::IGNORED()
+      MetadataStore::Metadata::IGNORED()
 #endif
   );
 }
@@ -346,11 +346,11 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
       std::move(local_resource_ids),
       k8s_container,
 #ifdef ENABLE_KUBERNETES_METADATA
-      MetadataAgent::Metadata(kKubernetesApiVersion,
+      MetadataStore::Metadata(kKubernetesApiVersion,
                               is_deleted, created_at, collected_at,
                               std::move(container_raw_metadata))
 #else
-      MetadataAgent::Metadata::IGNORED()
+      MetadataStore::Metadata::IGNORED()
 #endif
   );
 }
@@ -385,7 +385,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetLegacyResource(
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{gke_container_pod_id, gke_container_name},
       gke_container,
-      MetadataAgent::Metadata::IGNORED());
+      MetadataStore::Metadata::IGNORED());
 }
 
 std::vector<MetadataUpdater::ResourceMetadata>

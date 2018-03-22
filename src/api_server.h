@@ -114,8 +114,6 @@ class MetadataStore {
 // Runs the metadata tasks.
 class MetadataAgent {
  public:
-  using Metadata = MetadataStore::Metadata;
-
   MetadataAgent(const MetadataAgentConfiguration& config);
   ~MetadataAgent();
 
