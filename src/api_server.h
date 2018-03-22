@@ -40,8 +40,8 @@ class MetadataReporter;
 // A timestamp type.
 using Timestamp = time_point;
 
-// Stores the metadata mapping and runs the metadata tasks.
-class MetadataAgent {
+// Stores the metadata mapping.
+class MetadataStore {
  public:
   struct Metadata {
     Metadata(const std::string& version_,
@@ -79,8 +79,7 @@ class MetadataAgent {
           metadata(json::object({})), ignore(true) {}
   };
 
-  MetadataAgent(const MetadataAgentConfiguration& config);
-  ~MetadataAgent();
+  MetadataStore(const MetadataAgentConfiguration& config);
 
   // Updates the local resource map entry for a given resource.
   // Each local id in `resource_ids` is effectively an alias for `resource`.
@@ -92,13 +91,6 @@ class MetadataAgent {
   // Adds a metadata mapping from the `resource` to the metadata `entry`.
   void UpdateMetadata(const MonitoredResource& resource,
                       Metadata&& entry);
-
-  // Starts serving.
-  void start();
-
-  const MetadataAgentConfiguration& config() const {
-    return config_;
-  }
 
  private:
   friend class MetadataApiServer;
@@ -117,6 +109,36 @@ class MetadataAgent {
   mutable std::mutex metadata_mu_;
   // A map from MonitoredResource to (JSON) resource metadata.
   std::map<MonitoredResource, Metadata> metadata_map_;
+};
+
+// Runs the metadata tasks.
+class MetadataAgent {
+ public:
+  using Metadata = MetadataStore::Metadata;
+
+  MetadataAgent(const MetadataAgentConfiguration& config);
+  ~MetadataAgent();
+
+  // Starts serving.
+  void start();
+
+  const MetadataAgentConfiguration& config() const {
+    return config_;
+  }
+
+  const MetadataStore& store() const {
+    return store_;
+  }
+
+  MetadataStore* mutable_store() {
+    return &store_;
+  }
+
+ private:
+  const MetadataAgentConfiguration& config_;
+
+  // The store for the metadata.
+  MetadataStore store_;
 
   // The Metadata API server.
   std::unique_ptr<MetadataApiServer> metadata_api_server_;

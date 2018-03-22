@@ -36,9 +36,12 @@ namespace http = boost::network::http;
 
 namespace google {
 
-MetadataAgent::Metadata MetadataAgent::Metadata::IGNORED() {
-  return MetadataAgent::Metadata();
+MetadataStore::Metadata MetadataStore::Metadata::IGNORED() {
+  return MetadataStore::Metadata();
 }
+
+MetadataStore::MetadataStore(const MetadataAgentConfiguration& config)
+    : config_(config) {}
 
 
 class MetadataApiServer {
@@ -57,7 +60,8 @@ class MetadataApiServer {
                     std::shared_ptr<HttpServer::connection> conn);
     void log(const HttpServer::string_type& info);
    private:
-    const MetadataAgent& agent_;
+    const MetadataAgentConfiguration& config_;
+    const MetadataStore& store_;
   };
 
   Handler handler_;
@@ -76,10 +80,11 @@ class MetadataReporter {
 
   // Send the given set of metadata.
   void SendMetadata(
-      std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata)
+      std::map<MonitoredResource, MetadataStore::Metadata>&& metadata)
       throw (boost::system::system_error);
 
-  MetadataAgent* agent_;
+  const MetadataAgentConfiguration& config_;
+  MetadataStore* store_;
   Environment environment_;
   OAuth2 auth_;
   // The reporting period in seconds.
@@ -88,14 +93,14 @@ class MetadataReporter {
 };
 
 MetadataApiServer::Handler::Handler(const MetadataAgent& agent)
-    : agent_(agent) {}
+    : config_(agent.config()), store_(agent.store()) {}
 
 void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
                                             std::shared_ptr<HttpServer::connection> conn) {
   static const std::string kPrefix = "/monitoredResource/";
   // The format for the local metadata API request is:
   //   {host}:{port}/monitoredResource/{id}
-  if (agent_.config_.VerboseLogging()) {
+  if (config_.VerboseLogging()) {
     LOG(INFO) << "Handler called: " << request.method
               << " " << request.destination
               << " headers: " << request.headers
@@ -103,19 +108,19 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
   }
   if (request.method == "GET" && request.destination.find(kPrefix) == 0) {
     std::string id = request.destination.substr(kPrefix.size());
-    std::lock_guard<std::mutex> lock(agent_.resource_mu_);
-    const auto result = agent_.resource_map_.find(id);
-    if (result == agent_.resource_map_.end()) {
+    std::lock_guard<std::mutex> lock(store_.resource_mu_);
+    const auto result = store_.resource_map_.find(id);
+    if (result == store_.resource_map_.end()) {
       // TODO: This could be considered log spam.
       // As we add more resource mappings, these will become less and less
       // frequent, and could be promoted to ERROR.
-      if (agent_.config_.VerboseLogging()) {
+      if (config_.VerboseLogging()) {
         LOG(WARNING) << "No matching resource for " << id;
       }
       conn->set_status(HttpServer::connection::not_found);
     } else {
       const MonitoredResource& resource = result->second;
-      if (agent_.config_.VerboseLogging()) {
+      if (config_.VerboseLogging()) {
         LOG(INFO) << "Found resource for " << id << ": " << resource;
       }
       conn->set_status(HttpServer::connection::ok);
@@ -151,8 +156,9 @@ MetadataApiServer::~MetadataApiServer() {
 }
 
 MetadataReporter::MetadataReporter(MetadataAgent* agent, double period_s)
-    : agent_(agent),
-      environment_(agent->config_),
+    : store_(agent->mutable_store()),
+      config_(agent->config()),
+      environment_(config_),
       auth_(environment_),
       period_(period_s),
       reporter_thread_([=]() { ReportMetadata(); }) {}
@@ -168,16 +174,16 @@ void MetadataReporter::ReportMetadata() {
   std::this_thread::sleep_for(time::seconds(3));
   // TODO: Do we need to be able to stop this?
   while (true) {
-    if (agent_->config_.VerboseLogging()) {
+    if (config_.VerboseLogging()) {
       LOG(INFO) << "Sending metadata request to server";
     }
     try {
-      SendMetadata(agent_->GetMetadataMap());
-      if (agent_->config_.VerboseLogging()) {
+      SendMetadata(store_->GetMetadataMap());
+      if (config_.VerboseLogging()) {
         LOG(INFO) << "Metadata request sent successfully";
       }
-      if (agent_->config_.MetadataReporterPurgeDeleted()) {
-        agent_->PurgeDeletedEntries();
+      if (config_.MetadataReporterPurgeDeleted()) {
+        store_->PurgeDeletedEntries();
       }
     } catch (const boost::system::system_error& e) {
       LOG(ERROR) << "Metadata request unsuccessful: " << e.what();
@@ -231,40 +237,39 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 }
 
 void MetadataReporter::SendMetadata(
-    std::map<MonitoredResource, MetadataAgent::Metadata>&& metadata)
+    std::map<MonitoredResource, MetadataStore::Metadata>&& metadata)
     throw (boost::system::system_error) {
   if (metadata.empty()) {
-    if (agent_->config_.VerboseLogging()) {
+    if (config_.VerboseLogging()) {
       LOG(INFO) << "No data to send";
     }
     return;
   }
 
-  if (agent_->config_.VerboseLogging()) {
+  if (config_.VerboseLogging()) {
     LOG(INFO) << "Sending request to the server";
   }
   const std::string project_id = environment_.NumericProjectId();
   // The endpoint template is expected to be of the form
   // "https://stackdriver.googleapis.com/.../projects/{{project_id}}/...".
   const std::string endpoint =
-      format::Substitute(agent_->config_.MetadataIngestionEndpointFormat(),
+      format::Substitute(config_.MetadataIngestionEndpointFormat(),
                          {{"project_id", project_id}});
   const std::string auth_header = auth_.GetAuthHeaderValue();
-  const std::string user_agent = agent_->config_.MetadataReporterUserAgent();
+  const std::string user_agent = config_.MetadataReporterUserAgent();
 
   const json::value empty_request = json::object({
     {"entries", json::array({})},
   });
   const int empty_size = empty_request->ToString().size();
 
-  const int limit_bytes =
-      agent_->config_.MetadataIngestionRequestSizeLimitBytes();
+  const int limit_bytes = config_.MetadataIngestionRequestSizeLimitBytes();
   int total_size = empty_size;
 
   std::vector<json::value> entries;
   for (auto& entry : metadata) {
     const MonitoredResource& resource = entry.first;
-    MetadataAgent::Metadata& metadata = entry.second;
+    MetadataStore::Metadata& metadata = entry.second;
     if (metadata.ignore) {
       continue;
     }
@@ -287,7 +292,7 @@ void MetadataReporter::SendMetadata(
     }
     if (total_size + size > limit_bytes) {
       SendMetadataRequest(std::move(entries), endpoint, auth_header, user_agent,
-                          agent_->config_.VerboseLogging());
+                          config_.VerboseLogging());
       entries.clear();
       total_size = empty_size;
     }
@@ -296,16 +301,16 @@ void MetadataReporter::SendMetadata(
   }
   if (!entries.empty()) {
     SendMetadataRequest(std::move(entries), endpoint, auth_header, user_agent,
-                        agent_->config_.VerboseLogging());
+                        config_.VerboseLogging());
   }
 }
 
 MetadataAgent::MetadataAgent(const MetadataAgentConfiguration& config)
-    : config_(config) {}
+    : config_(config), store_(config_) {}
 
 MetadataAgent::~MetadataAgent() {}
 
-void MetadataAgent::UpdateResource(const std::vector<std::string>& resource_ids,
+void MetadataStore::UpdateResource(const std::vector<std::string>& resource_ids,
                                    const MonitoredResource& resource) {
   std::lock_guard<std::mutex> lock(resource_mu_);
   // TODO: How do we handle deleted resources?
@@ -318,7 +323,7 @@ void MetadataAgent::UpdateResource(const std::vector<std::string>& resource_ids,
   }
 }
 
-void MetadataAgent::UpdateMetadata(const MonitoredResource& resource,
+void MetadataStore::UpdateMetadata(const MonitoredResource& resource,
                                    Metadata&& entry) {
   std::lock_guard<std::mutex> lock(metadata_mu_);
   if (config_.VerboseLogging()) {
@@ -338,8 +343,8 @@ void MetadataAgent::UpdateMetadata(const MonitoredResource& resource,
   metadata_map_.emplace(resource, std::move(entry));
 }
 
-std::map<MonitoredResource, MetadataAgent::Metadata>
-    MetadataAgent::GetMetadataMap() const {
+std::map<MonitoredResource, MetadataStore::Metadata>
+    MetadataStore::GetMetadataMap() const {
   std::lock_guard<std::mutex> lock(metadata_mu_);
 
   std::map<MonitoredResource, Metadata> result;
@@ -351,7 +356,7 @@ std::map<MonitoredResource, MetadataAgent::Metadata>
   return result;
 }
 
-void MetadataAgent::PurgeDeletedEntries() {
+void MetadataStore::PurgeDeletedEntries() {
   std::lock_guard<std::mutex> lock(metadata_mu_);
 
   for (auto it = metadata_map_.begin(); it != metadata_map_.end(); ) {
