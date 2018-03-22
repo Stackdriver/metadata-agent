@@ -36,9 +36,12 @@ class MonitoredResource {
   bool operator==(const MonitoredResource& other) const {
     return other.type_ == type_ && other.labels_ == labels_;
   }
+  bool operator!=(const MonitoredResource& other) const {
+    return !(other == *this);
+  }
   bool operator<(const MonitoredResource& other) const {
-    return other.type_ < type_
-        || (other.type_ == type_ && other.labels_ < labels_);
+    return type_ < other.type_
+        || (type_ == other.type_ && labels_ < other.labels_);
   }
 
   json::value ToJSON() const;

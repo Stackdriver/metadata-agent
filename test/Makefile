@@ -18,7 +18,7 @@ CPPFLAGS+= \
     -isystem $(GTEST_DIR)/include -I$(GMOCK_DIR)/include \
     -I$(YAML_CPP_DIR)/include
 CXXFLAGS=-std=c++11 -g -pthread
-LDLIBS=-lpthread -lboost_program_options -lyaml-cpp
+LDLIBS=-lpthread -lboost_program_options -lyaml-cpp -lyajl
 LDFLAGS=-L$(YAML_CPP_LIBDIR)
 
 # Where to find code under test.
@@ -31,6 +31,7 @@ TESTS=\
       base64_unittest \
       configuration_unittest \
       format_unittest \
+      resource_unittest \
       time_unittest
 
 GTEST_LIB=gtest_lib.a
@@ -78,6 +79,8 @@ format_unittest: $(GTEST_LIB) format_unittest.o $(SRC_DIR)/format.o
 base64_unittest: $(GTEST_LIB) base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 configuration_unittest: $(GTEST_LIB) $(YAML_CPP_LIBS) configuration_unittest.o $(SRC_DIR)/configuration.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+resource_unittest: $(GTEST_LIB) resource_unittest.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 time_unittest: $(GTEST_LIB) time_unittest.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
