@@ -19,7 +19,7 @@
 #define BOOST_NETWORK_ENABLE_HTTPS
 #include <boost/network/protocol/http/client.hpp>
 
-#include "api_server.h"
+#include "agent.h"
 #include "format.h"
 #include "json.h"
 #include "logging.h"

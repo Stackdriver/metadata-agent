@@ -18,48 +18,44 @@
 
 //#include "config.h"
 
+#define BOOST_NETWORK_ENABLE_HTTPS
+#include <boost/network/protocol/http/server.hpp>
 #include <memory>
+#include <thread>
+#include <vector>
 
+#include "agent.h"
 #include "configuration.h"
-#include "reporter.h"
 #include "store.h"
+
+namespace http = boost::network::http;
 
 namespace google {
 
 // A server that implements the metadata agent API.
-class MetadataApiServer;
-
-// Runs the metadata tasks.
-class MetadataAgent {
+class MetadataApiServer {
  public:
-  MetadataAgent(const MetadataAgentConfiguration& config);
-  ~MetadataAgent();
-
-  // Starts serving.
-  void start();
-
-  const MetadataAgentConfiguration& config() const {
-    return config_;
-  }
-
-  const MetadataStore& store() const {
-    return store_;
-  }
-
-  MetadataStore* mutable_store() {
-    return &store_;
-  }
+  MetadataApiServer(const MetadataAgent& agent, int server_threads,
+                    const std::string& host, int port);
+  ~MetadataApiServer();
 
  private:
-  const MetadataAgentConfiguration& config_;
+  class Handler;
+  using HttpServer = http::server<Handler>;
+  class Handler {
+   public:
+    Handler(const MetadataAgent& agent);
+    void operator()(const HttpServer::request& request,
+                    std::shared_ptr<HttpServer::connection> conn);
+    void log(const HttpServer::string_type& info);
+   private:
+    const MetadataAgentConfiguration& config_;
+    const MetadataStore& store_;
+  };
 
-  // The store for the metadata.
-  MetadataStore store_;
-
-  // The Metadata API server.
-  std::unique_ptr<MetadataApiServer> metadata_api_server_;
-  // The metadata reporter.
-  std::unique_ptr<MetadataReporter> reporter_;
+  Handler handler_;
+  HttpServer server_;
+  std::vector<std::thread> server_pool_;
 };
 
 }

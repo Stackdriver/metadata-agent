@@ -16,50 +16,12 @@
 
 #include "api_server.h"
 
-#define BOOST_NETWORK_ENABLE_HTTPS
-#include <boost/network/protocol/http/client.hpp>
-#include <boost/network/protocol/http/server.hpp>
 #include <boost/range/irange.hpp>
-#include <memory>
-#include <ostream>
-#include <thread>
 
-#include "environment.h"
-#include "format.h"
 #include "http_common.h"
-#include "json.h"
 #include "logging.h"
-#include "oauth2.h"
-#include "time.h"
-
-namespace http = boost::network::http;
 
 namespace google {
-
-class MetadataApiServer {
- public:
-  MetadataApiServer(const MetadataAgent& agent, int server_threads,
-                    const std::string& host, int port);
-  ~MetadataApiServer();
-
- private:
-  class Handler;
-  using HttpServer = http::server<Handler>;
-  class Handler {
-   public:
-    Handler(const MetadataAgent& agent);
-    void operator()(const HttpServer::request& request,
-                    std::shared_ptr<HttpServer::connection> conn);
-    void log(const HttpServer::string_type& info);
-   private:
-    const MetadataAgentConfiguration& config_;
-    const MetadataStore& store_;
-  };
-
-  Handler handler_;
-  HttpServer server_;
-  std::vector<std::thread> server_pool_;
-};
 
 MetadataApiServer::Handler::Handler(const MetadataAgent& agent)
     : config_(agent.config()), store_(agent.store()) {}
@@ -122,20 +84,6 @@ MetadataApiServer::~MetadataApiServer() {
   for (auto& thread : server_pool_) {
     thread.join();
   }
-}
-
-
-MetadataAgent::MetadataAgent(const MetadataAgentConfiguration& config)
-    : config_(config), store_(config_) {}
-
-MetadataAgent::~MetadataAgent() {}
-
-void MetadataAgent::start() {
-  metadata_api_server_.reset(new MetadataApiServer(
-      *this, config_.MetadataApiNumThreads(), "0.0.0.0",
-      config_.MetadataApiPort()));
-  reporter_.reset(new MetadataReporter(
-      this, config_.MetadataReporterIntervalSeconds()));
 }
 
 }
