@@ -155,7 +155,7 @@ MetadataReporter::MetadataReporter(MetadataAgent* agent, double period_s)
       environment_(agent->config_),
       auth_(environment_),
       period_(period_s),
-      reporter_thread_(&MetadataReporter::ReportMetadata, this) {}
+      reporter_thread_([=]() { ReportMetadata(); }) {}
 
 MetadataReporter::~MetadataReporter() {
   reporter_thread_.join();
