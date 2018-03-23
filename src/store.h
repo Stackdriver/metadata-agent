@@ -20,6 +20,7 @@
 
 #include <map>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 
 #include "json.h"
@@ -75,6 +76,11 @@ class MetadataStore {
 
   MetadataStore(const MetadataAgentConfiguration& config);
 
+  // Looks up the local resource map entry for a given resource id.
+  // Throws an exception if the resource is not found.
+  const MonitoredResource& LookupResource(const std::string& resource_id) const
+      throw(std::out_of_range);
+
   // Updates the local resource map entry for a given resource.
   // Each local id in `resource_ids` is effectively an alias for `resource`.
   // Adds a resource mapping from each of the `resource_ids` to the `resource`.
@@ -87,7 +93,6 @@ class MetadataStore {
                       Metadata&& entry);
 
  private:
-  friend class MetadataApiServer;
   friend class MetadataReporter;
 
   std::map<MonitoredResource, Metadata> GetMetadataMap() const;
