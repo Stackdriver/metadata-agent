@@ -44,7 +44,14 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
     std::string id = request.destination.substr(kPrefix.size());
     std::lock_guard<std::mutex> lock(store_.resource_mu_);
     const auto result = store_.resource_map_.find(id);
-    if (result == store_.resource_map_.end()) {
+    if (result != store_.resource_map_.end()) {
+      const MonitoredResource& resource = result->second;
+      if (config_.VerboseLogging()) {
+        LOG(INFO) << "Found resource for " << id << ": " << resource;
+      }
+      conn->set_status(HttpServer::connection::ok);
+      conn->write(resource.ToJSON()->ToString());
+    } else {
       // TODO: This could be considered log spam.
       // As we add more resource mappings, these will become less and less
       // frequent, and could be promoted to ERROR.
@@ -52,13 +59,6 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
         LOG(WARNING) << "No matching resource for " << id;
       }
       conn->set_status(HttpServer::connection::not_found);
-    } else {
-      const MonitoredResource& resource = result->second;
-      if (config_.VerboseLogging()) {
-        LOG(INFO) << "Found resource for " << id << ": " << resource;
-      }
-      conn->set_status(HttpServer::connection::ok);
-      conn->write(resource.ToJSON()->ToString());
     }
   }
 }
