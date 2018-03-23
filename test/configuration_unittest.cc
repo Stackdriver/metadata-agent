@@ -43,8 +43,8 @@ class MetadataAgentConfigurationTest : public ::testing::Test {
     EXPECT_EQ(true, config.KubernetesUseWatch());
     EXPECT_EQ("", config.InstanceId());
     EXPECT_EQ("", config.InstanceZone());
-    EXPECT_EQ("/tmp", config.HealthCheckFileDirectory());
-    EXPECT_EQ("metadata_agent_unhealthy", config.HealthCheckExternalFileName());
+    EXPECT_EQ("/var/run/metadata-agent/health", config.HealthCheckFileDirectory());
+    EXPECT_EQ("unhealthy", config.HealthCheckExternalFileName());
   }
 
   MetadataAgentConfiguration config;

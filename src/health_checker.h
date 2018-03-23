@@ -17,8 +17,6 @@
 #define HEALTH_CHECKER_H_
 
 #include <string>
-#include <map>
-#include <memory>
 #include <mutex>
 #include <set>
 
@@ -35,13 +33,13 @@ class HealthChecker {
  private:
   friend class HealthCheckerUnittest;
 
-  bool IsHealthy();
+  bool IsHealthy() const;
   static void Touch(const std::string& directory, const std::string& name);
   static void Remove(const std::string& directory, const std::string& name);
 
   const MetadataAgentConfiguration& config_;
   std::set<std::string> health_states_;
-  std::mutex mutex_;
+  mutable std::mutex mutex_;
 };
 
 }  // namespace google

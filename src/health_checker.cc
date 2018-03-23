@@ -21,11 +21,6 @@
 #include <vector>
 #include <fstream>
 
-namespace {
-  constexpr const char* kHealthStates[] = {
-    "kubernetes_pod_thread", "kubernetes_node_thread"
-  };
-}
 namespace google {
 
 HealthChecker::HealthChecker(const MetadataAgentConfiguration& config)
@@ -42,9 +37,9 @@ void HealthChecker::SetUnhealthy(const std::string& state_name) {
         config_.HealthCheckExternalFileName());
 }
 
-bool HealthChecker::IsHealthy() {
+bool HealthChecker::IsHealthy() const {
   std::lock_guard<std::mutex> lock(mutex_);
-  return health_states_.size() == 0;
+  return health_states_.empty();
 }
 
 void HealthChecker::Touch(const std::string& directory, const std::string& name) {

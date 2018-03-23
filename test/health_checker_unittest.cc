@@ -8,36 +8,23 @@
 namespace google {
 
 class HealthCheckerUnittest : public ::testing::Test {
- public:
-  HealthCheckerUnittest() { }
-
+ protected:
   ~HealthCheckerUnittest() {
     if (isolation_path_.length() > 0) {
       std::ostringstream oss;
-      oss << isolation_path_ << "/metadata_agent_unhealthy";
+      oss << isolation_path_ << "/unhealthy";
       std::remove(oss.str().c_str());
-
-      oss.str("");
-      oss.clear();
-      oss << isolation_path_ << "/kubernetes_node_thread";
-      std::remove(oss.str().c_str());
-
-      oss.str("");
-      oss.clear();
-      oss << isolation_path_ << "/kubernetes_pod_thread";
-      std::remove(oss.str().c_str());
-
       std::remove(isolation_path_.c_str());
     }
   }
- protected:
-  static void SetUnhealthy(HealthChecker* healthChecker,
+
+  static void SetUnhealthy(HealthChecker* health_checker,
                            const std::string& state_name) {
-    healthChecker->SetUnhealthy(state_name);
+    health_checker->SetUnhealthy(state_name);
   }
 
-  static bool IsHealthy(HealthChecker& healthChecker) {
-    return healthChecker.IsHealthy();
+  static bool IsHealthy(HealthChecker& health_checker) {
+    return health_checker.IsHealthy();
   }
 
   void SetIsolationPath(const std::string& isolation_path) {
@@ -53,20 +40,20 @@ class HealthCheckerUnittest : public ::testing::Test {
 };
 
 TEST_F(HealthCheckerUnittest, DefaultHealthy) {
-  SetIsolationPath("DefaultHealthy");
+  SetIsolationPath(test_info_->name());
   HealthChecker healthChecker(config_);
   EXPECT_TRUE(IsHealthy(healthChecker));
 }
 
 TEST_F(HealthCheckerUnittest, SimpleFailure) {
-  SetIsolationPath("SimpleFailure");
+  SetIsolationPath(test_info_->name());
   HealthChecker healthChecker(config_);
   SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
 }
 
 TEST_F(HealthCheckerUnittest, MultiFailure) {
-  SetIsolationPath("MultiFailure");
+  SetIsolationPath(test_info_->name());
   HealthChecker healthChecker(config_);
   EXPECT_TRUE(IsHealthy(healthChecker));
   SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
@@ -76,7 +63,7 @@ TEST_F(HealthCheckerUnittest, MultiFailure) {
 }
 
 TEST_F(HealthCheckerUnittest, NoRecovery) {
-  SetIsolationPath("NoRecovery");
+  SetIsolationPath(test_info_->name());
   HealthChecker healthChecker(config_);
   EXPECT_TRUE(IsHealthy(healthChecker));
   SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
