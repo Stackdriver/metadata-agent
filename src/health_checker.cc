@@ -17,9 +17,45 @@
 #include "health_checker.h"
 
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string/join.hpp>
+#include <vector>
 #include <fstream>
 
+namespace {
+  constexpr const char* kHealthStates[] = {
+    "kubernetes_pod_thread", "kubernetes_node_thread"
+  };
+}
 namespace google {
+
+FileWrapper::FileWrapper(const std::string& directory, const std::string& name)
+  : directory_(directory), name_(name) {
+  Touch(directory_, name_);
+}
+
+FileWrapper::~FileWrapper() {
+  FileWrapper::Remove(directory_, name_);
+}
+
+void FileWrapper::Touch(const std::string& directory, const std::string& name) {
+  std::string path(boost::algorithm::join(
+      std::vector<std::string>{directory, name}, "/"));
+  std::ofstream health_file(path);
+  health_file << std::endl;
+}
+
+void FileWrapper::Remove(const std::string& directory, const std::string& name) {
+  std::string path(boost::algorithm::join(
+    std::vector<std::string>{directory, name}, "/"));
+  std::remove(path.c_str());
+}
+
+bool FileWrapper::Exists(const std::string& directory, const std::string& name) {
+  std::string path(boost::algorithm::join(
+      std::vector<std::string>{directory, name}, "/"));
+  std::ifstream f(path);
+  return f.good();
+}
 
 HealthChecker::HealthChecker(const MetadataAgentConfiguration& config)
     : config_(config) {
