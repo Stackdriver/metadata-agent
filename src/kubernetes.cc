@@ -1127,7 +1127,7 @@ void KubernetesReader::WatchPods(
   } catch (const KubernetesReader::QueryException& e) {
     LOG(ERROR) << "No more pod metadata will be collected";
   }
-  health_checker_->SetUnhealthy("kubernetes_pod_thread");
+  health_checker_->SetUnhealthyStateName("kubernetes_pod_thread");
   LOG(INFO) << "Watch thread (pods) exiting";
 }
 
@@ -1160,7 +1160,7 @@ void KubernetesReader::WatchNodes(
   } catch (const KubernetesReader::QueryException& e) {
     LOG(ERROR) << "No more node metadata will be collected";
   }
-  health_checker_->SetUnhealthy("kubernetes_node_thread");
+  health_checker_->SetUnhealthyStateName("kubernetes_node_thread");
   LOG(INFO) << "Watch thread (node) exiting";
 }
 

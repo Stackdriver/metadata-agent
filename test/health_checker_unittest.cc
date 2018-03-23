@@ -31,8 +31,9 @@ class HealthCheckerUnittest : public ::testing::Test {
     }
   }
  protected:
-  static void SetUnhealthy(HealthChecker* healthChecker, const std::string& state_name) {
-    healthChecker->SetUnhealthy(state_name);
+  static void SetUnhealthyStateName(HealthChecker* healthChecker,
+                           const std::string& state_name) {
+    healthChecker->SetUnhealthyStateName(state_name);
   }
 
   static bool ReportHealth(HealthChecker* healthChecker) {
@@ -45,7 +46,8 @@ class HealthCheckerUnittest : public ::testing::Test {
 
   void SetIsolationPath(const std::string& isolation_path) {
     isolation_path_ = isolation_path;
-    std::stringstream stream("HealthCheckFileDirectory: '" + isolation_path_ + "'");
+    std::stringstream stream(
+        "HealthCheckFileDirectory: '" + isolation_path_ + "'");
     config_.ParseConfiguration(stream);
     boost::filesystem::create_directory(isolation_path_);
   }
@@ -63,7 +65,7 @@ TEST_F(HealthCheckerUnittest, DefaultHealthy) {
 TEST_F(HealthCheckerUnittest, SimpleFailure) {
   SetIsolationPath("SimpleFailure");
   HealthChecker healthChecker(config_);
-  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
+  SetUnhealthyStateName(&healthChecker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
 }
 
@@ -71,9 +73,9 @@ TEST_F(HealthCheckerUnittest, MultiFailure) {
   SetIsolationPath("MultiFailure");
   HealthChecker healthChecker(config_);
   EXPECT_TRUE(IsHealthy(healthChecker));
-  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
+  SetUnhealthyStateName(&healthChecker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
-  SetUnhealthy(&healthChecker, "kubernetes_node_thread");
+  SetUnhealthyStateName(&healthChecker, "kubernetes_node_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
 }
 
@@ -81,9 +83,9 @@ TEST_F(HealthCheckerUnittest, NoRecovery) {
   SetIsolationPath("NoRecovery");
   HealthChecker healthChecker(config_);
   EXPECT_TRUE(IsHealthy(healthChecker));
-  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
+  SetUnhealthyStateName(&healthChecker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
-  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
+  SetUnhealthyStateName(&healthChecker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
 }
 }  // namespace google

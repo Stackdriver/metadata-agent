@@ -18,17 +18,17 @@
 
 #include <boost/filesystem.hpp>
 #include <fstream>
-#include <sstream>
 
 namespace google {
 
 HealthChecker::HealthChecker(const MetadataAgentConfiguration& config)
     : config_(config) {
-  InitialCreation();
-  InitialCleanup();
+  boost::filesystem::create_directories(config_.HealthCheckFileDirectory());
+  FileWrapper::Remove(config_.HealthCheckFileDirectory(),
+                      config_.HealthCheckExternalFileName());
 }
 
-void HealthChecker::SetUnhealthy(const std::string& state_name) {
+void HealthChecker::SetUnhealthyStateName(const std::string& state_name) {
   if (health_files_.count(state_name) == 0) {
     health_files_[state_name].reset(
         new FileWrapper(config_.HealthCheckFileDirectory(), state_name));
@@ -47,23 +47,15 @@ bool HealthChecker::ReportHealth() {
 
 bool HealthChecker::IsHealthy() const {
   for (int i = 0; i < sizeof(kHealthStates)/sizeof(char*); ++i) {
-    if (CheckName(kHealthStates[i])) {
+    if (CheckStateName(kHealthStates[i])) {
       return false;
     }
   }
   return true;
 }
 
-bool HealthChecker::CheckName(const std::string& name) const {
-  return FileWrapper::Exists(config_.HealthCheckFileDirectory(), name);
-}
-
-void HealthChecker::InitialCleanup() {
-  FileWrapper::Remove(config_.HealthCheckFileDirectory(),
-                      config_.HealthCheckExternalFileName());
-}
-void HealthChecker::InitialCreation() {
-  boost::filesystem::create_directories(config_.HealthCheckFileDirectory());
+bool HealthChecker::CheckStateName(const std::string& state_name) const {
+  return FileWrapper::Exists(config_.HealthCheckFileDirectory(), state_name);
 }
 
 }  // namespace google

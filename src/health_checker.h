@@ -72,20 +72,14 @@ class FileWrapper {
 class HealthChecker {
  public:
   HealthChecker(const MetadataAgentConfiguration& config);
-  void SetUnhealthy(const std::string& state_name);
+  void SetUnhealthyStateName(const std::string& state_name);
 
  private:
   friend class HealthCheckerUnittest;
 
   bool ReportHealth();
   bool IsHealthy() const;
-  std::string MakeHealthCheckPath(const std::string& file_name) const;
-  void TouchName(const std::string& state_name);
-  bool CheckName(const std::string& state_name) const;
-  void Touch(const std::string& path);
-  bool Check(const std::string& path) const;
-  void InitialCleanup();
-  void InitialCreation();
+  bool CheckStateName(const std::string& state_name) const;
 
   const MetadataAgentConfiguration& config_;
   std::map<std::string, std::unique_ptr<FileWrapper>> health_files_;

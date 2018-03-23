@@ -70,8 +70,10 @@ constexpr const bool kKubernetesDefaultUseWatch = true;
 constexpr const bool kKubernetesDefaultClusterLevelMetadata = false;
 constexpr const char kDefaultInstanceId[] = "";
 constexpr const char kDefaultInstanceZone[] = "";
-constexpr const char kDefaultHealthCheckFileDirectory[] = "/tmp";
-constexpr const char kDefaultHealthCheckExternalFileName[] = "metadata_agent_unhealthy";
+constexpr const char kDefaultHealthCheckFileDirectory[] =
+    "/var/run/metadata-agent/health";
+constexpr const char kDefaultHealthCheckExternalFileName[] =
+    "metadata_agent_unhealthy";
 
 }
 
@@ -246,9 +248,11 @@ void MetadataAgentConfiguration::ParseConfiguration(std::istream& input) {
   instance_zone_ =
       config["InstanceZone"].as<std::string>(kDefaultInstanceZone);
   health_check_file_directory_ =
-      config["HealthCheckFileDirectory"].as<std::string>(kDefaultHealthCheckFileDirectory);
+      config["HealthCheckFileDirectory"].as<std::string>(
+          kDefaultHealthCheckFileDirectory);
   health_check_external_file_name_ =
-      config["HealthCheckExternalFileName"].as<std::string>(kDefaultHealthCheckExternalFileName);
+      config["HealthCheckExternalFileName"].as<std::string>(
+          kDefaultHealthCheckExternalFileName);
 }
 
 }  // google
