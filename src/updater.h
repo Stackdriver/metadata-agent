@@ -24,11 +24,14 @@
 #include <thread>
 #include <vector>
 
-#include "api_server.h"
 #include "resource.h"
+#include "store.h"
 #include "time.h"
 
 namespace google {
+
+// Configuration object.
+class MetadataAgentConfiguration;
 
 // An abstract class for asynchronous updates of the metadata mapping.
 class MetadataUpdater {
@@ -36,22 +39,19 @@ class MetadataUpdater {
   struct ResourceMetadata {
     ResourceMetadata(const std::vector<std::string>& ids_,
                      const MonitoredResource& resource_,
-                     MetadataAgent::Metadata&& metadata_)
+                     MetadataStore::Metadata&& metadata_)
         : ids(ids_), resource(resource_), metadata(std::move(metadata_)) {}
     ResourceMetadata(ResourceMetadata&& other)
         : ResourceMetadata(other.ids, other.resource,
                            std::move(other.metadata)) {}
     std::vector<std::string> ids;
     MonitoredResource resource;
-    MetadataAgent::Metadata metadata;
+    MetadataStore::Metadata metadata;
   };
 
-  MetadataUpdater(MetadataAgent* store, const std::string& name);
+  MetadataUpdater(const MetadataAgentConfiguration& config,
+                  MetadataStore* store, const std::string& name);
   virtual ~MetadataUpdater();
-
-  const MetadataAgentConfiguration& config() {
-    return store_->config();
-  }
 
   // Starts updating.
   void start();
@@ -85,19 +85,26 @@ class MetadataUpdater {
     store_->UpdateMetadata(result.resource, std::move(result.metadata));
   }
 
+  const MetadataAgentConfiguration& config() {
+    return config_;
+  }
+
  private:
   // The name of the updater provided by subclasses.
   std::string name_;
 
+  const MetadataAgentConfiguration& config_;
+
   // The store for the metadata.
-  MetadataAgent* store_;
+  MetadataStore* store_;
 };
 
 // A class for all periodic updates of the metadata mapping.
 class PollingMetadataUpdater : public MetadataUpdater {
  public:
   PollingMetadataUpdater(
-      MetadataAgent* store, const std::string& name, double period_s,
+      const MetadataAgentConfiguration& config, MetadataStore* store,
+      const std::string& name, double period_s,
       std::function<std::vector<ResourceMetadata>()> query_metadata);
   ~PollingMetadataUpdater();
 

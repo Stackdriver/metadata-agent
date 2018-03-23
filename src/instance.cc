@@ -19,8 +19,10 @@
 #include <boost/network/protocol/http/client.hpp>
 #include <chrono>
 
+#include "configuration.h"
 #include "json.h"
 #include "logging.h"
+#include "store.h"
 #include "time.h"
 
 namespace http = boost::network::http;
@@ -54,7 +56,7 @@ std::vector<MetadataUpdater::ResourceMetadata>
       std::vector<std::string>{"", environment_.InstanceId()},
       instance_resource,
       // TODO: Send actual instance metadata.
-      MetadataAgent::Metadata::IGNORED()
+      MetadataStore::Metadata::IGNORED()
   );
   return result;
 }

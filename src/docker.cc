@@ -21,11 +21,13 @@
 #include <boost/network/protocol/http/client.hpp>
 #include <chrono>
 
+#include "configuration.h"
 #include "format.h"
 #include "instance.h"
 #include "json.h"
 #include "logging.h"
 #include "resource.h"
+#include "store.h"
 #include "time.h"
 
 namespace http = boost::network::http;
@@ -125,11 +127,11 @@ MetadataUpdater::ResourceMetadata DockerReader::GetContainerMetadata(
         std::vector<std::string>{resource_id, resource_name},
         resource,
 #ifdef ENABLE_DOCKER_METADATA
-        MetadataAgent::Metadata(config_.MetadataIngestionRawContentVersion(),
+        MetadataStore::Metadata(config_.MetadataIngestionRawContentVersion(),
                                 is_deleted, created_at, collected_at,
                                 std::move(raw_metadata))
 #else
-        MetadataAgent::Metadata::IGNORED()
+        MetadataStore::Metadata::IGNORED()
 #endif
     );
   } catch (const QueryException& e) {

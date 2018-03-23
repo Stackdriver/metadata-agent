@@ -20,12 +20,17 @@
 
 #include <vector>
 
-#include "configuration.h"
 #include "environment.h"
 #include "resource.h"
 #include "updater.h"
 
 namespace google {
+
+// Configuration object.
+class MetadataAgentConfiguration;
+
+// Storage for the metadata mapping.
+class MetadataStore;
 
 class InstanceReader {
  public:
@@ -43,10 +48,11 @@ class InstanceReader {
 
 class InstanceUpdater : public PollingMetadataUpdater {
  public:
-  InstanceUpdater(MetadataAgent* server)
-      : reader_(server->config()), PollingMetadataUpdater(
-          server, "InstanceUpdater",
-          server->config().InstanceUpdaterIntervalSeconds(),
+  InstanceUpdater(const MetadataAgentConfiguration& config,
+                  MetadataStore* store)
+      : reader_(config), PollingMetadataUpdater(
+          config, store, "InstanceUpdater",
+          config.InstanceUpdaterIntervalSeconds(),
           [=]() { return reader_.MetadataQuery(); }) { }
  private:
   InstanceReader reader_;

@@ -18,110 +18,48 @@
 
 //#include "config.h"
 
-#include <chrono>
-#include <map>
+#define BOOST_NETWORK_ENABLE_HTTPS
+#include <boost/network/protocol/http/server.hpp>
 #include <memory>
-#include <mutex>
-#include <string>
+#include <thread>
+#include <vector>
 
-#include "configuration.h"
-#include "json.h"
-#include "resource.h"
-#include "time.h"
+namespace http = boost::network::http;
 
 namespace google {
 
+// Configuration object.
+class MetadataAgentConfiguration;
+
+// Storage for the metadata mapping.
+class MetadataStore;
+
 // A server that implements the metadata agent API.
-class MetadataApiServer;
-
-// A periodic reporter of metadata to Stackdriver.
-class MetadataReporter;
-
-// A timestamp type.
-using Timestamp = time_point;
-
-// Stores the metadata mapping and runs the metadata tasks.
-class MetadataAgent {
+class MetadataApiServer {
  public:
-  struct Metadata {
-    Metadata(const std::string& version_,
-             bool is_deleted_,
-             const Timestamp& created_at_,
-             const Timestamp& collected_at_,
-             json::value metadata_)
-        : version(version_), is_deleted(is_deleted_), created_at(created_at_),
-          collected_at(collected_at_), metadata(std::move(metadata_)),
-          ignore(false) {}
-    Metadata(Metadata&& other)
-        : version(other.version), is_deleted(other.is_deleted),
-          created_at(other.created_at), collected_at(other.collected_at),
-          metadata(std::move(other.metadata)), ignore(other.ignore) {}
-
-    Metadata Clone() const {
-      if (ignore) {
-        return {};
-      }
-      return {version, is_deleted, created_at, collected_at, metadata->Clone()};
-    }
-
-    static Metadata IGNORED();
-
-    const std::string version;
-    const bool is_deleted;
-    const Timestamp created_at;
-    const Timestamp collected_at;
-    json::value metadata;
-    const bool ignore;
-
-   private:
-    Metadata()
-        : version(), is_deleted(false), created_at(), collected_at(),
-          metadata(json::object({})), ignore(true) {}
-  };
-
-  MetadataAgent(const MetadataAgentConfiguration& config);
-  ~MetadataAgent();
-
-  // Updates the local resource map entry for a given resource.
-  // Each local id in `resource_ids` is effectively an alias for `resource`.
-  // Adds a resource mapping from each of the `resource_ids` to the `resource`.
-  void UpdateResource(const std::vector<std::string>& resource_ids,
-                      const MonitoredResource& resource);
-
-  // Updates metadata for a given resource.
-  // Adds a metadata mapping from the `resource` to the metadata `entry`.
-  void UpdateMetadata(const MonitoredResource& resource,
-                      Metadata&& entry);
-
-  // Starts serving.
-  void start();
-
-  const MetadataAgentConfiguration& config() const {
-    return config_;
-  }
+  MetadataApiServer(const MetadataAgentConfiguration& config,
+                    const MetadataStore& store, int server_threads,
+                    const std::string& host, int port);
+  ~MetadataApiServer();
 
  private:
-  friend class MetadataApiServer;
-  friend class MetadataReporter;
+  class Handler;
+  using HttpServer = http::server<Handler>;
+  class Handler {
+   public:
+    Handler(const MetadataAgentConfiguration& config,
+            const MetadataStore& store);
+    void operator()(const HttpServer::request& request,
+                    std::shared_ptr<HttpServer::connection> conn);
+    void log(const HttpServer::string_type& info);
+   private:
+    const MetadataAgentConfiguration& config_;
+    const MetadataStore& store_;
+  };
 
-  std::map<MonitoredResource, Metadata> GetMetadataMap() const;
-  void PurgeDeletedEntries();
-
-  const MetadataAgentConfiguration& config_;
-
-  // A lock that guards access to the local resource map.
-  mutable std::mutex resource_mu_;
-  // A map from a locally unique id to MonitoredResource.
-  std::map<std::string, MonitoredResource> resource_map_;
-  // A lock that guards access to the metadata map.
-  mutable std::mutex metadata_mu_;
-  // A map from MonitoredResource to (JSON) resource metadata.
-  std::map<MonitoredResource, Metadata> metadata_map_;
-
-  // The Metadata API server.
-  std::unique_ptr<MetadataApiServer> metadata_api_server_;
-  // The metadata reporter.
-  std::unique_ptr<MetadataReporter> reporter_;
+  Handler handler_;
+  HttpServer server_;
+  std::vector<std::thread> server_pool_;
 };
 
 }
