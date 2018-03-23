@@ -20,10 +20,12 @@
 
 #include <memory>
 
-#include "configuration.h"
 #include "store.h"
 
 namespace google {
+
+// Configuration object.
+class MetadataAgentConfiguration;
 
 // A server that implements the metadata agent API.
 class MetadataApiServer;

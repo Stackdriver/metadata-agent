@@ -16,6 +16,7 @@
 
 #include "agent.h"
 
+#include "configuration.h"
 #include "api_server.h"
 #include "reporter.h"
 
