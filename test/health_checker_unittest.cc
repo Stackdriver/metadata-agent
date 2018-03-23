@@ -36,11 +36,7 @@ class HealthCheckerUnittest : public ::testing::Test {
     healthChecker->SetUnhealthyStateName(state_name);
   }
 
-  static bool ReportHealth(HealthChecker* healthChecker) {
-    return healthChecker->ReportHealth();
-  }
-
-  static bool IsHealthy(const HealthChecker& healthChecker) {
+  static bool IsHealthy(HealthChecker& healthChecker) {
     return healthChecker.IsHealthy();
   }
 

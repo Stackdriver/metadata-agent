@@ -19,23 +19,12 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <mutex>
+#include <set>
 
 #include "configuration.h"
 
 namespace google {
-
-class FileWrapper {
- public:
-  FileWrapper(const std::string& directory, const std::string& name);
-  ~FileWrapper();
-  static void Touch(const std::string& directory, const std::string& name);
-  static void Remove(const std::string& directory, const std::string& name);
-  static bool Exists(const std::string& directory, const std::string& name);
-
-  private:
-    const std::string& directory_;
-    const std::string& name_;
-};
 
 // Collects and reports health information about the metadata agent.
 class HealthChecker {
@@ -46,12 +35,13 @@ class HealthChecker {
  private:
   friend class HealthCheckerUnittest;
 
-  bool ReportHealth();
-  bool IsHealthy() const;
-  bool CheckStateName(const std::string& state_name) const;
+  bool IsHealthy();
+  static void Touch(const std::string& directory, const std::string& name);
+  static void Remove(const std::string& directory, const std::string& name);
 
   const MetadataAgentConfiguration& config_;
-  std::map<std::string, std::unique_ptr<FileWrapper>> health_files_;
+  std::set<std::string> health_states_;
+  std::mutex mutex_;
 };
 
 }  // namespace google

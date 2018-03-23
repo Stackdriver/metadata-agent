@@ -28,70 +28,36 @@ namespace {
 }
 namespace google {
 
-FileWrapper::FileWrapper(const std::string& directory, const std::string& name)
-  : directory_(directory), name_(name) {
-  Touch(directory_, name_);
+HealthChecker::HealthChecker(const MetadataAgentConfiguration& config)
+    : config_(config) {
+  boost::filesystem::create_directories(config_.HealthCheckFileDirectory());
+  Remove(config_.HealthCheckFileDirectory(),
+         config_.HealthCheckExternalFileName());
 }
 
-FileWrapper::~FileWrapper() {
-  FileWrapper::Remove(directory_, name_);
+void HealthChecker::SetUnhealthyStateName(const std::string& state_name) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  health_states_.insert(state_name);
+  Touch(config_.HealthCheckFileDirectory(),
+        config_.HealthCheckExternalFileName());
 }
 
-void FileWrapper::Touch(const std::string& directory, const std::string& name) {
+bool HealthChecker::IsHealthy() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return health_states_.size() == 0;
+}
+
+void HealthChecker::Touch(const std::string& directory, const std::string& name) {
   std::string path(boost::algorithm::join(
       std::vector<std::string>{directory, name}, "/"));
   std::ofstream health_file(path);
   health_file << std::endl;
 }
 
-void FileWrapper::Remove(const std::string& directory, const std::string& name) {
-  std::string path(boost::algorithm::join(
-    std::vector<std::string>{directory, name}, "/"));
-  std::remove(path.c_str());
-}
-
-bool FileWrapper::Exists(const std::string& directory, const std::string& name) {
+void HealthChecker::Remove(const std::string& directory, const std::string& name) {
   std::string path(boost::algorithm::join(
       std::vector<std::string>{directory, name}, "/"));
-  std::ifstream f(path);
-  return f.good();
-}
-
-HealthChecker::HealthChecker(const MetadataAgentConfiguration& config)
-    : config_(config) {
-  boost::filesystem::create_directories(config_.HealthCheckFileDirectory());
-  FileWrapper::Remove(config_.HealthCheckFileDirectory(),
-                      config_.HealthCheckExternalFileName());
-}
-
-void HealthChecker::SetUnhealthyStateName(const std::string& state_name) {
-  if (health_files_.count(state_name) == 0) {
-    health_files_[state_name].reset(
-        new FileWrapper(config_.HealthCheckFileDirectory(), state_name));
-  }
-  ReportHealth();
-}
-
-bool HealthChecker::ReportHealth() {
-  if (!IsHealthy()) {
-    FileWrapper::Touch(config_.HealthCheckFileDirectory(),
-                       config_.HealthCheckExternalFileName());
-    return false;
-  }
-  return true;
-}
-
-bool HealthChecker::IsHealthy() const {
-  for (int i = 0; i < sizeof(kHealthStates)/sizeof(char*); ++i) {
-    if (CheckStateName(kHealthStates[i])) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool HealthChecker::CheckStateName(const std::string& state_name) const {
-  return FileWrapper::Exists(config_.HealthCheckFileDirectory(), state_name);
+  std::remove(path.c_str());
 }
 
 }  // namespace google
