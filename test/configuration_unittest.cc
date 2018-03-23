@@ -39,11 +39,6 @@ void VerifyDefaultConfig(const MetadataAgentConfiguration& config) {
   EXPECT_EQ("/var/run/metadata-agent/health/unhealthy", config.HealthCheckFile());
 }
 
-static void ParseConfiguration(MetadataAgentConfiguration& config, const std::string& input) {
-  std::stringstream stream(input);
-  config.ParseConfiguration(stream);
-}
-
 TEST(MetadataAgentConfigurationTest, NoConfig) {
   MetadataAgentConfiguration config;
   VerifyDefaultConfig(config);
@@ -51,13 +46,13 @@ TEST(MetadataAgentConfigurationTest, NoConfig) {
 
 TEST(MetadataAgentConfigurationTest, EmptyConfig) {
   MetadataAgentConfiguration config;
-  ParseConfiguration(config, "");
+  config.ParseConfigurationString("");
   VerifyDefaultConfig(config);
 }
 
 TEST(MetadataAgentConfigurationTest, PopulatedConfig) {
   MetadataAgentConfiguration config;
-  ParseConfiguration(config,
+  config.ParseConfigurationString(
       "ProjectId: TestProjectId\n"
       "MetadataApiNumThreads: 13\n"
       "MetadataReporterPurgeDeleted: true\n"
@@ -73,7 +68,7 @@ TEST(MetadataAgentConfigurationTest, PopulatedConfig) {
 
 TEST(MetadataAgentConfigurationTest, CommentSkipped) {
   MetadataAgentConfiguration config;
-  ParseConfiguration(config,
+  config.ParseConfigurationString(
       "ProjectId: TestProjectId\n"
       "#MetadataApiNumThreads: 13\n"
       "MetadataReporterPurgeDeleted: true\n"
@@ -83,7 +78,7 @@ TEST(MetadataAgentConfigurationTest, CommentSkipped) {
 
 TEST(MetadataAgentConfigurationTest, BlankLine) {
   MetadataAgentConfiguration config;
-  ParseConfiguration(config,
+  config.ParseConfigurationString(
       "ProjectId: TestProjectId\n"
       "\n"
       "\n"

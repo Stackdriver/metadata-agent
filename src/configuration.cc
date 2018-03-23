@@ -153,7 +153,7 @@ int MetadataAgentConfiguration::ParseArguments(int ac, char** av) {
       return -1;
     }
 
-    ParseConfigFile(config_file);
+    ParseConfigurationFile(config_file);
     return 0;
   } catch (const boost::program_options::error& arg_error) {
     std::cerr << arg_error.what() << std::endl;
@@ -162,14 +162,19 @@ int MetadataAgentConfiguration::ParseArguments(int ac, char** av) {
   }
 }
 
-void MetadataAgentConfiguration::ParseConfigFile(const std::string& filename) {
+void MetadataAgentConfiguration::ParseConfigurationFile(const std::string& filename) {
   if (filename.empty()) return;
 
   std::ifstream input(filename);
-  ParseConfiguration(input);
+  ParseConfigurationStream(input);
 }
 
-void MetadataAgentConfiguration::ParseConfiguration(std::istream& input) {
+void MetadataAgentConfiguration::ParseConfigurationString(const std::string& input) {
+  std::stringstream stream(input);
+  ParseConfigurationStream(stream);
+}
+
+void MetadataAgentConfiguration::ParseConfigurationStream(std::istream& input) {
   YAML::Node config = YAML::Load(input);
   std::lock_guard<std::mutex> lock(mutex_);
   project_id_ =
