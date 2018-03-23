@@ -30,7 +30,7 @@ namespace google {
 class HealthChecker {
  public:
   HealthChecker(const MetadataAgentConfiguration& config);
-  void SetUnhealthyStateName(const std::string& state_name);
+  void SetUnhealthy(const std::string& state_name);
 
  private:
   friend class HealthCheckerUnittest;

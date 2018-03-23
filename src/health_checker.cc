@@ -35,7 +35,7 @@ HealthChecker::HealthChecker(const MetadataAgentConfiguration& config)
          config_.HealthCheckExternalFileName());
 }
 
-void HealthChecker::SetUnhealthyStateName(const std::string& state_name) {
+void HealthChecker::SetUnhealthy(const std::string& state_name) {
   std::lock_guard<std::mutex> lock(mutex_);
   health_states_.insert(state_name);
   Touch(config_.HealthCheckFileDirectory(),

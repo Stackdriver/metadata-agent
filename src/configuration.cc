@@ -72,8 +72,7 @@ constexpr const char kDefaultInstanceId[] = "";
 constexpr const char kDefaultInstanceZone[] = "";
 constexpr const char kDefaultHealthCheckFileDirectory[] =
     "/var/run/metadata-agent/health";
-constexpr const char kDefaultHealthCheckExternalFileName[] =
-    "metadata_agent_unhealthy";
+constexpr const char kDefaultHealthCheckExternalFileName[] = "unhealthy";
 
 }
 

@@ -31,9 +31,9 @@ class HealthCheckerUnittest : public ::testing::Test {
     }
   }
  protected:
-  static void SetUnhealthyStateName(HealthChecker* healthChecker,
+  static void SetUnhealthy(HealthChecker* healthChecker,
                            const std::string& state_name) {
-    healthChecker->SetUnhealthyStateName(state_name);
+    healthChecker->SetUnhealthy(state_name);
   }
 
   static bool IsHealthy(HealthChecker& healthChecker) {
@@ -61,7 +61,7 @@ TEST_F(HealthCheckerUnittest, DefaultHealthy) {
 TEST_F(HealthCheckerUnittest, SimpleFailure) {
   SetIsolationPath("SimpleFailure");
   HealthChecker healthChecker(config_);
-  SetUnhealthyStateName(&healthChecker, "kubernetes_pod_thread");
+  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
 }
 
@@ -69,9 +69,9 @@ TEST_F(HealthCheckerUnittest, MultiFailure) {
   SetIsolationPath("MultiFailure");
   HealthChecker healthChecker(config_);
   EXPECT_TRUE(IsHealthy(healthChecker));
-  SetUnhealthyStateName(&healthChecker, "kubernetes_pod_thread");
+  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
-  SetUnhealthyStateName(&healthChecker, "kubernetes_node_thread");
+  SetUnhealthy(&healthChecker, "kubernetes_node_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
 }
 
@@ -79,9 +79,9 @@ TEST_F(HealthCheckerUnittest, NoRecovery) {
   SetIsolationPath("NoRecovery");
   HealthChecker healthChecker(config_);
   EXPECT_TRUE(IsHealthy(healthChecker));
-  SetUnhealthyStateName(&healthChecker, "kubernetes_pod_thread");
+  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
-  SetUnhealthyStateName(&healthChecker, "kubernetes_pod_thread");
+  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
 }
 }  // namespace google
