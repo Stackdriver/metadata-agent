@@ -9,8 +9,16 @@ GMOCK_DIR=$(LIBDIR)/googletest/googlemock
 
 # TODO: Factor out the common variables.
 CPP_NETLIB_DIR=$(LIBDIR)/cpp-netlib
+CPP_NETLIB_LIBDIR=$(CPP_NETLIB_DIR)/libs/network/src
+NETWORK_URI_DIR=$(CPP_NETLIB_DIR)/deps/uri
+NETWORK_URI_LIBDIR=$(NETWORK_URI_DIR)/src
 YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
 YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
+
+CPP_NETLIB_LIBS=\
+    $(CPP_NETLIB_LIBDIR)/libcppnetlib-client-connections.a \
+    $(CPP_NETLIB_LIBDIR)/libcppnetlib-server-parsers.a \
+    $(NETWORK_URI_LIBDIR)/libnetwork-uri.a
 
 YAML_CPP_LIBS=$(YAML_CPP_LIBDIR)/libyaml-cpp.a
 
@@ -18,8 +26,11 @@ CPPFLAGS+= \
     -isystem $(GTEST_DIR)/include -I$(GMOCK_DIR)/include \
     -I$(YAML_CPP_DIR)/include
 CXXFLAGS=-std=c++11 -g -pthread
-LDLIBS=-lpthread -lboost_program_options -lyaml-cpp -lyajl
-LDFLAGS=-L$(YAML_CPP_LIBDIR)
+LDLIBS=\
+    -lcppnetlib-client-connections -lcppnetlib-server-parsers -lnetwork-uri \
+    -lboost_system -lboost_thread \
+    -lpthread -lboost_program_options -lyaml-cpp -lyajl -lssl -lcrypto
+LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR)
 
 # Where to find code under test.
 SRC_DIR=../src
@@ -31,6 +42,7 @@ TESTS=\
       base64_unittest \
       configuration_unittest \
       format_unittest \
+      kubernetes_unittest \
       resource_unittest \
       time_unittest
 
@@ -57,6 +69,9 @@ init-submodules:
 	git submodule update --init $(GTEST_MODULE)
 	touch init-submodules
 
+$(CPP_NETLIB_LIBS):
+	cd $(SRC_DIR) && $(MAKE) $@
+
 $(YAML_CPP_LIBS):
 	cd $(SRC_DIR) && $(MAKE) $@
 
@@ -79,6 +94,8 @@ format_unittest: $(GTEST_LIB) format_unittest.o $(SRC_DIR)/format.o
 base64_unittest: $(GTEST_LIB) base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 configuration_unittest: $(GTEST_LIB) $(YAML_CPP_LIBS) configuration_unittest.o $(SRC_DIR)/configuration.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+kubernetes_unittest: $(GTEST_LIB) $(CPP_NETLIB_LIBS) kubernetes_unittest.o $(SRC_DIR)/kubernetes.o $(SRC_DIR)/api_server.o $(SRC_DIR)/base64.o $(SRC_DIR)/environment.o $(SRC_DIR)/format.o $(SRC_DIR)/instance.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/oauth2.o $(SRC_DIR)/resource.o $(SRC_DIR)/time.o $(SRC_DIR)/updater.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 resource_unittest: $(GTEST_LIB) resource_unittest.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
