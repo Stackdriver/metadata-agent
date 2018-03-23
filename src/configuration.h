@@ -30,6 +30,8 @@ class MetadataAgentConfiguration {
   // value means that parsing succeeded, but all of the arguments were handled
   // within the function and the program should exit with a success exit code.
   int ParseArguments(int ac, char** av);
+  void ParseConfiguration(std::istream& input);
+  void ParseConfigFile(const std::string& filename);
 
   // Shared configuration.
   const std::string& ProjectId() const {
@@ -157,12 +159,6 @@ class MetadataAgentConfiguration {
   }
 
  private:
-  friend class MetadataAgentConfigurationTest;
-  friend class HealthCheckerUnittest;
-
-  void ParseConfigFile(const std::string& filename);
-  void ParseConfiguration(std::istream& input);
-
   mutable std::mutex mutex_;
   std::string project_id_;
   std::string credentials_file_;
