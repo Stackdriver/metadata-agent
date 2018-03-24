@@ -16,8 +16,6 @@
 #ifndef RESOURCE_H_
 #define RESOURCE_H_
 
-//#include "config.h"
-
 #include <map>
 #include <ostream>
 #include <string>

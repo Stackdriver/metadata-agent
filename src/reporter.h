@@ -16,8 +16,6 @@
 #ifndef REPORTER_H_
 #define REPORTER_H_
 
-//#include "config.h"
-
 #include <boost/system/system_error.hpp>
 #include <map>
 #include <string>

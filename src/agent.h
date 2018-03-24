@@ -16,8 +16,6 @@
 #ifndef AGENT_H_
 #define AGENT_H_
 
-//#include "config.h"
-
 #include <memory>
 
 #include "store.h"

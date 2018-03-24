@@ -14,8 +14,6 @@
  * limitations under the License.
  **/
 
-//#include "config.h"
-
 #include "json.h"
 
 #include <iostream>

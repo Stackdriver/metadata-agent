@@ -16,8 +16,6 @@
 #ifndef DOCKER_H_
 #define DOCKER_H_
 
-//#include "config.h"
-
 #include <vector>
 
 #include "environment.h"
