@@ -152,6 +152,7 @@ class MetadataAgentConfiguration {
   }
 
  private:
+  friend class KubernetesReaderTest;
   friend class MetadataAgentConfigurationTest;
 
   void ParseConfigFile(const std::string& filename);
