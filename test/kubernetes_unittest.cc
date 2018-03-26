@@ -1,4 +1,5 @@
 #include "../src/configuration.h"
+#include "../src/json.h"
 #include "../src/kubernetes.h"
 #include "gtest/gtest.h"
 
@@ -16,6 +17,12 @@ class KubernetesReaderTest : public ::testing::Test {
   json::value ComputePodAssociations(const json::Object* pod)
       const throw(json::Exception) {
     return reader->ComputePodAssociations(pod);
+  }
+
+  json::value FindTopLevelOwner(
+      const std::string& ns, json::value object) const
+      throw(KubernetesReader::QueryException, json::Exception) {
+    return reader->FindTopLevelOwner(std::move(ns), std::move(object));
   }
 
   MetadataAgentConfiguration config;
@@ -68,6 +75,32 @@ TEST_F(KubernetesReaderTest, ComputePodAssociationsPodWithoutMetadataUidThrowsEx
              << err.what() << "'";
     }
   }
+}
+
+TEST_F(KubernetesReaderTest, FindTopLevelOwnerPodWithoutMetadataThrowsException) {
+  InitializeReader();
+
+  try {
+    FindTopLevelOwner("default", json::value(new json::Object({})));
+    FAIL() << "Expected json::Exception";
+  } catch(json::Exception const& err) {
+    if (err.what().find("There is no metadata") != 0) {
+      FAIL() << "Expected an error complaining about the missing key in '" 
+             << err.what() << "'";
+    }
+  }
+}
+
+TEST_F(KubernetesReaderTest, FindTopLevelOwnerPodWithoutOwnerReferenceReturnsInput) {
+  InitializeReader();
+
+  json::Object* pod = new json::Object({
+    {"metadata", json::object({})},
+  });
+
+  json::value topLevelOwner(FindTopLevelOwner("default", json::value(pod)));
+
+  EXPECT_EQ(topLevelOwner->ToString(), pod->ToString());
 }
 
 } // namespace google
