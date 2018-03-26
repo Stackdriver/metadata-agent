@@ -22,35 +22,30 @@ class HealthCheckerUnittest : public ::testing::Test {
     return health_checker.IsHealthy();
   }
 
-  void SetIsolationPath(const std::string& isolation_path) {
-    isolation_path_ = isolation_path;
-    std::stringstream stream(
-        "HealthCheckFile: './" + isolation_path_ + "/unhealthy'");
-    config_.ParseConfiguration(stream);
-  }
-
-  std::string isolation_path_;
-  MetadataAgentConfiguration config_;
 };
 
+static const std::string IsolationPath(const std::string& test_name) {
+  return "HealthCheckFile: './" + test_name + "/unhealthy'";
+}
+
 TEST_F(HealthCheckerUnittest, DefaultHealthy) {
-  SetIsolationPath(test_info_->name());
-  HealthChecker health_checker(config_);
+  MetadataAgentConfiguration config(std::stringstream(IsolationPath(test_info_->name())));
+  HealthChecker health_checker(config);
   EXPECT_TRUE(IsHealthy(health_checker));
   Cleanup(&health_checker);
 }
 
 TEST_F(HealthCheckerUnittest, SimpleFailure) {
-  SetIsolationPath(test_info_->name());
-  HealthChecker health_checker(config_);
+  MetadataAgentConfiguration config(std::stringstream(IsolationPath(test_info_->name())));
+  HealthChecker health_checker(config);
   SetUnhealthy(&health_checker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(health_checker));
   Cleanup(&health_checker);
 }
 
 TEST_F(HealthCheckerUnittest, MultiFailure) {
-  SetIsolationPath(test_info_->name());
-  HealthChecker health_checker(config_);
+  MetadataAgentConfiguration config(std::stringstream(IsolationPath(test_info_->name())));
+  HealthChecker health_checker(config);
   EXPECT_TRUE(IsHealthy(health_checker));
   SetUnhealthy(&health_checker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(health_checker));
@@ -60,8 +55,8 @@ TEST_F(HealthCheckerUnittest, MultiFailure) {
 }
 
 TEST_F(HealthCheckerUnittest, FailurePersists) {
-  SetIsolationPath(test_info_->name());
-  HealthChecker health_checker(config_);
+  MetadataAgentConfiguration config(std::stringstream(IsolationPath(test_info_->name())));
+  HealthChecker health_checker(config);
   EXPECT_TRUE(IsHealthy(health_checker));
   SetUnhealthy(&health_checker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(health_checker));

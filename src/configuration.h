@@ -19,7 +19,7 @@
 #include <mutex>
 #include <string>
 
-int main(int ac, char** av);
+int main(int, char**);
 
 namespace google {
 
@@ -27,6 +27,8 @@ class MetadataAgentConfiguration {
  public:
   MetadataAgentConfiguration();
   MetadataAgentConfiguration(std::istream& input);
+  MetadataAgentConfiguration(std::istream&& input)
+      : MetadataAgentConfiguration(input) {}
 
   // Shared configuration.
   const std::string& ProjectId() const {
@@ -156,8 +158,8 @@ class MetadataAgentConfiguration {
  private:
   friend int ::main(int, char**);  // Calls ParseArguments.
 
-  void ParseConfiguration(std::istream& input);
   void ParseConfigFile(const std::string& filename);
+  void ParseConfiguration(std::istream& input);
   // Parse the command line.
   // A zero return value means that parsing succeeded and the program should
   // proceed.  A positive return value means that parsing failed.  A negative
