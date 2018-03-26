@@ -22,13 +22,11 @@ void VerifyDefaultConfig(const MetadataAgentConfiguration& config) {
   EXPECT_EQ(60*60, config.InstanceUpdaterIntervalSeconds());
   EXPECT_EQ("", config.InstanceResourceType());
   EXPECT_EQ(60, config.DockerUpdaterIntervalSeconds());
-  EXPECT_EQ("unix://%2Fvar%2Frun%2Fdocker.sock/",
-            config.DockerEndpointHost());
+  EXPECT_EQ("unix://%2Fvar%2Frun%2Fdocker.sock/", config.DockerEndpointHost());
   EXPECT_EQ("1.23", config.DockerApiVersion());
   EXPECT_EQ("limit=30", config.DockerContainerFilter());
   EXPECT_EQ(0, config.KubernetesUpdaterIntervalSeconds());
-  EXPECT_EQ("https://kubernetes.default.svc",
-            config.KubernetesEndpointHost());
+  EXPECT_EQ("https://kubernetes.default.svc", config.KubernetesEndpointHost());
   EXPECT_EQ("", config.KubernetesPodLabelSelector());
   EXPECT_EQ("", config.KubernetesClusterName());
   EXPECT_EQ("", config.KubernetesClusterLocation());

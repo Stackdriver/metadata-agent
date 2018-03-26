@@ -22,6 +22,7 @@
 int main(int ac, char** av);
 
 namespace google {
+
 class MetadataAgentConfiguration {
  public:
   MetadataAgentConfiguration();
@@ -153,10 +154,10 @@ class MetadataAgentConfiguration {
   }
 
  private:
-  friend int ::main(int ac, char** av);
+  friend int ::main(int, char**);  // Calls ParseArguments.
 
-  void ParseConfigurationStream(std::istream& input);
-  void ParseConfigurationFile(const std::string& filename);
+  void ParseConfiguration(std::istream& input);
+  void ParseConfigFile(const std::string& filename);
   // Parse the command line.
   // A zero return value means that parsing succeeded and the program should
   // proceed.  A positive return value means that parsing failed.  A negative
