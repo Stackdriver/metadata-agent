@@ -12,6 +12,7 @@ class HealthCheckerUnittest : public ::testing::Test {
   static void Cleanup(HealthChecker* health_checker){
     health_checker->CleanupForTest();
   }
+
   static void SetUnhealthy(HealthChecker* health_checker,
                            const std::string& state_name) {
     health_checker->SetUnhealthy(state_name);
