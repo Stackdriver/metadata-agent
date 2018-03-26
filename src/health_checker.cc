@@ -25,16 +25,15 @@ namespace google {
 
 HealthChecker::HealthChecker(const MetadataAgentConfiguration& config)
     : config_(config) {
-  boost::filesystem::create_directories(config_.HealthCheckFileDirectory());
-  Remove(config_.HealthCheckFileDirectory(),
-         config_.HealthCheckExternalFileName());
+  boost::filesystem::create_directories(
+    boost::filesystem::path(config_.HealthCheckFile()).parent_path());
+  Remove(config_.HealthCheckFile());
 }
 
 void HealthChecker::SetUnhealthy(const std::string& state_name) {
   std::lock_guard<std::mutex> lock(mutex_);
   health_states_.insert(state_name);
-  Touch(config_.HealthCheckFileDirectory(),
-        config_.HealthCheckExternalFileName());
+  Touch(config_.HealthCheckFile());
 }
 
 bool HealthChecker::IsHealthy() const {
@@ -42,16 +41,12 @@ bool HealthChecker::IsHealthy() const {
   return health_states_.empty();
 }
 
-void HealthChecker::Touch(const std::string& directory, const std::string& name) {
-  std::string path(boost::algorithm::join(
-      std::vector<std::string>{directory, name}, "/"));
+void HealthChecker::Touch(const std::string& path) {
   std::ofstream health_file(path);
   health_file << std::endl;
 }
 
-void HealthChecker::Remove(const std::string& directory, const std::string& name) {
-  std::string path(boost::algorithm::join(
-      std::vector<std::string>{directory, name}, "/"));
+void HealthChecker::Remove(const std::string& path) {
   std::remove(path.c_str());
 }
 

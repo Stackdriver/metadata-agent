@@ -34,8 +34,8 @@ class HealthChecker {
   friend class HealthCheckerUnittest;
 
   bool IsHealthy() const;
-  static void Touch(const std::string& directory, const std::string& name);
-  static void Remove(const std::string& directory, const std::string& name);
+  static void Touch(const std::string& path);
+  static void Remove(const std::string& path);
 
   const MetadataAgentConfiguration& config_;
   std::set<std::string> health_states_;

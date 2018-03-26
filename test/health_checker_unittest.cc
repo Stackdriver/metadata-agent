@@ -30,7 +30,7 @@ class HealthCheckerUnittest : public ::testing::Test {
   void SetIsolationPath(const std::string& isolation_path) {
     isolation_path_ = isolation_path;
     std::stringstream stream(
-        "HealthCheckFileDirectory: '" + isolation_path_ + "'");
+        "HealthCheckFile: './" + isolation_path_ + "/unhealthy'");
     config_.ParseConfiguration(stream);
     boost::filesystem::create_directory(isolation_path_);
   }
