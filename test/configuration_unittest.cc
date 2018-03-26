@@ -45,20 +45,20 @@ TEST(MetadataAgentConfigurationTest, NoConfig) {
 }
 
 TEST(MetadataAgentConfigurationTest, EmptyConfig) {
-  MetadataAgentConfiguration config;
-  config.ParseConfigurationString("");
+  std::istringstream stream("");
+  MetadataAgentConfiguration config(stream);
   VerifyDefaultConfig(config);
 }
 
 TEST(MetadataAgentConfigurationTest, PopulatedConfig) {
-  MetadataAgentConfiguration config;
-  config.ParseConfigurationString(
+  std::istringstream stream(
       "ProjectId: TestProjectId\n"
       "MetadataApiNumThreads: 13\n"
       "MetadataReporterPurgeDeleted: true\n"
       "MetadataReporterUserAgent: \"foobar/foobaz\"\n"
       "HealthCheckFile: /a/b/c\n"
   );
+  MetadataAgentConfiguration config(stream);
   EXPECT_EQ("TestProjectId", config.ProjectId());
   EXPECT_EQ(13, config.MetadataApiNumThreads());
   EXPECT_EQ(true, config.MetadataReporterPurgeDeleted());
@@ -67,23 +67,23 @@ TEST(MetadataAgentConfigurationTest, PopulatedConfig) {
 }
 
 TEST(MetadataAgentConfigurationTest, CommentSkipped) {
-  MetadataAgentConfiguration config;
-  config.ParseConfigurationString(
+  std::istringstream stream(
       "ProjectId: TestProjectId\n"
       "#MetadataApiNumThreads: 13\n"
       "MetadataReporterPurgeDeleted: true\n"
   );
+  MetadataAgentConfiguration config(stream);
   EXPECT_EQ(3, config.MetadataApiNumThreads());
 }
 
 TEST(MetadataAgentConfigurationTest, BlankLine) {
-  MetadataAgentConfiguration config;
-  config.ParseConfigurationString(
+  std::istringstream stream(
       "ProjectId: TestProjectId\n"
       "\n"
       "\n"
       "MetadataReporterPurgeDeleted: true\n"
   );
+  MetadataAgentConfiguration config(stream);
   EXPECT_EQ("TestProjectId", config.ProjectId());
   EXPECT_EQ(true, config.MetadataReporterPurgeDeleted());
 }

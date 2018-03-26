@@ -116,6 +116,11 @@ MetadataAgentConfiguration::MetadataAgentConfiguration()
       instance_zone_(kDefaultInstanceZone),
       health_check_file_(kDefaultHealthCheckFile) {}
 
+MetadataAgentConfiguration::MetadataAgentConfiguration(std::istream& input)
+    : MetadataAgentConfiguration() {
+  ParseConfigurationStream(input);
+}
+
 int MetadataAgentConfiguration::ParseArguments(int ac, char** av) {
   std::string config_file;
   boost::program_options::options_description flags_desc;
@@ -167,11 +172,6 @@ void MetadataAgentConfiguration::ParseConfigurationFile(const std::string& filen
 
   std::ifstream input(filename);
   ParseConfigurationStream(input);
-}
-
-void MetadataAgentConfiguration::ParseConfigurationString(const std::string& input) {
-  std::stringstream stream(input);
-  ParseConfigurationStream(stream);
 }
 
 void MetadataAgentConfiguration::ParseConfigurationStream(std::istream& input) {
