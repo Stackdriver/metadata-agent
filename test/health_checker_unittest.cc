@@ -9,15 +9,15 @@ namespace google {
 
 class HealthCheckerUnittest : public ::testing::Test {
  protected:
-  static void Cleanup(HealthChecker& health_checker){
-    health_checker.TestCleanup();
+  static void Cleanup(HealthChecker* health_checker){
+    health_checker->CleanupForTest();
   }
   static void SetUnhealthy(HealthChecker* health_checker,
                            const std::string& state_name) {
     health_checker->SetUnhealthy(state_name);
   }
 
-  static bool IsHealthy(HealthChecker& health_checker) {
+  static bool IsHealthy(const HealthChecker& health_checker) {
     return health_checker.IsHealthy();
   }
 
@@ -26,7 +26,6 @@ class HealthCheckerUnittest : public ::testing::Test {
     std::stringstream stream(
         "HealthCheckFile: './" + isolation_path_ + "/unhealthy'");
     config_.ParseConfiguration(stream);
-    boost::filesystem::create_directory(isolation_path_);
   }
 
   std::string isolation_path_;
@@ -37,7 +36,7 @@ TEST_F(HealthCheckerUnittest, DefaultHealthy) {
   SetIsolationPath(test_info_->name());
   HealthChecker healthChecker(config_);
   EXPECT_TRUE(IsHealthy(healthChecker));
-  Cleanup(healthChecker);
+  Cleanup(&healthChecker);
 }
 
 TEST_F(HealthCheckerUnittest, SimpleFailure) {
@@ -45,7 +44,7 @@ TEST_F(HealthCheckerUnittest, SimpleFailure) {
   HealthChecker healthChecker(config_);
   SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
-  Cleanup(healthChecker);
+  Cleanup(&healthChecker);
 }
 
 TEST_F(HealthCheckerUnittest, MultiFailure) {
@@ -56,7 +55,7 @@ TEST_F(HealthCheckerUnittest, MultiFailure) {
   EXPECT_FALSE(IsHealthy(healthChecker));
   SetUnhealthy(&healthChecker, "kubernetes_node_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
-  Cleanup(healthChecker);
+  Cleanup(&healthChecker);
 }
 
 TEST_F(HealthCheckerUnittest, NoRecovery) {
@@ -67,6 +66,6 @@ TEST_F(HealthCheckerUnittest, NoRecovery) {
   EXPECT_FALSE(IsHealthy(healthChecker));
   SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(healthChecker));
-  Cleanup(healthChecker);
+  Cleanup(&healthChecker);
 }
 }  // namespace google

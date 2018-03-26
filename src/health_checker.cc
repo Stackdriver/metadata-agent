@@ -42,10 +42,9 @@ bool HealthChecker::IsHealthy() const {
   return health_states_.empty();
 }
 
-void HealthChecker::TestCleanup() {
-  std::remove(config_.HealthCheckFile().c_str());
-  std::remove(boost::filesystem::path(
-      config_.HealthCheckFile()).parent_path().string().c_str());
+void HealthChecker::CleanupForTest() {
+  boost::filesystem::remove_all(boost::filesystem::path(
+      config_.HealthCheckFile()).parent_path());
 }
 
 }  // namespace google
