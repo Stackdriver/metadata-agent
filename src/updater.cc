@@ -23,7 +23,7 @@
 
 namespace google {
 
-MetadataUpdater::MetadataUpdater(const MetadataAgentConfiguration& config,
+MetadataUpdater::MetadataUpdater(const Configuration& config,
                                  MetadataStore* store, const std::string& name)
     : config_(config), store_(store), name_(name) {}
 
@@ -43,7 +43,7 @@ void MetadataUpdater::stop() {
 }
 
 PollingMetadataUpdater::PollingMetadataUpdater(
-    const MetadataAgentConfiguration& config, MetadataStore* store,
+    const Configuration& config, MetadataStore* store,
     const std::string& name, double period_s,
     std::function<std::vector<ResourceMetadata>()> query_metadata)
     : MetadataUpdater(config, store, name),

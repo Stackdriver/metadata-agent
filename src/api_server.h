@@ -27,7 +27,7 @@ namespace http = boost::network::http;
 namespace google {
 
 // Configuration object.
-class MetadataAgentConfiguration;
+class Configuration;
 
 // Storage for the metadata mapping.
 class MetadataStore;
@@ -35,7 +35,7 @@ class MetadataStore;
 // A server that implements the metadata agent API.
 class MetadataApiServer {
  public:
-  MetadataApiServer(const MetadataAgentConfiguration& config,
+  MetadataApiServer(const Configuration& config,
                     const MetadataStore& store, int server_threads,
                     const std::string& host, int port);
   ~MetadataApiServer();
@@ -45,13 +45,13 @@ class MetadataApiServer {
   using HttpServer = http::server<Handler>;
   class Handler {
    public:
-    Handler(const MetadataAgentConfiguration& config,
+    Handler(const Configuration& config,
             const MetadataStore& store);
     void operator()(const HttpServer::request& request,
                     std::shared_ptr<HttpServer::connection> conn);
     void log(const HttpServer::string_type& info);
    private:
-    const MetadataAgentConfiguration& config_;
+    const Configuration& config_;
     const MetadataStore& store_;
   };
 

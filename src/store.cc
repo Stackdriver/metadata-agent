@@ -26,7 +26,7 @@ MetadataStore::Metadata MetadataStore::Metadata::IGNORED() {
   return MetadataStore::Metadata();
 }
 
-MetadataStore::MetadataStore(const MetadataAgentConfiguration& config)
+MetadataStore::MetadataStore(const Configuration& config)
     : config_(config) {}
 
 const MonitoredResource& MetadataStore::LookupResource(

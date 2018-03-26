@@ -23,7 +23,7 @@
 
 namespace google {
 
-MetadataAgent::MetadataAgent(const MetadataAgentConfiguration& config)
+MetadataAgent::MetadataAgent(const Configuration& config)
     : config_(config), store_(config_), health_checker_(config) {}
 
 MetadataAgent::~MetadataAgent() {}

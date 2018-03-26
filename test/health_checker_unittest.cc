@@ -31,14 +31,14 @@ std::istringstream IsolationPathConfig(const std::string& test_name) {
 }  // namespace
 
 TEST_F(HealthCheckerUnittest, DefaultHealthy) {
-  MetadataAgentConfiguration config(IsolationPathConfig(test_info_->name()));
+  Configuration config(IsolationPathConfig(test_info_->name()));
   HealthChecker health_checker(config);
   EXPECT_TRUE(IsHealthy(health_checker));
   Cleanup(&health_checker);
 }
 
 TEST_F(HealthCheckerUnittest, SimpleFailure) {
-  MetadataAgentConfiguration config(IsolationPathConfig(test_info_->name()));
+  Configuration config(IsolationPathConfig(test_info_->name()));
   HealthChecker health_checker(config);
   SetUnhealthy(&health_checker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(health_checker));
@@ -46,7 +46,7 @@ TEST_F(HealthCheckerUnittest, SimpleFailure) {
 }
 
 TEST_F(HealthCheckerUnittest, MultiFailure) {
-  MetadataAgentConfiguration config(IsolationPathConfig(test_info_->name()));
+  Configuration config(IsolationPathConfig(test_info_->name()));
   HealthChecker health_checker(config);
   EXPECT_TRUE(IsHealthy(health_checker));
   SetUnhealthy(&health_checker, "kubernetes_pod_thread");
@@ -57,7 +57,7 @@ TEST_F(HealthCheckerUnittest, MultiFailure) {
 }
 
 TEST_F(HealthCheckerUnittest, FailurePersists) {
-  MetadataAgentConfiguration config(IsolationPathConfig(test_info_->name()));
+  Configuration config(IsolationPathConfig(test_info_->name()));
   HealthChecker health_checker(config);
   EXPECT_TRUE(IsHealthy(health_checker));
   SetUnhealthy(&health_checker, "kubernetes_pod_thread");

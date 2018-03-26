@@ -29,7 +29,7 @@ namespace http = boost::network::http;
 
 namespace google {
 
-InstanceReader::InstanceReader(const MetadataAgentConfiguration& config)
+InstanceReader::InstanceReader(const Configuration& config)
     : config_(config), environment_(config) {}
 
 /*static*/

@@ -45,7 +45,7 @@ constexpr const char kDockerContainerResourcePrefix[] = "container";
 
 }
 
-DockerReader::DockerReader(const MetadataAgentConfiguration& config)
+DockerReader::DockerReader(const Configuration& config)
     : config_(config), environment_(config) {}
 
 bool DockerReader::ValidateConfiguration() const {

@@ -29,7 +29,7 @@ namespace http = boost::network::http;
 
 namespace google {
 
-MetadataReporter::MetadataReporter(const MetadataAgentConfiguration& config,
+MetadataReporter::MetadataReporter(const Configuration& config,
                                    MetadataStore* store, double period_s)
     : store_(store),
       config_(config),

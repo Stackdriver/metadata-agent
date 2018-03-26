@@ -31,12 +31,12 @@
 namespace google {
 
 // Configuration object.
-class MetadataAgentConfiguration;
+class Configuration;
 
 // A periodic reporter of metadata to Stackdriver.
 class MetadataReporter {
  public:
-  MetadataReporter(const MetadataAgentConfiguration& config,
+  MetadataReporter(const Configuration& config,
                    MetadataStore* store, double period_s);
   ~MetadataReporter();
 
@@ -49,7 +49,7 @@ class MetadataReporter {
       std::map<MonitoredResource, MetadataStore::Metadata>&& metadata)
       throw (boost::system::system_error);
 
-  const MetadataAgentConfiguration& config_;
+  const Configuration& config_;
   MetadataStore* store_;
   Environment environment_;
   OAuth2 auth_;
