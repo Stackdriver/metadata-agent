@@ -65,7 +65,6 @@ TEST_F(MetadataAgentConfigurationTest, PopulatedConfig) {
       "MetadataReporterPurgeDeleted: true\n"
       "MetadataReporterUserAgent: \"foobar/foobaz\"\n"
       "HealthCheckFile: /a/b/c\n"
-      "HealthCheckExternalFileName: test_name\n"
   );
   EXPECT_EQ("TestProjectId", config.ProjectId());
   EXPECT_EQ(13, config.MetadataApiNumThreads());

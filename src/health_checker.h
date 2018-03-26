@@ -36,6 +36,7 @@ class HealthChecker {
   bool IsHealthy() const;
   static void Touch(const std::string& path);
   static void Remove(const std::string& path);
+  void TestCleanup();
 
   const MetadataAgentConfiguration& config_;
   std::set<std::string> health_states_;

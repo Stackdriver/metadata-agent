@@ -26,14 +26,15 @@ namespace google {
 HealthChecker::HealthChecker(const MetadataAgentConfiguration& config)
     : config_(config) {
   boost::filesystem::create_directories(
-    boost::filesystem::path(config_.HealthCheckFile()).parent_path());
-  Remove(config_.HealthCheckFile());
+      boost::filesystem::path(config_.HealthCheckFile()).parent_path());
+  std::remove(config_.HealthCheckFile().c_str());
 }
 
 void HealthChecker::SetUnhealthy(const std::string& state_name) {
   std::lock_guard<std::mutex> lock(mutex_);
   health_states_.insert(state_name);
-  Touch(config_.HealthCheckFile());
+  std::ofstream health_file(config_.HealthCheckFile());
+  health_file << std::endl;
 }
 
 bool HealthChecker::IsHealthy() const {
@@ -41,13 +42,10 @@ bool HealthChecker::IsHealthy() const {
   return health_states_.empty();
 }
 
-void HealthChecker::Touch(const std::string& path) {
-  std::ofstream health_file(path);
-  health_file << std::endl;
-}
-
-void HealthChecker::Remove(const std::string& path) {
-  std::remove(path.c_str());
+void HealthChecker::TestCleanup() {
+  std::remove(config_.HealthCheckFile().c_str());
+  std::remove(boost::filesystem::path(
+      config_.HealthCheckFile()).parent_path().string().c_str());
 }
 
 }  // namespace google
