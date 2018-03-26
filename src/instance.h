@@ -46,8 +46,7 @@ class InstanceReader {
 
 class InstanceUpdater : public PollingMetadataUpdater {
  public:
-  InstanceUpdater(const Configuration& config,
-                  MetadataStore* store)
+  InstanceUpdater(const Configuration& config, MetadataStore* store)
       : reader_(config), PollingMetadataUpdater(
           config, store, "InstanceUpdater",
           config.InstanceUpdaterIntervalSeconds(),

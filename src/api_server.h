@@ -45,8 +45,7 @@ class MetadataApiServer {
   using HttpServer = http::server<Handler>;
   class Handler {
    public:
-    Handler(const Configuration& config,
-            const MetadataStore& store);
+    Handler(const Configuration& config, const MetadataStore& store);
     void operator()(const HttpServer::request& request,
                     std::shared_ptr<HttpServer::connection> conn);
     void log(const HttpServer::string_type& info);

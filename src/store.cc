@@ -26,8 +26,7 @@ MetadataStore::Metadata MetadataStore::Metadata::IGNORED() {
   return MetadataStore::Metadata();
 }
 
-MetadataStore::MetadataStore(const Configuration& config)
-    : config_(config) {}
+MetadataStore::MetadataStore(const Configuration& config) : config_(config) {}
 
 const MonitoredResource& MetadataStore::LookupResource(
     const std::string& resource_id) const throw(std::out_of_range) {

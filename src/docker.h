@@ -65,8 +65,7 @@ class DockerReader {
 
 class DockerUpdater : public PollingMetadataUpdater {
  public:
-  DockerUpdater(const Configuration& config,
-                MetadataStore* store)
+  DockerUpdater(const Configuration& config, MetadataStore* store)
       : reader_(config), PollingMetadataUpdater(
           config, store, "DockerUpdater",
           config.DockerUpdaterIntervalSeconds(),

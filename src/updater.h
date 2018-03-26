@@ -47,8 +47,8 @@ class MetadataUpdater {
     MetadataStore::Metadata metadata;
   };
 
-  MetadataUpdater(const Configuration& config,
-                  MetadataStore* store, const std::string& name);
+  MetadataUpdater(const Configuration& config, MetadataStore* store,
+                  const std::string& name);
   virtual ~MetadataUpdater();
 
   // Starts updating.
