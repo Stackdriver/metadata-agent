@@ -19,18 +19,13 @@
 #include <mutex>
 #include <string>
 
-namespace google {
+int main(int ac, char** av);
 
+namespace google {
 class MetadataAgentConfiguration {
  public:
   MetadataAgentConfiguration();
   MetadataAgentConfiguration(std::istream& input);
-  // Parse the command line.
-  // A zero return value means that parsing succeeded and the program should
-  // proceed.  A positive return value means that parsing failed.  A negative
-  // value means that parsing succeeded, but all of the arguments were handled
-  // within the function and the program should exit with a success exit code.
-  int ParseArguments(int ac, char** av);
 
   // Shared configuration.
   const std::string& ProjectId() const {
@@ -158,8 +153,16 @@ class MetadataAgentConfiguration {
   }
 
  private:
+  friend int ::main(int ac, char** av);
+
   void ParseConfigurationStream(std::istream& input);
   void ParseConfigurationFile(const std::string& filename);
+  // Parse the command line.
+  // A zero return value means that parsing succeeded and the program should
+  // proceed.  A positive return value means that parsing failed.  A negative
+  // value means that parsing succeeded, but all of the arguments were handled
+  // within the function and the program should exit with a success exit code.
+  int ParseArguments(int ac, char** av);
 
   mutable std::mutex mutex_;
   std::string project_id_;
