@@ -21,7 +21,7 @@ CPPFLAGS=\
     -DENABLE_DOCKER_METADATA -DENABLE_KUBERNETES_METADATA \
     -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include
 CXXFLAGS=\
-    -std=c++11 -g -Wno-write-strings -Wno-deprecated
+    -std=c++11 -g -pthread -Wno-write-strings -Wno-deprecated
 LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR)
 LDLIBS=\
     -lcppnetlib-client-connections -lcppnetlib-server-parsers -lnetwork-uri \
