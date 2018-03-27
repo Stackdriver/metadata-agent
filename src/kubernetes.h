@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "environment.h"
+#include "health_checker.h"
 #include "json.h"
 #include "updater.h"
 
@@ -37,7 +38,8 @@ class MetadataStore;
 
 class KubernetesReader {
  public:
-  KubernetesReader(const MetadataAgentConfiguration& config);
+  KubernetesReader(const MetadataAgentConfiguration& config,
+                   HealthChecker* health_checker);
   // A Kubernetes metadata query function.
   std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
@@ -151,12 +153,14 @@ class KubernetesReader {
   mutable std::map<std::string, json::value> owners_;
 
   const MetadataAgentConfiguration& config_;
+  HealthChecker* health_checker_;
   Environment environment_;
 };
 
 class KubernetesUpdater : public PollingMetadataUpdater {
  public:
   KubernetesUpdater(const MetadataAgentConfiguration& config,
+                    HealthChecker* health_checker,
                     MetadataStore* store);
   ~KubernetesUpdater() {
     if (node_watch_thread_.joinable()) {
@@ -176,6 +180,7 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   void MetadataCallback(std::vector<ResourceMetadata>&& result_vector);
 
   KubernetesReader reader_;
+  HealthChecker* health_checker_;
   std::thread node_watch_thread_;
   std::thread pod_watch_thread_;
 };

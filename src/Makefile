@@ -25,7 +25,7 @@ CXXFLAGS=\
 LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR)
 LDLIBS=\
     -lcppnetlib-client-connections -lcppnetlib-server-parsers -lnetwork-uri \
-    -lboost_program_options -lboost_system -lboost_thread \
+    -lboost_program_options -lboost_system -lboost_thread -lboost_filesystem \
     -lpthread -lyajl -lssl -lcrypto -lyaml-cpp
 SED_EXTRA=-e 's/-Wall/-Wall -Wno-deprecated/'
 
@@ -59,6 +59,7 @@ SRCS=\
      time.cc \
      base64.cc \
      format.cc \
+     health_checker.cc \
      environment.cc
 OBJS=$(SRCS:%.cc=%.o)
 

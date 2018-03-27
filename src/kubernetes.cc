@@ -89,8 +89,9 @@ bool ReadServiceAccountSecret(
 
 }
 
-KubernetesReader::KubernetesReader(const MetadataAgentConfiguration& config)
-    : config_(config), environment_(config) {}
+KubernetesReader::KubernetesReader(const MetadataAgentConfiguration& config,
+                                   HealthChecker* health_checker)
+    : config_(config), environment_(config), health_checker_(health_checker) {}
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     const json::Object* node, Timestamp collected_at, bool is_deleted) const
@@ -1103,6 +1104,7 @@ void KubernetesReader::PodCallback(
 void KubernetesReader::WatchPods(
     const std::string& node_name,
     MetadataUpdater::UpdateCallback callback) const {
+  HealthChecker health_reporter(config_);
   LOG(INFO) << "Watch thread (pods) started for node "
             << (node_name.empty() ? "<unscheduled>" : node_name);
 
@@ -1125,6 +1127,7 @@ void KubernetesReader::WatchPods(
   } catch (const KubernetesReader::QueryException& e) {
     LOG(ERROR) << "No more pod metadata will be collected";
   }
+  health_checker_->SetUnhealthy("kubernetes_pod_thread");
   LOG(INFO) << "Watch thread (pods) exiting";
 }
 
@@ -1157,12 +1160,14 @@ void KubernetesReader::WatchNodes(
   } catch (const KubernetesReader::QueryException& e) {
     LOG(ERROR) << "No more node metadata will be collected";
   }
+  health_checker_->SetUnhealthy("kubernetes_node_thread");
   LOG(INFO) << "Watch thread (node) exiting";
 }
 
 KubernetesUpdater::KubernetesUpdater(const MetadataAgentConfiguration& config,
+                                     HealthChecker* health_checker,
                                      MetadataStore* store)
-    : reader_(config), PollingMetadataUpdater(
+    : reader_(config, health_checker), PollingMetadataUpdater(
         config, store, "KubernetesUpdater",
         config.KubernetesUpdaterIntervalSeconds(),
         [=]() { return reader_.MetadataQuery(); }) { }

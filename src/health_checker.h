@@ -13,27 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  **/
+#ifndef HEALTH_CHECKER_H_
+#define HEALTH_CHECKER_H_
 
-#include "agent.h"
+#include <string>
+#include <mutex>
+#include <set>
 
 #include "configuration.h"
-#include "api_server.h"
-#include "reporter.h"
-#include "health_checker.h"
 
 namespace google {
 
-MetadataAgent::MetadataAgent(const MetadataAgentConfiguration& config)
-    : config_(config), store_(config_), health_checker_(config) {}
+// Collects and reports health information about the metadata agent.
+class HealthChecker {
+ public:
+  HealthChecker(const MetadataAgentConfiguration& config);
+  void SetUnhealthy(const std::string& component);
 
-MetadataAgent::~MetadataAgent() {}
+ private:
+  friend class HealthCheckerUnittest;
 
-void MetadataAgent::start() {
-  metadata_api_server_.reset(new MetadataApiServer(
-      config_, store_, config_.MetadataApiNumThreads(), "0.0.0.0",
-      config_.MetadataApiPort()));
-  reporter_.reset(new MetadataReporter(
-      config_, &store_, config_.MetadataReporterIntervalSeconds()));
-}
+  bool IsHealthy() const;
+  void CleanupForTest();
 
-}
+  const MetadataAgentConfiguration& config_;
+  std::set<std::string> unhealthy_components_;
+  mutable std::mutex mutex_;
+};
+
+}  // namespace google
+
+#endif  // HEALTH_CHECKER_H_

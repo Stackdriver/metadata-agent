@@ -19,6 +19,7 @@
 #include <memory>
 
 #include "store.h"
+#include "health_checker.h"
 
 namespace google {
 
@@ -52,8 +53,13 @@ class MetadataAgent {
     return &store_;
   }
 
+  HealthChecker* health_checker() {
+    return &health_checker_;
+  }
+
  private:
   const MetadataAgentConfiguration& config_;
+  HealthChecker health_checker_;
 
   // The store for the metadata.
   MetadataStore store_;
