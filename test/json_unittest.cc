@@ -1,5 +1,6 @@
 #include "../src/json.h"
 #include "gtest/gtest.h"
+
 #include <functional>
 
 #define EXPECT_TOSTRING_EQ(s, v) EXPECT_EQ(s, v->ToString())
@@ -200,7 +201,7 @@ TEST(EdgeTest, StringWithEveryEscape) {
     json::value v = json::Parser::FromString("\"x\\\\x\\/x\\bx\\fx\\nx\\rx\\tx\"");
     EXPECT_EQ("x\\x/x\bx\fx\nx\rx\tx", v->As<json::String>()->value());
     // Output should be escaped as that is more canonical.
-    // Since / does not need to be escaped, output does not escape that.
+    // Since '/' does not need to be escaped, output does not escape that.
     EXPECT_TOSTRING_EQ("\"x\\\\x/x\\bx\\fx\\nx\\rx\\tx\"", v);
   });
 }
