@@ -29,6 +29,12 @@ MetadataStore::Metadata MetadataStore::Metadata::IGNORED() {
 MetadataStore::MetadataStore(const MetadataAgentConfiguration& config)
     : config_(config) {}
 
+const MonitoredResource& MetadataStore::LookupResource(
+    const std::string& resource_id) const throw(std::out_of_range) {
+  std::lock_guard<std::mutex> lock(resource_mu_);
+  return resource_map_.at(resource_id);
+}
+
 void MetadataStore::UpdateResource(const std::vector<std::string>& resource_ids,
                                    const MonitoredResource& resource) {
   std::lock_guard<std::mutex> lock(resource_mu_);
