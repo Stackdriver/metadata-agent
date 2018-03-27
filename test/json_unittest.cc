@@ -167,7 +167,7 @@ TEST(TrivialParseTest, ObjectOneField) {
 TEST(TrivialToStringTest, ObjectOneField) {
   GuardJsonException([](){
     json::value v = json::object({
-      {"f", json::number(2.0)}
+      {"f", json::number(2.0)},
     });
     EXPECT_TOSTRING_EQ("{\"f\":2.0}", v);
   });
@@ -423,6 +423,5 @@ TEST(ParseError, ObjectNoValue) {
   ASSERT_THROW(json::Parser::FromString("{\"x\"}"), json::Exception);
   ASSERT_THROW(json::Parser::FromString("{\"x\":}"), json::Exception);
 }
-
 
 } // namespace
