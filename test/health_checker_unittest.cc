@@ -25,7 +25,7 @@ class HealthCheckerUnittest : public ::testing::Test {
 };
 
 namespace {
-static std::istringstream IsolationPathConfig(const std::string& test_name) {
+std::istringstream IsolationPathConfig(const std::string& test_name) {
   return std::istringstream("HealthCheckFile: './" + test_name + "/unhealthy'");
 }
 }  // namespace
