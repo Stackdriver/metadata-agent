@@ -27,6 +27,7 @@ class MetadataAgentConfiguration {
  public:
   MetadataAgentConfiguration();
   MetadataAgentConfiguration(std::istream& input);
+  // Used to accept inline construction of streams.
   MetadataAgentConfiguration(std::istream&& input)
       : MetadataAgentConfiguration(input) {}
 
