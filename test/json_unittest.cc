@@ -16,7 +16,7 @@ void GuardJsonException(std::function<void()> test) {
 }
 
 
-// Trival Null
+// Trival null.
 
 TEST(TrivialParseTest, Null) {
   GuardJsonException([](){
@@ -32,7 +32,7 @@ TEST(TrivialToStringTest, Null) {
 }
 
 
-// Trival Boolean
+// Trival boolean.
 
 TEST(TrivialParseTest, True) {
   GuardJsonException([](){
@@ -61,7 +61,7 @@ TEST(TrivialToStringTest, False) {
 }
 
 
-// Trival Number
+// Trival number.
 
 TEST(TrivialParseTest, Number) {
   GuardJsonException([](){
@@ -77,7 +77,7 @@ TEST(TrivialToStringTest, Number) {
 }
 
 
-// Trival String
+// Trival string.
 
 TEST(TrivialParseTest, StringEmpty) {
   GuardJsonException([](){
@@ -107,7 +107,7 @@ TEST(TrivialToStringTest, StringOneChar) {
 }
 
 
-// Trival Array
+// Trival array.
 
 TEST(TrivialParseTest, ArrayEmpty) {
   GuardJsonException([](){
@@ -138,7 +138,7 @@ TEST(TrivialToStringTest, ArrayOneElement) {
 }
 
 
-// Trival Object
+// Trival object.
 
 TEST(TrivialParseTest, ObjectEmpty) {
   GuardJsonException([](){
@@ -172,7 +172,7 @@ TEST(TrivialToStringTest, ObjectOneField) {
 }
 
 
-// String edge cases
+// String edge cases.
 
 #if 0
 // TODO: yajl doesn't support newlines in strings.
@@ -225,7 +225,7 @@ TEST(EdgeTest, StringWithUTF8) {
 }
 
 
-// Number edge cases
+// Number edge cases.
 
 TEST(EdgeTest, PositiveNumbers) {
   GuardJsonException([](){
@@ -384,7 +384,7 @@ TEST(BigTest, LotsOfObjectNesting) {
 }
 
 
-// Parse errors
+// Parse errors.
 
 TEST(ParseError, Empty) {
   ASSERT_THROW(json::Parser::FromString(""), json::Exception);
