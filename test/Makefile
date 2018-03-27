@@ -17,7 +17,8 @@ YAML_CPP_LIBS=$(YAML_CPP_LIBDIR)/libyaml-cpp.a
 CPPFLAGS+= \
     -isystem $(GTEST_DIR)/include -I$(GMOCK_DIR)/include \
     -I$(YAML_CPP_DIR)/include
-CXXFLAGS=-std=c++11 -g -pthread
+CXXFLAGS=\
+    -std=c++11 -g -pthread -Wno-write-strings -Wno-deprecated
 LDLIBS=-lpthread -lboost_program_options -lyaml-cpp -lyajl
 LDFLAGS=-L$(YAML_CPP_LIBDIR)
 
