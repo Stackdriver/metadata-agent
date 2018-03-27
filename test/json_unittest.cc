@@ -1,9 +1,8 @@
-#include <functional>
-
 #include "../src/json.h"
 #include "gtest/gtest.h"
+#include <functional>
 
-#define EXPECT_TO_STRING(v, s) EXPECT_EQ(v->ToString(), s)
+#define EXPECT_TOSTRING_EQ(s, v) EXPECT_EQ(s, v->ToString())
 
 namespace {
 
@@ -20,43 +19,43 @@ void GuardJsonException(std::function<void()> test) {
 
 TEST(TrivialParseTest, Null) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString("null");
-    EXPECT_EQ(v->type(), json::NullType);
+    json::value v = json::Parser::FromString("null");
+    EXPECT_EQ(json::NullType, v->type());
   });
 }
 
 TEST(TrivialToStringTest, Null) {
   GuardJsonException([](){
-    EXPECT_TO_STRING(json::null(), "null");
+    EXPECT_TOSTRING_EQ("null", json::null());
   });
 }
 
 
-// Trival True & False
+// Trival Boolean
 
 TEST(TrivialParseTest, True) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString("true");
-    EXPECT_EQ(v->As<json::Boolean>()->value(), true);
+    json::value v = json::Parser::FromString("true");
+    EXPECT_EQ(true, v->As<json::Boolean>()->value());
   });
 }
 
 TEST(TrivialToStringTest, True) {
   GuardJsonException([](){
-    EXPECT_TO_STRING(json::boolean(true), "true");
+    EXPECT_TOSTRING_EQ("true", json::boolean(true));
   });
 }
 
 TEST(TrivialParseTest, False) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString("false");
-    EXPECT_EQ(v->As<json::Boolean>()->value(), false);
+    json::value v = json::Parser::FromString("false");
+    EXPECT_EQ(false, v->As<json::Boolean>()->value());
   });
 }
 
 TEST(TrivialToStringTest, False) {
   GuardJsonException([](){
-    EXPECT_TO_STRING(json::boolean(false), "false");
+    EXPECT_TOSTRING_EQ("false", json::boolean(false));
   });
 }
 
@@ -65,14 +64,14 @@ TEST(TrivialToStringTest, False) {
 
 TEST(TrivialParseTest, Number) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString("2");
-    EXPECT_EQ(v->As<json::Number>()->value(), 2.0);
+    json::value v = json::Parser::FromString("2");
+    EXPECT_EQ(2.0, v->As<json::Number>()->value());
   });
 }
 
 TEST(TrivialToStringTest, Number) {
   GuardJsonException([](){
-    EXPECT_TO_STRING(json::number(2.0), "2.0");
+    EXPECT_TOSTRING_EQ("2.0", json::number(2.0));
   });
 }
 
@@ -81,28 +80,28 @@ TEST(TrivialToStringTest, Number) {
 
 TEST(TrivialParseTest, StringEmpty) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString("\"\"");
-    EXPECT_EQ(v->As<json::String>()->value().length(), 0);
+    json::value v = json::Parser::FromString("\"\"");
+    EXPECT_EQ("", v->As<json::String>()->value());
   });
 }
 
 TEST(TrivialToStringTest, StringEmpty) {
   GuardJsonException([](){
-    EXPECT_TO_STRING(json::string(""), "\"\"");
+    EXPECT_TOSTRING_EQ("\"\"", json::string(""));
   });
 }
 
 TEST(TrivialParseTest, StringOneChar) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString("\"x\"");
+    json::value v = json::Parser::FromString("\"x\"");
     const auto& str = v->As<json::String>();
-    EXPECT_EQ(str->value(), "x");
+    EXPECT_EQ("x", str->value());
   });
 }
 
 TEST(TrivialToStringTest, StringOneChar) {
   GuardJsonException([](){
-    EXPECT_TO_STRING(json::string("x"), "\"x\"");
+    EXPECT_TOSTRING_EQ("\"x\"", json::string("x"));
   });
 }
 
@@ -111,115 +110,116 @@ TEST(TrivialToStringTest, StringOneChar) {
 
 TEST(TrivialParseTest, ArrayEmpty) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString("[]");
+    json::value v = json::Parser::FromString("[]");
     EXPECT_TRUE(v->As<json::Array>()->empty());
   });
 }
 
 TEST(TrivialToStringTest, ArrayEmpty) {
   GuardJsonException([](){
-    EXPECT_TO_STRING(json::array({}), "[]");
+    EXPECT_TOSTRING_EQ("[]", json::array({}));
   });
 }
 
 TEST(TrivialParseTest, ArrayOneElement) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString("[2]");
+    json::value v = json::Parser::FromString("[2]");
     const auto& arr = v->As<json::Array>();
-    EXPECT_EQ(arr->size(), 1);
-    EXPECT_EQ((*arr)[0]->As<json::Number>()->value(), 2.0);
+    EXPECT_EQ(1, arr->size());
+    EXPECT_EQ(2.0, (*arr)[0]->As<json::Number>()->value());
   });
 }
 
 TEST(TrivialToStringTest, ArrayOneElement) {
   GuardJsonException([](){
-    EXPECT_TO_STRING(json::array({json::number(2.0)}), "[2.0]");
+    EXPECT_TOSTRING_EQ("[2.0]", json::array({json::number(2.0)}));
   });
 }
 
 
-// Trival Dict
+// Trival Object
 
-TEST(TrivialParseTest, DictEmpty) {
+TEST(TrivialParseTest, ObjectEmpty) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString("{}");
+    json::value v = json::Parser::FromString("{}");
     EXPECT_TRUE(v->As<json::Object>()->empty());
   });
 }
 
-TEST(TrivialToStringTest, DictEmpty) {
+TEST(TrivialToStringTest, ObjectEmpty) {
   GuardJsonException([](){
-    EXPECT_TO_STRING(json::object({}), "{}");
+    EXPECT_TOSTRING_EQ("{}", json::object({}));
   });
 }
 
-TEST(TrivialParseTest, DictOneField) {
+TEST(TrivialParseTest, ObjectOneField) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString("{\"f\":2}");
+    json::value v = json::Parser::FromString("{\"f\":2}");
     const auto& obj = v->As<json::Object>();
-    EXPECT_EQ(obj->size(), 1);
-    EXPECT_EQ(obj->Get<json::Number>("f"), 2.0);
+    EXPECT_EQ(1, obj->size());
+    EXPECT_EQ(2.0, obj->Get<json::Number>("f"));
   });
 }
 
-TEST(TrivialToStringTest, DictOneField) {
+TEST(TrivialToStringTest, ObjectOneField) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::object({
+    json::value v = json::object({
       {"f", json::number(2.0)}
     });
-    EXPECT_TO_STRING(v, "{\"f\":2.0}");
+    EXPECT_TOSTRING_EQ("{\"f\":2.0}", v);
   });
 }
 
 
 // String edge cases
 
-/*
- * TODO(igorp): Seems that yajl does not support valid JSON.
-TEST(EdgeTest, StringWithNewLine) {
+#if 0
+// TODO: yajl doesn't support newlines in strings.
+// (https://github.com/lloyd/yajl/issues/180)
+TEST(EdgeTest, StringWithNewline) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString("\"\n\"");
-    EXPECT_EQ(v->As<json::String>()->value(), "\n");
+    json::value v = json::Parser::FromString("\"\n\"");
+    EXPECT_EQ("\n", v->As<json::String>()->value());
     // Output should be escaped with \n as that is more canonical.
-    EXPECT_TO_STRING(v, "\"\n\"");
+    EXPECT_TOSTRING_EQ("\"\n\"", v);
   });
 }
-*/
+#endif
 
 TEST(EdgeTest, StringWithNonUnicodeEscape) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString("\"foo\\nbar\"");
-    EXPECT_EQ(v->As<json::String>()->value(), "foo\nbar");
+    json::value v = json::Parser::FromString("\"foo\\nbar\"");
+    EXPECT_EQ("foo\nbar", v->As<json::String>()->value());
     // Output should be escaped as that is more canonical.
-    EXPECT_TO_STRING(v, "\"foo\\nbar\"");
+    EXPECT_TOSTRING_EQ("\"foo\\nbar\"", v);
   });
 }
 
 TEST(EdgeTest, StringWithEveryEscape) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString("\"x\\\\x\\/x\\bx\\fx\\nx\\rx\\tx\"");
-    EXPECT_EQ(v->As<json::String>()->value(), "x\\x/x\bx\fx\nx\rx\tx");
+    json::value v = json::Parser::FromString("\"x\\\\x\\/x\\bx\\fx\\nx\\rx\\tx\"");
+    EXPECT_EQ("x\\x/x\bx\fx\nx\rx\tx", v->As<json::String>()->value());
     // Output should be escaped as that is more canonical.
     // Since / does not need to be escaped, output does not escape that.
-    EXPECT_TO_STRING(v, "\"x\\\\x/x\\bx\\fx\\nx\\rx\\tx\"");
+    EXPECT_TOSTRING_EQ("\"x\\\\x/x\\bx\\fx\\nx\\rx\\tx\"", v);
   });
 }
 
 TEST(EdgeTest, StringWithUnicodeEscape) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString("\"foo\\u000abar\"");
-    //EXPECT_EQ(v->As<json::String>()->value(), "foo\nbar");
+    json::value v = json::Parser::FromString("\"foo\\u000abar\"");
+    EXPECT_EQ("foo\nbar", v->As<json::String>()->value());
     // Output should be escaped as that is more canonical.
-    EXPECT_TO_STRING(v, "\"foo\\nbar\"");
+    EXPECT_TOSTRING_EQ("\"foo\\nbar\"", v);
   });
 }
 
 TEST(EdgeTest, StringWithUTF8) {
   GuardJsonException([](){
     // This is Korean for "Hello World!".
-    std::unique_ptr<json::Value> v = json::Parser::FromString("\"안녕 세상아!\"");
-    EXPECT_EQ(v->As<json::String>()->value(), "안녕 세상아!");
-    EXPECT_TO_STRING(v, "\"안녕 세상아!\"");
+    json::value v = json::Parser::FromString("\"안녕 세상아!\"");
+    EXPECT_EQ("안녕 세상아!", v->As<json::String>()->value());
+    EXPECT_TOSTRING_EQ("\"안녕 세상아!\"", v);
   });
 }
 
@@ -228,7 +228,7 @@ TEST(EdgeTest, StringWithUTF8) {
 
 TEST(EdgeTest, PositiveNumbers) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString(
+    json::value v = json::Parser::FromString(
       "[\n"
       "  0, 0e+0, 0e-0, 0e0, 0E+0, 0E-0, 0E0,\n"
       "  0.0, 0.0e+0, 0.0e-0, 0.0e0, 0.0E+0, 0.0E-0, 0.0E0,\n"
@@ -241,14 +241,16 @@ TEST(EdgeTest, PositiveNumbers) {
     for (const auto& number : *v->As<json::Array>()) {
       numbers.push_back(number->As<json::Number>()->value());
     }
-    EXPECT_EQ(numbers, std::vector<double>({
-      0, 0e+0, 0e-0, 0e0, 0E+0, 0E-0, 0E0,
-      0.0, 0.0e+0, 0.0e-0, 0.0e0, 0.0E+0, 0.0E-0, 0.0E0,
-      10, 10e+0, 10e-0, 10e0, 10E+0, 10E-0, 10E0,
-      10.0, 10.0e+0, 10.0e-0, 10.0e0, 10.0E+0, 10.0E-0, 10.0E0,
-      123, 123.456, 789, 1.05, 1.999e-99,
-    }));
-    EXPECT_TO_STRING(v,
+    EXPECT_EQ(
+      std::vector<double>({
+        0, 0e+0, 0e-0, 0e0, 0E+0, 0E-0, 0E0,
+        0.0, 0.0e+0, 0.0e-0, 0.0e0, 0.0E+0, 0.0E-0, 0.0E0,
+        10, 10e+0, 10e-0, 10e0, 10E+0, 10E-0, 10E0,
+        10.0, 10.0e+0, 10.0e-0, 10.0e0, 10.0E+0, 10.0E-0, 10.0E0,
+        123, 123.456, 789, 1.05, 1.999e-99,
+      }),
+      numbers);
+    EXPECT_TOSTRING_EQ(
       "["
         "0.0,0.0,0.0,0.0,0.0,0.0,0.0,"
         "0.0,0.0,0.0,0.0,0.0,0.0,0.0,"
@@ -256,14 +258,15 @@ TEST(EdgeTest, PositiveNumbers) {
         "10.0,10.0,10.0,10.0,10.0,10.0,10.0,"
         "123.0,123.45600000000000307,789.0,"
         "1.0500000000000000444,1.9989999999999998999e-99"
-      "]"
+      "]",
+      v
     );
   });
 }
 
 TEST(EdgeTest, NegativeNumbers) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString(
+    json::value v = json::Parser::FromString(
       "[\n"
       "  -0, -0e+0, -0e-0, -0e0, -0E+0, -0E-0, -0E0,\n"
       "  -0.0, -0.0e+0, -0.0e-0, -0.0e0, -0.0E+0, -0.0E-0, -0.0E0,\n"
@@ -276,15 +279,17 @@ TEST(EdgeTest, NegativeNumbers) {
     for (const auto& number : *v->As<json::Array>()) {
       numbers.push_back(number->As<json::Number>()->value());
     }
-    EXPECT_EQ(numbers, std::vector<double>({
-      -0, -0e+0, -0e-0, -0e0, -0E+0, -0E-0, -0E0,
-      -0.0, -0.0e+0, -0.0e-0, -0.0e0, -0.0E+0, -0.0E-0, -0.0E0,
-      -10, -10e+0, -10e-0, -10e0, -10E+0, -10E-0, -10E0,
-      -10.0, -10.0e+0, -10.0e-0, -10.0e0, -10.0E+0, -10.0E-0, -10.0E0,
-      -123, -123.456, -789, -1.05, -1.999e-99,
-    }));
+    EXPECT_EQ(
+      std::vector<double>({
+        -0, -0e+0, -0e-0, -0e0, -0E+0, -0E-0, -0E0,
+        -0.0, -0.0e+0, -0.0e-0, -0.0e0, -0.0E+0, -0.0E-0, -0.0E0,
+        -10, -10e+0, -10e-0, -10e0, -10E+0, -10E-0, -10E0,
+        -10.0, -10.0e+0, -10.0e-0, -10.0e0, -10.0E+0, -10.0E-0, -10.0E0,
+        -123, -123.456, -789, -1.05, -1.999e-99,
+      }),
+      numbers);
     // TODO(igorp): This first one looks spurious.
-    EXPECT_TO_STRING(v,
+    EXPECT_TOSTRING_EQ(
       "["
         "0.0,-0.0,-0.0,-0.0,-0.0,-0.0,-0.0,"
         "-0.0,-0.0,-0.0,-0.0,-0.0,-0.0,-0.0,"
@@ -292,7 +297,8 @@ TEST(EdgeTest, NegativeNumbers) {
         "-10.0,-10.0,-10.0,-10.0,-10.0,-10.0,-10.0,"
         "-123.0,-123.45600000000000307,-789.0,"
         "-1.0500000000000000444,-1.9989999999999998999e-99"
-      "]"
+      "]",
+      v
     );
   });
 }
@@ -300,9 +306,9 @@ TEST(EdgeTest, NegativeNumbers) {
 
 // Big tests.
 
-TEST(BigTest, Realistic) {
+TEST(BigTest, RealisticParsing) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString(
+    json::value v = json::Parser::FromString(
       "{\n"
       "  \"foo\": [1, 2, 3],\n"
       "  \"bar\": {\"x\": 0, \"y\": null},\n"
@@ -310,26 +316,68 @@ TEST(BigTest, Realistic) {
       "  \"str\": \"asdfasdf\"\n"
       "}\n"
     );
-    EXPECT_TO_STRING(v,
+    EXPECT_TOSTRING_EQ(
       "{"
       "\"bar\":{\"x\":0.0,\"y\":null},"
       "\"baz\":true,"
       "\"foo\":[1.0,2.0,3.0],"
       "\"str\":\"asdfasdf\""
-      "}"
+      "}",
+      v
     );
   });
 }
 
-TEST(BigTest, LotsOfNesting) {
+TEST(BigTest, RealisticConstruction) {
   GuardJsonException([](){
-    std::unique_ptr<json::Value> v = json::Parser::FromString(
+    json::value v = json::object({
+      {"foo", json::array({json::number(1), json::number(2), json::number(3)})},
+      {"bar", json::object({{"x", json::number(0)}, {"y", json::null()}})},
+      {"baz", json::boolean(true)},
+      {"str", json::string("asdfasdf")},
+    });
+    EXPECT_TOSTRING_EQ(
+      "{"
+      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"baz\":true,"
+      "\"foo\":[1.0,2.0,3.0],"
+      "\"str\":\"asdfasdf\""
+      "}",
+      v
+    );
+  });
+}
+
+TEST(BigTest, LotsOfArrayNesting) {
+  GuardJsonException([](){
+    json::value v = json::Parser::FromString(
       "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
       "]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"
     );
-    EXPECT_TO_STRING(v,
+    EXPECT_TOSTRING_EQ(
       "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
-      "]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"
+      "]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+      v
+    );
+  });
+}
+
+TEST(BigTest, LotsOfObjectNesting) {
+  GuardJsonException([](){
+    json::value v = json::Parser::FromString(
+      "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":"
+      "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":"
+      "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":"
+      "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":null"
+      "}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}"
+    );
+    EXPECT_TOSTRING_EQ(
+      "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":"
+      "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":"
+      "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":"
+      "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":null"
+      "}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}",
+      v
     );
   });
 }

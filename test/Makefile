@@ -32,8 +32,8 @@ TESTS=\
       configuration_unittest \
       format_unittest \
       health_checker_unittest \
-      resource_unittest \
       json_unittest \
+      resource_unittest \
       time_unittest
 
 GTEST_LIB=gtest_lib.a
