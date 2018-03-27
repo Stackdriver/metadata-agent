@@ -35,38 +35,38 @@ class HealthCheckerUnittest : public ::testing::Test {
 
 TEST_F(HealthCheckerUnittest, DefaultHealthy) {
   SetIsolationPath(test_info_->name());
-  HealthChecker healthChecker(config_);
-  EXPECT_TRUE(IsHealthy(healthChecker));
-  Cleanup(&healthChecker);
+  HealthChecker health_checker(config_);
+  EXPECT_TRUE(IsHealthy(health_checker));
+  Cleanup(&health_checker);
 }
 
 TEST_F(HealthCheckerUnittest, SimpleFailure) {
   SetIsolationPath(test_info_->name());
-  HealthChecker healthChecker(config_);
-  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
-  EXPECT_FALSE(IsHealthy(healthChecker));
-  Cleanup(&healthChecker);
+  HealthChecker health_checker(config_);
+  SetUnhealthy(&health_checker, "kubernetes_pod_thread");
+  EXPECT_FALSE(IsHealthy(health_checker));
+  Cleanup(&health_checker);
 }
 
 TEST_F(HealthCheckerUnittest, MultiFailure) {
   SetIsolationPath(test_info_->name());
-  HealthChecker healthChecker(config_);
-  EXPECT_TRUE(IsHealthy(healthChecker));
-  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
-  EXPECT_FALSE(IsHealthy(healthChecker));
-  SetUnhealthy(&healthChecker, "kubernetes_node_thread");
-  EXPECT_FALSE(IsHealthy(healthChecker));
-  Cleanup(&healthChecker);
+  HealthChecker health_checker(config_);
+  EXPECT_TRUE(IsHealthy(health_checker));
+  SetUnhealthy(&health_checker, "kubernetes_pod_thread");
+  EXPECT_FALSE(IsHealthy(health_checker));
+  SetUnhealthy(&health_checker, "kubernetes_node_thread");
+  EXPECT_FALSE(IsHealthy(health_checker));
+  Cleanup(&health_checker);
 }
 
-TEST_F(HealthCheckerUnittest, NoRecovery) {
+TEST_F(HealthCheckerUnittest, FailurePersists) {
   SetIsolationPath(test_info_->name());
-  HealthChecker healthChecker(config_);
-  EXPECT_TRUE(IsHealthy(healthChecker));
-  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
-  EXPECT_FALSE(IsHealthy(healthChecker));
-  SetUnhealthy(&healthChecker, "kubernetes_pod_thread");
-  EXPECT_FALSE(IsHealthy(healthChecker));
-  Cleanup(&healthChecker);
+  HealthChecker health_checker(config_);
+  EXPECT_TRUE(IsHealthy(health_checker));
+  SetUnhealthy(&health_checker, "kubernetes_pod_thread");
+  EXPECT_FALSE(IsHealthy(health_checker));
+  SetUnhealthy(&health_checker, "kubernetes_pod_thread");
+  EXPECT_FALSE(IsHealthy(health_checker));
+  Cleanup(&health_checker);
 }
 }  // namespace google

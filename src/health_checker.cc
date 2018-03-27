@@ -30,16 +30,16 @@ HealthChecker::HealthChecker(const MetadataAgentConfiguration& config)
   std::remove(config_.HealthCheckFile().c_str());
 }
 
-void HealthChecker::SetUnhealthy(const std::string& state_name) {
+void HealthChecker::SetUnhealthy(const std::string& component) {
   std::lock_guard<std::mutex> lock(mutex_);
-  health_states_.insert(state_name);
+  unhealthy_components_.insert(component);
   std::ofstream health_file(config_.HealthCheckFile());
   health_file << std::endl;
 }
 
 bool HealthChecker::IsHealthy() const {
   std::lock_guard<std::mutex> lock(mutex_);
-  return health_states_.empty();
+  return unhealthy_components_.empty();
 }
 
 void HealthChecker::CleanupForTest() {

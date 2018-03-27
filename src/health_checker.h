@@ -28,7 +28,7 @@ namespace google {
 class HealthChecker {
  public:
   HealthChecker(const MetadataAgentConfiguration& config);
-  void SetUnhealthy(const std::string& state_name);
+  void SetUnhealthy(const std::string& component);
 
  private:
   friend class HealthCheckerUnittest;
@@ -37,7 +37,7 @@ class HealthChecker {
   void CleanupForTest();
 
   const MetadataAgentConfiguration& config_;
-  std::set<std::string> health_states_;
+  std::set<std::string> unhealthy_components_;
   mutable std::mutex mutex_;
 };
 
