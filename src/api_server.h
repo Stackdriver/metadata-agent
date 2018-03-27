@@ -40,11 +40,11 @@ class MetadataApiServer {
   ~MetadataApiServer();
 
  private:
-  class Handler;
-  using HttpServer = http::server<Handler>;
-  class Handler {
+  class Dispatcher;
+  using HttpServer = http::server<Dispatcher>;
+  class Dispatcher {
    public:
-    Handler(const Configuration& config, const MetadataStore& store);
+    Dispatcher(const Configuration& config, const MetadataStore& store);
     void operator()(const HttpServer::request& request,
                     std::shared_ptr<HttpServer::connection> conn);
     void log(const HttpServer::string_type& info);
@@ -53,7 +53,7 @@ class MetadataApiServer {
     const MetadataStore& store_;
   };
 
-  Handler handler_;
+  Dispatcher dispatcher_;
   HttpServer server_;
   std::vector<std::thread> server_pool_;
 };

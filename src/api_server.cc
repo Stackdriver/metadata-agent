@@ -25,17 +25,18 @@
 
 namespace google {
 
-MetadataApiServer::Handler::Handler(const Configuration& config,
-                                    const MetadataStore& store)
+MetadataApiServer::Dispatcher::Dispatcher(
+    const Configuration& config, const MetadataStore& store)
     : config_(config), store_(store) {}
 
-void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
-                                            std::shared_ptr<HttpServer::connection> conn) {
+void MetadataApiServer::Dispatcher::operator()(
+    const HttpServer::request& request,
+    std::shared_ptr<HttpServer::connection> conn) {
   static const std::string kPrefix = "/monitoredResource/";
   // The format for the local metadata API request is:
   //   {host}:{port}/monitoredResource/{id}
   if (config_.VerboseLogging()) {
-    LOG(INFO) << "Handler called: " << request.method
+    LOG(INFO) << "Dispatcher called: " << request.method
               << " " << request.destination
               << " headers: " << request.headers
               << " body: " << request.body;
@@ -72,7 +73,7 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
   }
 }
 
-void MetadataApiServer::Handler::log(const HttpServer::string_type& info) {
+void MetadataApiServer::Dispatcher::log(const HttpServer::string_type& info) {
   LOG(ERROR) << info;
 }
 
@@ -81,9 +82,9 @@ MetadataApiServer::MetadataApiServer(const Configuration& config,
                                      const MetadataStore& store,
                                      int server_threads,
                                      const std::string& host, int port)
-    : handler_(config, store),
+    : dispatcher_(config, store),
       server_(
-          HttpServer::options(handler_)
+          HttpServer::options(dispatcher_)
               .address(host)
               .port(std::to_string(port))),
       server_pool_()
