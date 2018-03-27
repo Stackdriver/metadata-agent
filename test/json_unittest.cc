@@ -158,6 +158,8 @@ TEST(TrivialParseTest, ObjectOneField) {
     json::value v = json::Parser::FromString("{\"f\":2}");
     const auto& obj = v->As<json::Object>();
     EXPECT_EQ(1, obj->size());
+    EXPECT_TRUE(v->As<json::Object>()->Has("f"));
+    EXPECT_FALSE(v->As<json::Object>()->Has("g"));
     EXPECT_EQ(2.0, obj->Get<json::Number>("f"));
   });
 }
