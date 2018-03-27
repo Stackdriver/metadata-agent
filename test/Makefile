@@ -32,6 +32,7 @@ TESTS=\
       configuration_unittest \
       format_unittest \
       health_checker_unittest \
+      json_unittest \
       resource_unittest \
       time_unittest
 
@@ -87,5 +88,7 @@ time_unittest: $(GTEST_LIB) time_unittest.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 health_checker_unittest: $(GTEST_LIB) health_checker_unittest.o $(SRC_DIR)/health_checker.o $(SRC_DIR)/configuration.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lboost_filesystem -lboost_system -o $@
+json_unittest: $(GTEST_LIB) json_unittest.o $(SRC_DIR)/json.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 .PHONY: all test clean purge
