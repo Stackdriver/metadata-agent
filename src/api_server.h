@@ -18,8 +18,12 @@
 
 #define BOOST_NETWORK_ENABLE_HTTPS
 #include <boost/network/protocol/http/server.hpp>
+#include <functional>
+#include <map>
 #include <memory>
+#include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace http = boost::network::http;
@@ -42,17 +46,29 @@ class MetadataApiServer {
  private:
   class Dispatcher;
   using HttpServer = http::server<Dispatcher>;
+  using Handler = std::function<void(const HttpServer::request&,
+                                     std::shared_ptr<HttpServer::connection>)>;
+
   class Dispatcher {
    public:
-    Dispatcher(const Configuration& config, const MetadataStore& store);
+    using HandlerMap = std::map<std::pair<std::string, std::string>, Handler>;
+    Dispatcher(const HandlerMap& handlers, bool verbose);
     void operator()(const HttpServer::request& request,
                     std::shared_ptr<HttpServer::connection> conn);
     void log(const HttpServer::string_type& info);
    private:
-    const Configuration& config_;
-    const MetadataStore& store_;
+    // A mapping from a method/prefix pair to the handler function.
+    // Order matters: later entries override earlier ones.
+    const HandlerMap handlers_;
+    bool verbose_;
   };
 
+  // Handler functions.
+  void HandleMonitoredResource(const HttpServer::request& request,
+                               std::shared_ptr<HttpServer::connection> conn);
+
+  const Configuration& config_;
+  const MetadataStore& store_;
   Dispatcher dispatcher_;
   HttpServer server_;
   std::vector<std::thread> server_pool_;
