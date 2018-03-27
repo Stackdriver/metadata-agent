@@ -335,5 +335,51 @@ TEST(BigTest, LotsOfNesting) {
 }
 
 
+// Parse errors
+
+TEST(ParseError, Empty) {
+  ASSERT_THROW(json::Parser::FromString(""), json::Exception);
+}
+
+TEST(ParseError, UnexpectedChar) {
+  ASSERT_THROW(json::Parser::FromString("x"), json::Exception);
+}
+
+TEST(ParseError, UnterminatedArray) {
+  ASSERT_THROW(json::Parser::FromString("["), json::Exception);
+}
+
+TEST(ParseError, UnmatchedArrayClose) {
+  ASSERT_THROW(json::Parser::FromString("]"), json::Exception);
+}
+
+TEST(ParseError, UnterminatedObject) {
+  ASSERT_THROW(json::Parser::FromString("{"), json::Exception);
+}
+
+TEST(ParseError, UnmatchedObjectClose) {
+  ASSERT_THROW(json::Parser::FromString("}"), json::Exception);
+}
+
+TEST(ParseError, UnterminatedString) {
+  ASSERT_THROW(json::Parser::FromString("\""), json::Exception);
+}
+
+TEST(ParseError, UnterminatedEscape) {
+  ASSERT_THROW(json::Parser::FromString("\"\\\""), json::Exception);
+}
+
+TEST(ParseError, UnterminatedUnicodeEscape) {
+  ASSERT_THROW(json::Parser::FromString("\"\\u\""), json::Exception);
+  ASSERT_THROW(json::Parser::FromString("\"\\u0\""), json::Exception);
+  ASSERT_THROW(json::Parser::FromString("\"\\u00\""), json::Exception);
+  ASSERT_THROW(json::Parser::FromString("\"\\u000\""), json::Exception);
+}
+
+TEST(ParseError, ObjectNoValue) {
+  ASSERT_THROW(json::Parser::FromString("{\"x\"}"), json::Exception);
+  ASSERT_THROW(json::Parser::FromString("{\"x\":}"), json::Exception);
+}
+
 
 } // namespace
