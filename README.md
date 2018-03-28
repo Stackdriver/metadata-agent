@@ -6,8 +6,9 @@ This is the Stackdriver metadata agent.
 
 1. Install runtime dependencies:
 
-       $ sudo apt-get install libyajl2 libboost-program-options1.55.0 \
-         libboost-system1.55.0 libboost-thread1.55.0
+       $ sudo apt-get install libyajl2 libboost-filesystem1.55.0 \
+         libboost-program-options1.55.0 libboost-system1.55.0 \
+         libboost-thread1.55.0
 
 2. Install build dependencies:
 
@@ -21,7 +22,7 @@ This is the Stackdriver metadata agent.
 
 1. Install runtime dependencies:
 
-       $ sudo apt-get install libssl1.0.0 libyajl2 \
+       $ sudo apt-get install libssl1.0.0 libyajl2 libboost-filesystem1.58.0 \
          libboost-program-options1.58.0 libboost-system1.58.0 \
          libboost-thread1.58.0
 
@@ -37,7 +38,7 @@ This is the Stackdriver metadata agent.
 
 1. Install runtime dependencies:
 
-       $ sudo apt-get install libssl1.0.2 libyajl2 \
+       $ sudo apt-get install libssl1.0.2 libyajl2 libboost-filesystem1.62.0 \
          libboost-program-options1.62.0 libboost-system1.62.0 \
          libboost-thread1.62.0
 
