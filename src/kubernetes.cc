@@ -1053,10 +1053,10 @@ json::value KubernetesReader::FindTopLevelController(
     return object;
   }
   const json::Array* refs = metadata->Get<json::Array>("ownerReferences");
-
 #ifdef VERBOSE
   LOG(DEBUG) << "FindTopLevelController: refs is " << *refs;
 #endif
+
   // Kubernetes objects are supposed to have at most one controller:
   // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#objectmeta-v1-meta.
   const json::Object* controller_ref = nullptr;
