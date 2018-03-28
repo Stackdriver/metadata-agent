@@ -35,9 +35,8 @@ class MetadataStore;
 // A server that implements the metadata agent API.
 class MetadataApiServer {
  public:
-  MetadataApiServer(const Configuration& config,
-                    const MetadataStore& store, int server_threads,
-                    const std::string& host, int port);
+  MetadataApiServer(const Configuration& config, const MetadataStore& store,
+                    int server_threads, const std::string& host, int port);
   ~MetadataApiServer();
 
  private:
