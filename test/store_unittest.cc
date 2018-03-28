@@ -20,6 +20,10 @@ class MetadataAgentStoreTest : public ::testing::Test {
     return store->GetMetadataMap();
   }
 
+  void PurgeDeletedEntries() {
+    store->PurgeDeletedEntries();
+  }
+
   virtual void TearDown() {
     delete config;
     delete store;
@@ -183,6 +187,37 @@ TEST_F(MetadataAgentStoreTest, UpdateMetadataEntryStore) {
   store->UpdateMetadata(mr, std::move(m2));
   metadata_map = GetMetadataMap();
   EXPECT_EQ("default-version2", metadata_map.at(mr).version);
+}
+
+TEST_F(MetadataAgentStoreTest, PurgeDeletedEntriesStore) {
+  SetupStore();
+  MonitoredResource mr1("some_resource1", {});
+  MonitoredResource mr2("some_resource2", {});
+  MetadataStore::Metadata m1(
+      "default-version1",
+      false,
+      time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
+      time::rfc3339::FromString("2018-03-03T01:32:45.678901234Z"),
+      json::Parser::FromString("{\"f\":\"hello\"}")
+      );
+  MetadataStore::Metadata m2(
+      "default-version2",
+      true,
+      time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
+      time::rfc3339::FromString("2018-03-03T01:32:45.678901234Z"),
+      json::Parser::FromString("{\"f\":\"hello\"}")
+      );
+  store->UpdateMetadata(mr1, std::move(m1));
+  store->UpdateMetadata(mr2, std::move(m2));
+  std::map<MonitoredResource, MetadataStore::Metadata> metadata_map =
+      GetMetadataMap();
+  EXPECT_FALSE(metadata_map.empty());
+  EXPECT_EQ("default-version1", metadata_map.at(mr1).version);
+  EXPECT_EQ("default-version2", metadata_map.at(mr2).version);
+  PurgeDeletedEntries();
+  metadata_map = GetMetadataMap();
+  EXPECT_EQ("default-version1", metadata_map.at(mr1).version);
+  EXPECT_THROW(metadata_map.at(mr2), std::out_of_range);
 }
 
 TEST(MetadataTest, ParseMetadata) {
