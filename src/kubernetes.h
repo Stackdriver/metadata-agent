@@ -138,7 +138,8 @@ class KubernetesReader {
 
   // For a given object, returns the top-level controller object.
   // When there are multiple controller references, follows the first one.
-  json::value FindTopLevelController(const std::string& ns, json::value object) const
+  json::value FindTopLevelController(
+      const std::string& ns, json::value object) const
       throw(QueryException, json::Exception);
 
   // Cached data.

@@ -154,7 +154,8 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
   const std::string namespace_name = metadata->Get<json::String>("namespace");
   const std::string pod_id = metadata->Get<json::String>("uid");
 
-  const json::value top_level = FindTopLevelController(namespace_name, pod->Clone());
+  const json::value top_level = FindTopLevelController(
+      namespace_name, pod->Clone());
   const json::Object* top_level_controller = top_level->As<json::Object>();
   const json::Object* top_level_metadata =
       top_level_controller->Get<json::Object>("metadata");
@@ -1046,7 +1047,8 @@ json::value KubernetesReader::FindTopLevelController(
 #endif
   if (!metadata->Has("ownerReferences")) {
 #ifdef VERBOSE
-    LOG(DEBUG) << "FindTopLevelController: no owner references in " << *metadata;
+    LOG(DEBUG) << "FindTopLevelController: no owner references in "
+               << *metadata;
 #endif
     return object;
   }
@@ -1054,27 +1056,30 @@ json::value KubernetesReader::FindTopLevelController(
 #ifdef VERBOSE
   LOG(DEBUG) << "FindTopLevelController: refs is " << *refs;
 #endif
-  std::vector<json::Object> controller_refs;
+  std::vector<const json::Object*> controller_refs;
   for (const json::value& ref : *refs) {
     const json::Object* ref_obj = ref->As<json::Object>();
-    if (ref_obj->Has("controller") && ref_obj->Get<json::Boolean>("controller")) {
-      controller_refs.emplace_back(*ref_obj);
+    if (ref_obj->Has("controller") &&
+        ref_obj->Get<json::Boolean>("controller")) {
+      controller_refs.emplace_back(ref_obj);
     }
   }
 #ifdef VERBOSE
-  LOG(DEBUG) << "FindTopLevelController: contoller_refs is " << controller_refs;
+  LOG(DEBUG) << "FindTopLevelController: contoller_refs is "
+             << controller_refs;
 #endif
   if (controller_refs.size() == 0) {
 #ifdef VERBOSE
-    LOG(DEBUG) << "FindTopLevelController: no controller owner references in " << *metadata;
+    LOG(DEBUG) << "FindTopLevelController: no controller owner references in "
+               << *metadata;
 #endif
     return object;
   }
   if (controller_refs.size() > 1) {
-    LOG(WARNING) << "Found multiple owner references for " << *obj
+    LOG(WARNING) << "Found multiple controller references for " << *obj
                  << " picking the first one arbitrarily.";
   }
-  const json::Object controller_ref = controller_refs[0];
+  const json::Object controller_ref = *controller_refs[0];
 #ifdef VERBOSE
   LOG(DEBUG) << "FindTopLevelController: controller_ref is " << controller_ref;
 #endif
