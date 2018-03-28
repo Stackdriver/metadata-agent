@@ -43,9 +43,19 @@ void MetadataApiServer::Dispatcher::operator()(
   for (auto it = handlers_.crbegin(); it != handlers_.crend(); --it) {
     const std::string& method = it->first.first;
     const std::string& prefix = it->first.second;
+#ifdef VERBOSE
+    LOG(DEBUG) << "Checking " << method << " " << prefix;
+#endif
     if (request.method != method || request.destination.find(prefix) != 0) {
+#ifdef VERBOSE
+      LOG(DEBUG) << "No match; skipping " << method << " " << prefix;
+#endif
       continue;
     }
+#ifdef VERBOSE
+    LOG(DEBUG) << "Handler found for " << request.method
+               << " " << request.destination;
+#endif
     const Handler& handler = it->second;
     handler(request, conn);
   }
@@ -91,6 +101,9 @@ void MetadataApiServer::HandleMonitoredResource(
   //   {host}:{port}/monitoredResource/{id}
   static const std::string kPrefix = "/monitoredResource/";;
   const std::string id = request.destination.substr(kPrefix.size());
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Handler called for " << id;
+  }
   try {
     const MonitoredResource& resource = store_.LookupResource(id);
     if (config_.VerboseLogging()) {
