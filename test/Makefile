@@ -35,6 +35,7 @@ TESTS=\
       health_checker_unittest \
       json_unittest \
       resource_unittest \
+      store_unittest \
       time_unittest
 
 GTEST_LIB=gtest_lib.a
@@ -84,6 +85,8 @@ base64_unittest: $(GTEST_LIB) base64_unittest.o $(SRC_DIR)/base64.o
 configuration_unittest: $(GTEST_LIB) $(YAML_CPP_LIBS) configuration_unittest.o $(SRC_DIR)/configuration.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 resource_unittest: $(GTEST_LIB) resource_unittest.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+store_unittest: $(GTEST_LIB) store_unittest.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/configuration.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 time_unittest: $(GTEST_LIB) time_unittest.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
