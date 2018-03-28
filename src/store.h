@@ -28,7 +28,7 @@
 namespace google {
 
 // Configuration object.
-class MetadataAgentConfiguration;
+class Configuration;
 
 // A timestamp type.
 using Timestamp = time_point;
@@ -72,7 +72,7 @@ class MetadataStore {
           metadata(json::object({})), ignore(true) {}
   };
 
-  MetadataStore(const MetadataAgentConfiguration& config);
+  MetadataStore(const Configuration& config);
 
   // Looks up the local resource map entry for a given resource id.
   // Throws an exception if the resource is not found.
@@ -96,7 +96,7 @@ class MetadataStore {
   std::map<MonitoredResource, Metadata> GetMetadataMap() const;
   void PurgeDeletedEntries();
 
-  const MetadataAgentConfiguration& config_;
+  const Configuration& config_;
 
   // A lock that guards access to the local resource map.
   mutable std::mutex resource_mu_;

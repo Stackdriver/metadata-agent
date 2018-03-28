@@ -23,13 +23,12 @@ int main(int, char**);
 
 namespace google {
 
-class MetadataAgentConfiguration {
+class Configuration {
  public:
-  MetadataAgentConfiguration();
-  MetadataAgentConfiguration(std::istream& input);
+  Configuration();
+  Configuration(std::istream& input);
   // Used to accept inline construction of streams.
-  MetadataAgentConfiguration(std::istream&& input)
-      : MetadataAgentConfiguration(input) {}
+  Configuration(std::istream&& input) : Configuration(input) {}
 
   // Shared configuration.
   const std::string& ProjectId() const {

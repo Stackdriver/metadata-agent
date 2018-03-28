@@ -27,7 +27,7 @@ namespace google {
 // Collects and reports health information about the metadata agent.
 class HealthChecker {
  public:
-  HealthChecker(const MetadataAgentConfiguration& config);
+  HealthChecker(const Configuration& config);
   void SetUnhealthy(const std::string& component);
 
  private:
@@ -36,7 +36,7 @@ class HealthChecker {
   bool IsHealthy() const;
   void CleanupForTest();
 
-  const MetadataAgentConfiguration& config_;
+  const Configuration& config_;
   std::set<std::string> unhealthy_components_;
   mutable std::mutex mutex_;
 };

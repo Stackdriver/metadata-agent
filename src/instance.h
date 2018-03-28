@@ -25,14 +25,14 @@
 namespace google {
 
 // Configuration object.
-class MetadataAgentConfiguration;
+class Configuration;
 
 // Storage for the metadata mapping.
 class MetadataStore;
 
 class InstanceReader {
  public:
-  InstanceReader(const MetadataAgentConfiguration& config);
+  InstanceReader(const Configuration& config);
   // A Instance metadata query function.
   std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
@@ -40,14 +40,13 @@ class InstanceReader {
   static MonitoredResource InstanceResource(const Environment& environment);
 
  private:
-  const MetadataAgentConfiguration& config_;
+  const Configuration& config_;
   Environment environment_;
 };
 
 class InstanceUpdater : public PollingMetadataUpdater {
  public:
-  InstanceUpdater(const MetadataAgentConfiguration& config,
-                  MetadataStore* store)
+  InstanceUpdater(const Configuration& config, MetadataStore* store)
       : reader_(config), PollingMetadataUpdater(
           config, store, "InstanceUpdater",
           config.InstanceUpdaterIntervalSeconds(),

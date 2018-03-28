@@ -26,7 +26,7 @@ namespace google {
 
 class Environment {
  public:
-  Environment(const MetadataAgentConfiguration& config);
+  Environment(const Configuration& config);
 
   const std::string& NumericProjectId() const;
   const std::string& InstanceResourceType() const;
@@ -39,14 +39,14 @@ class Environment {
 
   std::string GetMetadataString(const std::string& path) const;
 
-  const MetadataAgentConfiguration& config() const {
+  const Configuration& config() const {
     return config_;
   }
 
  private:
   void ReadApplicationDefaultCredentials() const;
 
-  const MetadataAgentConfiguration& config_;
+  const Configuration& config_;
 
   // Cached data.
   mutable std::mutex mutex_;

@@ -24,7 +24,7 @@
 namespace google {
 
 // Configuration object.
-class MetadataAgentConfiguration;
+class Configuration;
 
 // A server that implements the metadata agent API.
 class MetadataApiServer;
@@ -35,13 +35,13 @@ class MetadataReporter;
 // Runs the metadata tasks.
 class MetadataAgent {
  public:
-  MetadataAgent(const MetadataAgentConfiguration& config);
+  MetadataAgent(const Configuration& config);
   ~MetadataAgent();
 
   // Starts serving.
   void start();
 
-  const MetadataAgentConfiguration& config() const {
+  const Configuration& config() const {
     return config_;
   }
 
@@ -58,7 +58,7 @@ class MetadataAgent {
   }
 
  private:
-  const MetadataAgentConfiguration& config_;
+  const Configuration& config_;
   HealthChecker health_checker_;
 
   // The store for the metadata.

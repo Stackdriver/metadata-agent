@@ -4,7 +4,7 @@
 
 namespace google {
 
-void VerifyDefaultConfig(const MetadataAgentConfiguration& config) {
+void VerifyDefaultConfig(const Configuration& config) {
   EXPECT_EQ("", config.ProjectId());
   EXPECT_EQ("", config.CredentialsFile());
   EXPECT_EQ(3, config.MetadataApiNumThreads());
@@ -37,18 +37,18 @@ void VerifyDefaultConfig(const MetadataAgentConfiguration& config) {
   EXPECT_EQ("/var/run/metadata-agent/health/unhealthy", config.HealthCheckFile());
 }
 
-TEST(MetadataAgentConfigurationTest, NoConfig) {
-  MetadataAgentConfiguration config;
+TEST(ConfigurationTest, NoConfig) {
+  Configuration config;
   VerifyDefaultConfig(config);
 }
 
-TEST(MetadataAgentConfigurationTest, EmptyConfig) {
-  MetadataAgentConfiguration config(std::istringstream(""));
+TEST(ConfigurationTest, EmptyConfig) {
+  Configuration config(std::istringstream(""));
   VerifyDefaultConfig(config);
 }
 
-TEST(MetadataAgentConfigurationTest, PopulatedConfig) {
-  MetadataAgentConfiguration config(std::istringstream(
+TEST(ConfigurationTest, PopulatedConfig) {
+  Configuration config(std::istringstream(
       "ProjectId: TestProjectId\n"
       "MetadataApiNumThreads: 13\n"
       "MetadataReporterPurgeDeleted: true\n"
@@ -62,8 +62,8 @@ TEST(MetadataAgentConfigurationTest, PopulatedConfig) {
   EXPECT_EQ("/a/b/c", config.HealthCheckFile());
 }
 
-TEST(MetadataAgentConfigurationTest, CommentSkipped) {
-  MetadataAgentConfiguration config(std::istringstream(
+TEST(ConfigurationTest, CommentSkipped) {
+  Configuration config(std::istringstream(
       "ProjectId: TestProjectId\n"
       "#MetadataApiNumThreads: 13\n"
       "MetadataReporterPurgeDeleted: true\n"
@@ -71,8 +71,8 @@ TEST(MetadataAgentConfigurationTest, CommentSkipped) {
   EXPECT_EQ(3, config.MetadataApiNumThreads());
 }
 
-TEST(MetadataAgentConfigurationTest, BlankLine) {
-  MetadataAgentConfiguration config(std::istringstream(
+TEST(ConfigurationTest, BlankLine) {
+  Configuration config(std::istringstream(
       "ProjectId: TestProjectId\n"
       "\n"
       "\n"

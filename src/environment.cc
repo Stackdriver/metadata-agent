@@ -77,7 +77,7 @@ constexpr const char kGceInstanceResourceType[] = "gce_instance";
 
 }
 
-Environment::Environment(const MetadataAgentConfiguration& config)
+Environment::Environment(const Configuration& config)
     : config_(config), application_default_credentials_read_(false) {}
 
 std::string Environment::GetMetadataString(const std::string& path) const {

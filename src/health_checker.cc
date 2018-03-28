@@ -23,7 +23,7 @@
 
 namespace google {
 
-HealthChecker::HealthChecker(const MetadataAgentConfiguration& config)
+HealthChecker::HealthChecker(const Configuration& config)
     : config_(config) {
   boost::filesystem::create_directories(
       boost::filesystem::path(config_.HealthCheckFile()).parent_path());

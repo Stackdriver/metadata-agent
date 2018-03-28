@@ -29,7 +29,7 @@
 namespace google {
 
 // Configuration object.
-class MetadataAgentConfiguration;
+class Configuration;
 
 // An abstract class for asynchronous updates of the metadata mapping.
 class MetadataUpdater {
@@ -47,8 +47,8 @@ class MetadataUpdater {
     MetadataStore::Metadata metadata;
   };
 
-  MetadataUpdater(const MetadataAgentConfiguration& config,
-                  MetadataStore* store, const std::string& name);
+  MetadataUpdater(const Configuration& config, MetadataStore* store,
+                  const std::string& name);
   virtual ~MetadataUpdater();
 
   // Starts updating.
@@ -83,7 +83,7 @@ class MetadataUpdater {
     store_->UpdateMetadata(result.resource, std::move(result.metadata));
   }
 
-  const MetadataAgentConfiguration& config() {
+  const Configuration& config() {
     return config_;
   }
 
@@ -91,7 +91,7 @@ class MetadataUpdater {
   // The name of the updater provided by subclasses.
   std::string name_;
 
-  const MetadataAgentConfiguration& config_;
+  const Configuration& config_;
 
   // The store for the metadata.
   MetadataStore* store_;
@@ -101,7 +101,7 @@ class MetadataUpdater {
 class PollingMetadataUpdater : public MetadataUpdater {
  public:
   PollingMetadataUpdater(
-      const MetadataAgentConfiguration& config, MetadataStore* store,
+      const Configuration& config, MetadataStore* store,
       const std::string& name, double period_s,
       std::function<std::vector<ResourceMetadata>()> query_metadata);
   ~PollingMetadataUpdater();

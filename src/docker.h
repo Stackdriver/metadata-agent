@@ -24,14 +24,14 @@
 namespace google {
 
 // Configuration object.
-class MetadataAgentConfiguration;
+class Configuration;
 
 // Storage for the metadata mapping.
 class MetadataStore;
 
 class DockerReader {
  public:
-  DockerReader(const MetadataAgentConfiguration& config);
+  DockerReader(const Configuration& config);
   // A Docker metadata query function.
   std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
@@ -59,14 +59,13 @@ class DockerReader {
       const json::Object* container, Timestamp collected_at) const
       throw(json::Exception);
 
-  const MetadataAgentConfiguration& config_;
+  const Configuration& config_;
   Environment environment_;
 };
 
 class DockerUpdater : public PollingMetadataUpdater {
  public:
-  DockerUpdater(const MetadataAgentConfiguration& config,
-                MetadataStore* store)
+  DockerUpdater(const Configuration& config, MetadataStore* store)
       : reader_(config), PollingMetadataUpdater(
           config, store, "DockerUpdater",
           config.DockerUpdaterIntervalSeconds(),

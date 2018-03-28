@@ -25,7 +25,7 @@
 
 namespace google {
 
-MetadataApiServer::Handler::Handler(const MetadataAgentConfiguration& config,
+MetadataApiServer::Handler::Handler(const Configuration& config,
                                     const MetadataStore& store)
     : config_(config), store_(store) {}
 
@@ -66,7 +66,7 @@ void MetadataApiServer::Handler::log(const HttpServer::string_type& info) {
 }
 
 
-MetadataApiServer::MetadataApiServer(const MetadataAgentConfiguration& config,
+MetadataApiServer::MetadataApiServer(const Configuration& config,
                                      const MetadataStore& store,
                                      int server_threads,
                                      const std::string& host, int port)
