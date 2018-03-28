@@ -36,8 +36,8 @@ class Configuration;
 // A periodic reporter of metadata to Stackdriver.
 class MetadataReporter {
  public:
-  MetadataReporter(const Configuration& config,
-                   MetadataStore* store, double period_s);
+  MetadataReporter(const Configuration& config, MetadataStore* store,
+                   double period_s);
   ~MetadataReporter();
 
  private:

@@ -116,8 +116,7 @@ Configuration::Configuration()
       instance_zone_(kDefaultInstanceZone),
       health_check_file_(kDefaultHealthCheckFile) {}
 
-Configuration::Configuration(std::istream& input)
-    : Configuration() {
+Configuration::Configuration(std::istream& input) : Configuration() {
   ParseConfiguration(input);
 }
 

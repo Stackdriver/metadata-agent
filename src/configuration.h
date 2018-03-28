@@ -28,8 +28,7 @@ class Configuration {
   Configuration();
   Configuration(std::istream& input);
   // Used to accept inline construction of streams.
-  Configuration(std::istream&& input)
-      : Configuration(input) {}
+  Configuration(std::istream&& input) : Configuration(input) {}
 
   // Shared configuration.
   const std::string& ProjectId() const {
