@@ -154,7 +154,8 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
   const std::string namespace_name = metadata->Get<json::String>("namespace");
   const std::string pod_id = metadata->Get<json::String>("uid");
 
-  const json::value top_level = FindTopLevelOwner(namespace_name, pod->Clone());
+  const json::value top_level = FindTopLevelController(
+      namespace_name, pod->Clone());
   const json::Object* top_level_controller = top_level->As<json::Object>();
   const json::Object* top_level_metadata =
       top_level_controller->Get<json::Object>("metadata");
@@ -1033,7 +1034,7 @@ json::value KubernetesReader::GetOwner(
   return owner->Clone();
 }
 
-json::value KubernetesReader::FindTopLevelOwner(
+json::value KubernetesReader::FindTopLevelController(
     const std::string& ns, json::value object) const
     throw(QueryException, json::Exception) {
   const json::Object* obj = object->As<json::Object>();
@@ -1042,27 +1043,42 @@ json::value KubernetesReader::FindTopLevelOwner(
 #endif
   const json::Object* metadata = obj->Get<json::Object>("metadata");
 #ifdef VERBOSE
-  LOG(DEBUG) << "FindTopLevelOwner: metadata is " << *metadata;
+  LOG(DEBUG) << "FindTopLevelController: metadata is " << *metadata;
 #endif
   if (!metadata->Has("ownerReferences")) {
 #ifdef VERBOSE
-    LOG(DEBUG) << "FindTopLevelOwner: no owner references in " << *metadata;
+    LOG(DEBUG) << "FindTopLevelController: no owner references in "
+               << *metadata;
 #endif
     return object;
   }
   const json::Array* refs = metadata->Get<json::Array>("ownerReferences");
 #ifdef VERBOSE
-  LOG(DEBUG) << "FindTopLevelOwner: refs is " << *refs;
+  LOG(DEBUG) << "FindTopLevelController: refs is " << *refs;
 #endif
-  if (refs->size() > 1) {
-    LOG(WARNING) << "Found multiple owner references for " << *obj
-                 << " picking the first one arbitrarily.";
+
+  // Kubernetes objects are supposed to have at most one controller:
+  // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#objectmeta-v1-meta.
+  const json::Object* controller_ref = nullptr;
+  for (const json::value& ref : *refs) {
+    const json::Object* ref_obj = ref->As<json::Object>();
+    if (ref_obj->Has("controller") &&
+        ref_obj->Get<json::Boolean>("controller")) {
+      controller_ref = ref_obj;
+      break;
+    }
   }
-  const json::value& ref = (*refs)[0];
+  if (!controller_ref) {
 #ifdef VERBOSE
-  LOG(DEBUG) << "FindTopLevelOwner: ref is " << *ref;
+    LOG(DEBUG) << "FindTopLevelController: no controller references in "
+               << *refs;
 #endif
-  return FindTopLevelOwner(ns, GetOwner(ns, ref->As<json::Object>()));
+    return object;
+  }
+#ifdef VERBOSE
+  LOG(DEBUG) << "FindTopLevelController: controller_ref is " << *controller_ref;
+#endif
+  return FindTopLevelController(ns, GetOwner(ns, controller_ref));
 }
 
 bool KubernetesReader::ValidateConfiguration() const {
