@@ -47,7 +47,12 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
       if (config_.VerboseLogging()) {
         LOG(INFO) << "Found resource for " << id << ": " << resource;
       }
+      std::map<std::string, std::string> headers = {
+        {"Content-Type", "application/json"},
+      };
+
       conn->set_status(HttpServer::connection::ok);
+      conn->set_headers(headers);
       conn->write(resource.ToJSON()->ToString());
     } catch (const std::out_of_range& e) {
       // TODO: This could be considered log spam.
@@ -56,7 +61,11 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
       if (config_.VerboseLogging()) {
         LOG(WARNING) << "No matching resource for " << id;
       }
+      std::map<std::string, std::string> headers = {
+        {"Content-Type", "text/plain"},
+      };
       conn->set_status(HttpServer::connection::not_found);
+      conn->set_headers(headers);
     }
   }
 }
