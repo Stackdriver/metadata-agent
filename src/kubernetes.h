@@ -136,9 +136,9 @@ class KubernetesReader {
   json::value GetOwner(const std::string& ns, const json::Object* owner_ref)
       const throw(QueryException, json::Exception);
 
-  // For a given object, returns the top-level owner object.
-  // When there are multiple owner references, follows the first one.
-  json::value FindTopLevelOwner(const std::string& ns, json::value object) const
+  // For a given object, returns the top-level controller object.
+  // When there are multiple controller references, follows the first one.
+  json::value FindTopLevelController(const std::string& ns, json::value object) const
       throw(QueryException, json::Exception);
 
   // Cached data.
