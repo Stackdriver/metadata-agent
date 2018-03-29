@@ -61,7 +61,7 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
       }
       conn->set_status(HttpServer::connection::not_found);
       conn->set_headers(std::map<std::string, std::string>({
-        {"Content-Type", "text/plain"},
+        {"Content-Type", "application/json"},
       }));
       json::value json_response = json::object({
         {"status_code", json::number(404)},
