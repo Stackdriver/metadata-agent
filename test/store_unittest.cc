@@ -23,9 +23,9 @@ class MetadataStoreTest : public ::testing::Test {
 };
 
 TEST_F(MetadataStoreTest, ResourceWithOneIdCorrectlyStored) {
-  MonitoredResource mr("type", {});
-  store.UpdateResource({"id"}, mr);
-  EXPECT_EQ(mr, store.LookupResource("id"));
+  MonitoredResource resource("type", {});
+  store.UpdateResource({"id"}, resource);
+  EXPECT_EQ(resource, store.LookupResource("id"));
 }
 
 TEST_F(MetadataStoreTest, EmptyStoreLookupThrowsError) {
@@ -33,52 +33,52 @@ TEST_F(MetadataStoreTest, EmptyStoreLookupThrowsError) {
 }
 
 TEST_F(MetadataStoreTest, ResourceLookupFailuresAreIndependent) {
-  MonitoredResource mr("type", {});
-  store.UpdateResource({"id"}, mr);
+  MonitoredResource resource("type", {});
+  store.UpdateResource({"id"}, resource);
   EXPECT_THROW(store.LookupResource("missing_id"), std::out_of_range);
-  EXPECT_EQ(mr, store.LookupResource("id"));
+  EXPECT_EQ(resource, store.LookupResource("id"));
 }
 
 TEST_F(MetadataStoreTest, MultipleResourcesWithSingleIdsCorrectlyStored) {
-  MonitoredResource mr1("type1", {});
-  MonitoredResource mr2("type2", {});
-  store.UpdateResource({"id1"}, mr1);
-  store.UpdateResource({"id2"}, mr2);
-  EXPECT_EQ(mr2, store.LookupResource("id2"));
-  EXPECT_EQ(mr1, store.LookupResource("id1"));
+  MonitoredResource resource1("type1", {});
+  MonitoredResource resource2("type2", {});
+  store.UpdateResource({"id1"}, resource1);
+  store.UpdateResource({"id2"}, resource2);
+  EXPECT_EQ(resource2, store.LookupResource("id2"));
+  EXPECT_EQ(resource1, store.LookupResource("id1"));
 }
 
 TEST_F(MetadataStoreTest, SingleResourceWithMultipleIdsCorrectlyStored) {
-  MonitoredResource mr("type", {});
-  store.UpdateResource({"id1", "id2", "id3"}, mr);
-  EXPECT_EQ(mr, store.LookupResource("id3"));
-  EXPECT_EQ(mr, store.LookupResource("id1"));
-  EXPECT_EQ(mr, store.LookupResource("id2"));
+  MonitoredResource resource("type", {});
+  store.UpdateResource({"id1", "id2", "id3"}, resource);
+  EXPECT_EQ(resource, store.LookupResource("id3"));
+  EXPECT_EQ(resource, store.LookupResource("id1"));
+  EXPECT_EQ(resource, store.LookupResource("id2"));
 }
 
 TEST_F(MetadataStoreTest, MultipleResourcesAndIdsCorrectlyStored) {
-  MonitoredResource mr1("type1", {});
-  MonitoredResource mr2("type2", {});
-  store.UpdateResource({"id1", "id2", "id3"}, mr1);
-  store.UpdateResource({"id-a", "id-b", "id-c"}, mr2);
-  EXPECT_EQ(mr1, store.LookupResource("id1"));
-  EXPECT_EQ(mr1, store.LookupResource("id2"));
-  EXPECT_EQ(mr1, store.LookupResource("id3"));
-  EXPECT_EQ(mr2, store.LookupResource("id-a"));
-  EXPECT_EQ(mr2, store.LookupResource("id-b"));
-  EXPECT_EQ(mr2, store.LookupResource("id-c"));
+  MonitoredResource resource1("type1", {});
+  MonitoredResource resource2("type2", {});
+  store.UpdateResource({"id1", "id2", "id3"}, resource1);
+  store.UpdateResource({"id-a", "id-b", "id-c"}, resource2);
+  EXPECT_EQ(resource1, store.LookupResource("id1"));
+  EXPECT_EQ(resource1, store.LookupResource("id2"));
+  EXPECT_EQ(resource1, store.LookupResource("id3"));
+  EXPECT_EQ(resource2, store.LookupResource("id-a"));
+  EXPECT_EQ(resource2, store.LookupResource("id-b"));
+  EXPECT_EQ(resource2, store.LookupResource("id-c"));
 }
 
 TEST_F(MetadataStoreTest, ResourceToIdsAssociationCorrectlyUpdated) {
-  MonitoredResource mr("type", {});
-  store.UpdateResource({"id1", "id2"}, mr);
-  EXPECT_EQ(mr, store.LookupResource("id1"));
-  EXPECT_EQ(mr, store.LookupResource("id2"));
-  store.UpdateResource({"id-a", "id-b"}, mr);
-  EXPECT_EQ(mr, store.LookupResource("id1"));
-  EXPECT_EQ(mr, store.LookupResource("id2"));
-  EXPECT_EQ(mr, store.LookupResource("id-a"));
-  EXPECT_EQ(mr, store.LookupResource("id-b"));
+  MonitoredResource resource("type", {});
+  store.UpdateResource({"id1", "id2"}, resource);
+  EXPECT_EQ(resource, store.LookupResource("id1"));
+  EXPECT_EQ(resource, store.LookupResource("id2"));
+  store.UpdateResource({"id-a", "id-b"}, resource);
+  EXPECT_EQ(resource, store.LookupResource("id1"));
+  EXPECT_EQ(resource, store.LookupResource("id2"));
+  EXPECT_EQ(resource, store.LookupResource("id-a"));
+  EXPECT_EQ(resource, store.LookupResource("id-b"));
 }
 
 TEST_F(MetadataStoreTest, DefaultMetadataMapIsEmpty) {
@@ -87,29 +87,29 @@ TEST_F(MetadataStoreTest, DefaultMetadataMapIsEmpty) {
 }
 
 TEST_F(MetadataStoreTest, UpdateResourceDoesNotUpdateMetadata) {
-  MonitoredResource mr("type", {});
-  store.UpdateResource({"id1"}, mr);
+  MonitoredResource resource("type", {});
+  store.UpdateResource({"id1"}, resource);
   const auto metadata_map = GetMetadataMap();
   EXPECT_TRUE(metadata_map.empty());
 }
 
 TEST_F(MetadataStoreTest, UpdateMetadataChangesMetadataMap) {
-  MonitoredResource mr("type", {});
+  MonitoredResource resource("type", {});
   MetadataStore::Metadata m(
       "default-version",
       false,
       std::chrono::system_clock::now(),
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}}));
-  store.UpdateMetadata(mr, std::move(m));
+  store.UpdateMetadata(resource, std::move(m));
   const auto metadata_map = GetMetadataMap();
   EXPECT_EQ(1, metadata_map.size());
-  EXPECT_EQ("default-version", metadata_map.at(mr).version);
+  EXPECT_EQ("default-version", metadata_map.at(resource).version);
 }
 
 TEST_F(MetadataStoreTest, MultipleUpdateMetadataChangesMetadataMap) {
-  MonitoredResource mr1("type1", {});
-  MonitoredResource mr2("type2", {});
+  MonitoredResource resource1("type1", {});
+  MonitoredResource resource2("type2", {});
   MetadataStore::Metadata m1(
       "default-version1",
       false,
@@ -122,41 +122,41 @@ TEST_F(MetadataStoreTest, MultipleUpdateMetadataChangesMetadataMap) {
       std::chrono::system_clock::now(),
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}}));
-  store.UpdateMetadata(mr1, std::move(m1));
-  store.UpdateMetadata(mr2, std::move(m2));
+  store.UpdateMetadata(resource1, std::move(m1));
+  store.UpdateMetadata(resource2, std::move(m2));
   const auto metadata_map = GetMetadataMap();
   EXPECT_EQ(2, metadata_map.size());
-  EXPECT_EQ("default-version1", metadata_map.at(mr1).version);
-  EXPECT_EQ("default-version2", metadata_map.at(mr2).version);
+  EXPECT_EQ("default-version1", metadata_map.at(resource1).version);
+  EXPECT_EQ("default-version2", metadata_map.at(resource2).version);
 }
 
 TEST_F(MetadataStoreTest, UpdateMetadataForResourceChangesMetadataEntry) {
-  MonitoredResource mr("type", {});
+  MonitoredResource resource("type", {});
   MetadataStore::Metadata m1(
       "default-version1",
       false,
       std::chrono::system_clock::now(),
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}}));
-  store.UpdateMetadata(mr, std::move(m1));
+  store.UpdateMetadata(resource, std::move(m1));
   const auto metadata_map_before = GetMetadataMap();
   EXPECT_EQ(1, metadata_map_before.size());
-  EXPECT_EQ("default-version1", metadata_map_before.at(mr).version);
+  EXPECT_EQ("default-version1", metadata_map_before.at(resource).version);
   MetadataStore::Metadata m2(
       "default-version2",
       false,
       std::chrono::system_clock::now(),
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}}));
-  store.UpdateMetadata(mr, std::move(m2));
+  store.UpdateMetadata(resource, std::move(m2));
   const auto metadata_map_after = GetMetadataMap();
   EXPECT_EQ(1, metadata_map_after.size());
-  EXPECT_EQ("default-version2", metadata_map_after.at(mr).version);
+  EXPECT_EQ("default-version2", metadata_map_after.at(resource).version);
 }
 
 TEST_F(MetadataStoreTest, PurgeDeletedEntriesDeletesCorrectMetadata) {
-  MonitoredResource mr1("type1", {});
-  MonitoredResource mr2("type2", {});
+  MonitoredResource resource1("type1", {});
+  MonitoredResource resource2("type2", {});
   MetadataStore::Metadata m1(
       "default-version1",
       false,
@@ -169,17 +169,17 @@ TEST_F(MetadataStoreTest, PurgeDeletedEntriesDeletesCorrectMetadata) {
       std::chrono::system_clock::now(),
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}}));
-  store.UpdateMetadata(mr1, std::move(m1));
-  store.UpdateMetadata(mr2, std::move(m2));
+  store.UpdateMetadata(resource1, std::move(m1));
+  store.UpdateMetadata(resource2, std::move(m2));
   const auto metadata_map_before = GetMetadataMap();
   EXPECT_EQ(2, metadata_map_before.size());
-  EXPECT_EQ("default-version1", metadata_map_before.at(mr1).version);
-  EXPECT_EQ("default-version2", metadata_map_before.at(mr2).version);
+  EXPECT_EQ("default-version1", metadata_map_before.at(resource1).version);
+  EXPECT_EQ("default-version2", metadata_map_before.at(resource2).version);
   PurgeDeletedEntries();
   const auto metadata_map_after = GetMetadataMap();
   EXPECT_EQ(1, metadata_map_after.size());
-  EXPECT_EQ("default-version1", metadata_map_after.at(mr1).version);
-  EXPECT_THROW(metadata_map_after.at(mr2), std::out_of_range);
+  EXPECT_EQ("default-version1", metadata_map_after.at(resource1).version);
+  EXPECT_THROW(metadata_map_after.at(resource2), std::out_of_range);
 }
 
 TEST(MetadataTest, MetadataCorrectlyConstructed) {
@@ -223,6 +223,7 @@ TEST(MetadataTest, IgnoredMetadataCorrectlyCreated) {
 TEST(MetadataTest, IgnoredMetadataCorrectlyCloned) {
   MetadataStore::Metadata m = MetadataStore::Metadata::IGNORED();
   MetadataStore::Metadata m_clone = m.Clone();
+  EXPECT_TRUE(m.ignore);
   EXPECT_EQ(m.ignore, m_clone.ignore);
 }
 
