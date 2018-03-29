@@ -9,18 +9,29 @@ GMOCK_DIR=$(LIBDIR)/googletest/googlemock
 
 # TODO: Factor out the common variables.
 CPP_NETLIB_DIR=$(LIBDIR)/cpp-netlib
+CPP_NETLIB_LIBDIR=$(CPP_NETLIB_DIR)/libs/network/src
+NETWORK_URI_DIR=$(CPP_NETLIB_DIR)/deps/uri
+NETWORK_URI_LIBDIR=$(NETWORK_URI_DIR)/src
 YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
 YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
 
+CPP_NETLIB_LIBS=\
+    $(CPP_NETLIB_LIBDIR)/libcppnetlib-client-connections.a \
+    $(CPP_NETLIB_LIBDIR)/libcppnetlib-server-parsers.a \
+    $(NETWORK_URI_LIBDIR)/libnetwork-uri.a
 YAML_CPP_LIBS=$(YAML_CPP_LIBDIR)/libyaml-cpp.a
 
 CPPFLAGS+= \
+    -DENABLE_KUBERNETES_METADATA \
     -isystem $(GTEST_DIR)/include -I$(GMOCK_DIR)/include \
     -I$(YAML_CPP_DIR)/include
 CXXFLAGS=\
     -std=c++11 -g -pthread -Wno-write-strings -Wno-deprecated
-LDLIBS=-lpthread -lboost_program_options -lyaml-cpp -lyajl
-LDFLAGS=-L$(YAML_CPP_LIBDIR)
+LDLIBS=\
+    -lcppnetlib-client-connections -lcppnetlib-server-parsers -lnetwork-uri \
+    -lpthread -lboost_program_options -lboost_system -lboost_thread \
+    -lboost_filesystem -lyaml-cpp -lyajl -lcrypto -lssl
+LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR)
 
 # Where to find code under test.
 SRC_DIR=../src
@@ -34,6 +45,7 @@ TESTS=\
       format_unittest \
       health_checker_unittest \
       json_unittest \
+      kubernetes_unittest \
       resource_unittest \
       time_unittest
 
@@ -63,6 +75,9 @@ init-submodules:
 $(YAML_CPP_LIBS):
 	cd $(SRC_DIR) && $(MAKE) $@
 
+$(CPP_NETLIB_LIBS):
+	cd $(SRC_DIR) && $(MAKE) $@
+
 $(SRC_DIR)/%.o: $(SRC_DIR)/%.cc
 	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
@@ -82,6 +97,12 @@ format_unittest: $(GTEST_LIB) format_unittest.o $(SRC_DIR)/format.o
 base64_unittest: $(GTEST_LIB) base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 configuration_unittest: $(GTEST_LIB) $(YAML_CPP_LIBS) configuration_unittest.o $(SRC_DIR)/configuration.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+kubernetes_unittest: $(GTEST_LIB) kubernetes_unittest.o $(SRC_DIR)/kubernetes.o
+	$(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/environment.o
+	$(SRC_DIR)/time.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o
+	$(SRC_DIR)/updater.o $(SRC_DIR)/instance.o $(SRC_DIR)/format.o
+	$(SRC_DIR)/configuration.o $(SRC_DIR)/health_checker.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 resource_unittest: $(GTEST_LIB) resource_unittest.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@

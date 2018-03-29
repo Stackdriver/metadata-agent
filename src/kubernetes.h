@@ -60,6 +60,7 @@ class KubernetesReader {
   const std::string& CurrentNode() const;
 
  private:
+  friend class KubernetesTest;
   // A representation of all query-related errors.
   class QueryException {
    public:
