@@ -48,6 +48,9 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
         LOG(INFO) << "Found resource for " << id << ": " << resource;
       }
       conn->set_status(HttpServer::connection::ok);
+      conn->set_headers(std::map<std::string, std::string>({
+        {"Content-Type", "application/json"},
+      }));
       conn->write(resource.ToJSON()->ToString());
     } catch (const std::out_of_range& e) {
       // TODO: This could be considered log spam.
@@ -57,6 +60,14 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
         LOG(WARNING) << "No matching resource for " << id;
       }
       conn->set_status(HttpServer::connection::not_found);
+      conn->set_headers(std::map<std::string, std::string>({
+        {"Content-Type", "application/json"},
+      }));
+      json::value json_response = json::object({
+        {"status_code", json::number(404)},
+        {"error", json::string("Not found")},
+      });
+      conn->write(json_response->ToString());
     }
   }
 }
