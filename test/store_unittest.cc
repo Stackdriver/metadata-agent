@@ -35,7 +35,7 @@ TEST_F(MetadataStoreTest, EmptyStoreThrowsError) {
 TEST_F(MetadataStoreTest, UnknownResourceIdThrowsError) {
   MonitoredResource mr("type", {});
   store.UpdateResource({"id"}, mr);
-  EXPECT_THROW(store.LookupResource("unknown_id"), std::out_of_range);
+  EXPECT_THROW(store.LookupResource("missing_id"), std::out_of_range);
   EXPECT_EQ(mr, store.LookupResource("id"));
 }
 
@@ -196,9 +196,7 @@ TEST(MetadataTest, MetadataCorrectlyConstructed) {
             m.created_at);
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:32:45.678901234Z"),
             m.collected_at);
-  const json::Object* obj = m.metadata->As<json::Object>();
-  EXPECT_TRUE(obj->Has("f"));
-  EXPECT_EQ("hello", obj->Get<json::String>("f"));
+  EXPECT_EQ("{\"f\":\"hello\"}", m.metadata->ToString());
 }
 
 TEST(MetadataTest, MetadataCorrectlyCloned) {
@@ -214,9 +212,7 @@ TEST(MetadataTest, MetadataCorrectlyCloned) {
   EXPECT_FALSE(m_clone.is_deleted);
   EXPECT_EQ(m.created_at, m_clone.created_at);
   EXPECT_EQ(m.collected_at, m_clone.collected_at);
-  const json::Object* obj = m_clone.metadata->As<json::Object>();
-  EXPECT_TRUE(obj->Has("f"));
-  EXPECT_EQ("hello", obj->Get<json::String>("f"));
+  EXPECT_EQ(m.metadata->ToString(), m_clone.metadata->ToString());
 }
 
 TEST(MetadataTest, IgnoredMetadataCorrectlyCreated) {
