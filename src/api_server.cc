@@ -64,7 +64,7 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
         {"Content-Type", "text/plain"},
       }));
       json::value json_response = json::object({
-        {"status_code", json::int(404)},
+        {"status_code", json::number(404)},
         {"error", json::string("Not found")},
       });
       conn->write(json_response->ToString());
