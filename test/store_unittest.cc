@@ -8,9 +8,6 @@ namespace google {
 
 class MetadataStoreTest : public ::testing::Test {
  protected:
-  Configuration config;
-  MetadataStore store;
-
   MetadataStoreTest() : config(), store(config) {}
 
   std::map<MonitoredResource, MetadataStore::Metadata> GetMetadataMap() const {
@@ -21,45 +18,47 @@ class MetadataStoreTest : public ::testing::Test {
     store.PurgeDeletedEntries();
   }
 
+  Configuration config;
+  MetadataStore store;
 };
 
-TEST_F(MetadataStoreTest, ResourceWithOneIdStoredCorrectly) {
-  MonitoredResource mr("some_resource", {});
+TEST_F(MetadataStoreTest, ResourceWithOneIdCorrectlyStored) {
+  MonitoredResource mr("type", {});
   store.UpdateResource({"id"}, mr);
   EXPECT_EQ(mr, store.LookupResource("id"));
 }
 
 TEST_F(MetadataStoreTest, EmptyStoreThrowsError) {
-  EXPECT_THROW(store.LookupResource("some_resource_id"), std::out_of_range);
+  EXPECT_THROW(store.LookupResource("missing_id"), std::out_of_range);
 }
 
-TEST_F(MetadataStoreTest, ResourceNotFoundThrowsError) {
-  MonitoredResource mr("some_resource", {});
+TEST_F(MetadataStoreTest, UnknownResourceIdThrowsError) {
+  MonitoredResource mr("type", {});
   store.UpdateResource({"id"}, mr);
+  EXPECT_THROW(store.LookupResource("unknown_id"), std::out_of_range);
   EXPECT_EQ(mr, store.LookupResource("id"));
-  EXPECT_THROW(store.LookupResource("other_resource"), std::out_of_range);
 }
 
 TEST_F(MetadataStoreTest, MultipleResourcesWithSingleIdsCorrectlyStored) {
-  MonitoredResource mr1("some_resource1", {});
-  MonitoredResource mr2("some_resource2", {});
+  MonitoredResource mr1("type1", {});
+  MonitoredResource mr2("type2", {});
   store.UpdateResource({"id1"}, mr1);
   store.UpdateResource({"id2"}, mr2);
-  EXPECT_EQ(mr1, store.LookupResource("id1"));
   EXPECT_EQ(mr2, store.LookupResource("id2"));
+  EXPECT_EQ(mr1, store.LookupResource("id1"));
 }
 
 TEST_F(MetadataStoreTest, SingleResourceWithMultipleIdsCorrectlyStored) {
-  MonitoredResource mr("some_resource", {});
+  MonitoredResource mr("type", {});
   store.UpdateResource({"id1", "id2", "id3"}, mr);
+  EXPECT_EQ(mr, store.LookupResource("id3"));
   EXPECT_EQ(mr, store.LookupResource("id1"));
   EXPECT_EQ(mr, store.LookupResource("id2"));
-  EXPECT_EQ(mr, store.LookupResource("id3"));
 }
 
 TEST_F(MetadataStoreTest, MultipleResourcesAndIdsCorrectlyStored) {
-  MonitoredResource mr1("some_resource1", {});
-  MonitoredResource mr2("some_resource2", {});
+  MonitoredResource mr1("type1", {});
+  MonitoredResource mr2("type2", {});
   store.UpdateResource({"id1", "id2", "id3"}, mr1);
   store.UpdateResource({"id-a", "id-b", "id-c"}, mr2);
   EXPECT_EQ(mr1, store.LookupResource("id1"));
@@ -71,7 +70,7 @@ TEST_F(MetadataStoreTest, MultipleResourcesAndIdsCorrectlyStored) {
 }
 
 TEST_F(MetadataStoreTest, ResourceToIdsAssociationCorrectlyUpdated) {
-  MonitoredResource mr("some_resource", {});
+  MonitoredResource mr("type", {});
   store.UpdateResource({"id1", "id2"}, mr);
   EXPECT_EQ(mr, store.LookupResource("id1"));
   EXPECT_EQ(mr, store.LookupResource("id2"));
@@ -88,14 +87,14 @@ TEST_F(MetadataStoreTest, DefaultMetadataMapIsEmpty) {
 }
 
 TEST_F(MetadataStoreTest, UpdateResourceDoesNotUpdateMetadata) {
-  MonitoredResource mr("some_resource", {});
+  MonitoredResource mr("type", {});
   store.UpdateResource({"id1"}, mr);
   const auto metadata_map = GetMetadataMap();
   EXPECT_TRUE(metadata_map.empty());
 }
 
 TEST_F(MetadataStoreTest, UpdateMetadataChangesMetadataMap) {
-  MonitoredResource mr("some_resource", {});
+  MonitoredResource mr("type", {});
   MetadataStore::Metadata m(
       "default-version",
       false,
@@ -109,8 +108,8 @@ TEST_F(MetadataStoreTest, UpdateMetadataChangesMetadataMap) {
 }
 
 TEST_F(MetadataStoreTest, MultipleUpdateMetadataChangesMetadataMap) {
-  MonitoredResource mr1("some_resource1", {});
-  MonitoredResource mr2("some_resource2", {});
+  MonitoredResource mr1("type1", {});
+  MonitoredResource mr2("type2", {});
   MetadataStore::Metadata m1(
       "default-version1",
       false,
@@ -132,7 +131,7 @@ TEST_F(MetadataStoreTest, MultipleUpdateMetadataChangesMetadataMap) {
 }
 
 TEST_F(MetadataStoreTest, UpdateMetadataForResourceChangesMetadataEntry) {
-  MonitoredResource mr("some_resource", {});
+  MonitoredResource mr("type", {});
   MetadataStore::Metadata m1(
       "default-version1",
       false,
@@ -156,8 +155,8 @@ TEST_F(MetadataStoreTest, UpdateMetadataForResourceChangesMetadataEntry) {
 }
 
 TEST_F(MetadataStoreTest, PurgeDeletedEntriesDeletesCorrectMetadata) {
-  MonitoredResource mr1("some_resource1", {});
-  MonitoredResource mr2("some_resource2", {});
+  MonitoredResource mr1("type1", {});
+  MonitoredResource mr2("type2", {});
   MetadataStore::Metadata m1(
       "default-version1",
       false,
@@ -183,7 +182,7 @@ TEST_F(MetadataStoreTest, PurgeDeletedEntriesDeletesCorrectMetadata) {
   EXPECT_THROW(metadata_map_after.at(mr2), std::out_of_range);
 }
 
-TEST(MetadataTest, MetadataParsedCorrectly) {
+TEST(MetadataTest, MetadataCorrectlyConstructed) {
   MetadataStore::Metadata m(
       "default-version",
       false,
@@ -202,7 +201,7 @@ TEST(MetadataTest, MetadataParsedCorrectly) {
   EXPECT_EQ("hello", obj->Get<json::String>("f"));
 }
 
-TEST(MetadataTest, MetadataClonedCorrectly) {
+TEST(MetadataTest, MetadataCorrectlyCloned) {
   MetadataStore::Metadata m(
       "default-version",
       false,
@@ -210,9 +209,9 @@ TEST(MetadataTest, MetadataClonedCorrectly) {
       time::rfc3339::FromString("2018-03-03T01:32:45.678901234Z"),
       json::object({{"f", json::string("hello")}}));
   MetadataStore::Metadata m_clone = m.Clone();
+  EXPECT_FALSE(m_clone.ignore);
   EXPECT_EQ(m.version, m_clone.version);
   EXPECT_FALSE(m_clone.is_deleted);
-  EXPECT_FALSE(m_clone.ignore);
   EXPECT_EQ(m.created_at, m_clone.created_at);
   EXPECT_EQ(m.collected_at, m_clone.collected_at);
   const json::Object* obj = m_clone.metadata->As<json::Object>();
