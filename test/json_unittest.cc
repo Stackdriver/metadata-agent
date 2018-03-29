@@ -7,6 +7,13 @@
 
 namespace {
 
+void ExpectSerializesToSelf(const std::string& json_text) {
+    json::value v = json::Parser::FromString(json_text);
+    EXPECT_TOSTRING_EQ(json_text, v);
+    // May as well test a clone while we're at it.
+    EXPECT_TOSTRING_EQ(json_text, v->Clone());
+}
+
 void GuardJsonException(std::function<void()> test) {
   try {
     test();
@@ -21,7 +28,10 @@ void GuardJsonException(std::function<void()> test) {
 TEST(TrivialParseTest, Null) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("null");
+    EXPECT_TRUE(v->Is<json::Null>());
     EXPECT_EQ(json::NullType, v->type());
+    // Check it does not throw exception.
+    v->As<json::Null>();
   });
 }
 
@@ -37,6 +47,8 @@ TEST(TrivialToStringTest, Null) {
 TEST(TrivialParseTest, True) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("true");
+    EXPECT_TRUE(v->Is<json::Boolean>());
+    EXPECT_EQ(json::BooleanType, v->type());
     EXPECT_EQ(true, v->As<json::Boolean>()->value());
   });
 }
@@ -50,6 +62,8 @@ TEST(TrivialToStringTest, True) {
 TEST(TrivialParseTest, False) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("false");
+    EXPECT_TRUE(v->Is<json::Boolean>());
+    EXPECT_EQ(json::BooleanType, v->type());
     EXPECT_EQ(false, v->As<json::Boolean>()->value());
   });
 }
@@ -66,6 +80,8 @@ TEST(TrivialToStringTest, False) {
 TEST(TrivialParseTest, Number) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("2");
+    EXPECT_TRUE(v->Is<json::Number>());
+    EXPECT_EQ(json::NumberType, v->type());
     EXPECT_EQ(2.0, v->As<json::Number>()->value());
   });
 }
@@ -82,6 +98,8 @@ TEST(TrivialToStringTest, Number) {
 TEST(TrivialParseTest, StringEmpty) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("\"\"");
+    EXPECT_TRUE(v->Is<json::String>());
+    EXPECT_EQ(json::StringType, v->type());
     EXPECT_EQ("", v->As<json::String>()->value());
   });
 }
@@ -112,6 +130,8 @@ TEST(TrivialToStringTest, StringOneChar) {
 TEST(TrivialParseTest, ArrayEmpty) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("[]");
+    EXPECT_TRUE(v->Is<json::Array>());
+    EXPECT_EQ(json::ArrayType, v->type());
     EXPECT_TRUE(v->As<json::Array>()->empty());
   });
 }
@@ -143,6 +163,8 @@ TEST(TrivialToStringTest, ArrayOneElement) {
 TEST(TrivialParseTest, ObjectEmpty) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("{}");
+    EXPECT_TRUE(v->Is<json::Object>());
+    EXPECT_EQ(json::ObjectType, v->type());
     EXPECT_TRUE(v->As<json::Object>()->empty());
   });
 }
@@ -307,24 +329,26 @@ TEST(EdgeTest, NegativeNumbers) {
 
 // Big tests.
 
+const std::string json_text =
+  "{\n"
+  "  \"foo\": [1.0, 2, 3],\n"
+  "  \"bar\": {\"x\": 0, \"y\": null},\n"
+  "  \"baz\": true,\n"
+  "  \"str\": \"asdfasdf\"\n"
+  "}\n";
+
+const std::string canonical_json_text =
+  "{"
+  "\"bar\":{\"x\":0.0,\"y\":null},"
+  "\"baz\":true,"
+  "\"foo\":[1.0,2.0,3.0],"
+  "\"str\":\"asdfasdf\""
+  "}";
+
 TEST(BigTest, RealisticParsing) {
   GuardJsonException([](){
-    json::value v = json::Parser::FromString(
-      "{\n"
-      "  \"foo\": [1, 2, 3],\n"
-      "  \"bar\": {\"x\": 0, \"y\": null},\n"
-      "  \"baz\": true,\n"
-      "  \"str\": \"asdfasdf\"\n"
-      "}\n"
-    );
-    EXPECT_TOSTRING_EQ(
-      "{"
-      "\"bar\":{\"x\":0.0,\"y\":null},"
-      "\"baz\":true,"
-      "\"foo\":[1.0,2.0,3.0],"
-      "\"str\":\"asdfasdf\""
-      "}",
-      v);
+    json::value v = json::Parser::FromString(json_text);
+    EXPECT_TOSTRING_EQ(canonical_json_text, v);
   });
 }
 
@@ -336,44 +360,34 @@ TEST(BigTest, RealisticConstruction) {
       {"baz", json::boolean(true)},
       {"str", json::string("asdfasdf")},
     });
-    EXPECT_TOSTRING_EQ(
-      "{"
-      "\"bar\":{\"x\":0.0,\"y\":null},"
-      "\"baz\":true,"
-      "\"foo\":[1.0,2.0,3.0],"
-      "\"str\":\"asdfasdf\""
-      "}",
-      v);
+    EXPECT_TOSTRING_EQ(canonical_json_text, v);
+  });
+}
+
+TEST(BigTest, Clone) {
+  GuardJsonException([](){
+    json::value v = json::Parser::FromString(json_text);
+    json::value cloned = v->Clone();
+    EXPECT_TOSTRING_EQ(canonical_json_text, cloned);
   });
 }
 
 TEST(BigTest, LotsOfArrayNesting) {
   GuardJsonException([](){
-    json::value v = json::Parser::FromString(
+    ExpectSerializesToSelf(
       "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
       "]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]");
-    EXPECT_TOSTRING_EQ(
-      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
-      "]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
-      v);
   });
 }
 
 TEST(BigTest, LotsOfObjectNesting) {
   GuardJsonException([](){
-    json::value v = json::Parser::FromString(
+    ExpectSerializesToSelf(
       "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":"
       "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":"
       "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":"
       "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":null"
       "}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}");
-    EXPECT_TOSTRING_EQ(
-      "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":"
-      "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":"
-      "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":"
-      "{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":{\"f\":null"
-      "}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}",
-      v);
   });
 }
 
