@@ -63,6 +63,11 @@ void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
       conn->set_headers(std::map<std::string, std::string>({
         {"Content-Type", "text/plain"},
       }));
+      json::value json_response = json::object({
+        {"status_code", json::int(404)},
+        {"error", json::string("Not found")},
+      });
+      conn->write(json_response->ToString());
     }
   }
 }
