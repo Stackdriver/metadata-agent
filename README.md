@@ -2,6 +2,7 @@ This is the Stackdriver metadata agent.
 
 # Prerequisites
 
+<!---
 ## Ubuntu 14.04 (trusty)
 
 1. Install runtime dependencies:
@@ -18,6 +19,7 @@ This is the Stackdriver metadata agent.
          libboost-filesystem1.55-dev libboost-program-options1.55-dev \
          libboost-regex1.55-dev libboost-thread1.55-dev libboost-timer1.55-dev
 
+-->
 ## Ubuntu 16.04 (xenial)
 
 1. Install runtime dependencies:
