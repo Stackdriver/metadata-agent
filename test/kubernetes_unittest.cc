@@ -22,6 +22,7 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
     "KubernetesClusterLocation: TestClusterLocation\n"
     "MetadataIngestionRawContentVersion: TestVersion\n"
     "InstanceZone: TestZone\n"
+    "InstanceResourceType: gce_instance\n"
     "InstanceId: TestID\n"
   ));
   Environment environment(config);
@@ -32,35 +33,40 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
       {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
     })}
   });
-  const auto metadata(
-      GetNodeMetadata(reader, node->As<json::Object>(), Timestamp(), false));
-  EXPECT_EQ(1, metadata.ids.size());
-  EXPECT_EQ("k8s_node.testname", metadata.ids[0]);
+  const auto m =
+      GetNodeMetadata(reader, node->As<json::Object>(), Timestamp(), false);
+  EXPECT_EQ(1, m.ids.size());
+  EXPECT_EQ("k8s_node.testname", m.ids[0]);
   EXPECT_EQ(MonitoredResource("k8s_node", {
     {"cluster_name", "TestClusterName"},
     {"node_name", "testname"},
     {"location", "TestClusterLocation"},
-  }), metadata.resource);
-  EXPECT_EQ("TestVersion", metadata.metadata.version);
-  EXPECT_EQ(false, metadata.metadata.is_deleted);
+  }), m.resource);
+  EXPECT_EQ("TestVersion", m.metadata.version);
+  EXPECT_EQ(false, m.metadata.is_deleted);
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            metadata.metadata.created_at);
-  EXPECT_EQ(Timestamp(), metadata.metadata.collected_at);
+            m.metadata.created_at);
+  EXPECT_EQ(Timestamp(), m.metadata.collected_at);
   json::value big = json::object({
     {"blobs", json::object({
       {"association", json::object({
         {"version", json::string("TestVersion")},
         {"raw", json::object({
-          {"infrastructureResource",
-           InstanceReader::InstanceResource(environment).ToJSON()},
+          {"infrastructureResource", json::object({
+            {"type", json::string("gce_instance")},
+            {"labels", json::object({
+              {"instance_id", json::string("TestID")},
+              {"zone", json::string("TestZone")},
+            })},
+          })},
         })},
       })},
       {"api", json::object({
-        {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc
+        {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
         {"raw", std::move(node)},
       })},
     })},
   });
-  EXPECT_EQ(big->ToString(), metadata.metadata.metadata->ToString());
+  EXPECT_EQ(big->ToString(), m.metadata.metadata->ToString());
 }
 }  // namespace google

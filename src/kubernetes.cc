@@ -1178,7 +1178,7 @@ void KubernetesReader::WatchNodes(
   } catch (const KubernetesReader::QueryException& e) {
     LOG(ERROR) << "No more node metadata will be collected";
   }
-  if (health_checker) {
+  if (health_checker_) {
     health_checker_->SetUnhealthy("kubernetes_node_thread");
   }
   LOG(INFO) << "Watch thread (node) exiting";
