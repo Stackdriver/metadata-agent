@@ -27,11 +27,11 @@ CPPFLAGS+= \
     -I$(YAML_CPP_DIR)/include
 CXXFLAGS=\
     -std=c++11 -g -pthread -Wno-write-strings -Wno-deprecated
+LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR)
 LDLIBS=\
     -lcppnetlib-client-connections -lcppnetlib-server-parsers -lnetwork-uri \
-    -lpthread -lboost_program_options -lboost_system -lboost_thread \
-    -lboost_filesystem -lyaml-cpp -lyajl -lcrypto -lssl
-LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR)
+    -lboost_program_options -lboost_system -lboost_thread -lboost_filesystem \
+    -lpthread -lyajl -lssl -lcrypto -lyaml-cpp
 
 # Where to find code under test.
 SRC_DIR=../src
@@ -72,10 +72,10 @@ init-submodules:
 	git submodule update --init $(GTEST_MODULE)
 	touch init-submodules
 
-$(YAML_CPP_LIBS):
+$(CPP_NETLIB_LIBS):
 	cd $(SRC_DIR) && $(MAKE) $@
 
-$(CPP_NETLIB_LIBS):
+$(YAML_CPP_LIBS):
 	cd $(SRC_DIR) && $(MAKE) $@
 
 $(SRC_DIR)/%.o: $(SRC_DIR)/%.cc
@@ -98,11 +98,7 @@ base64_unittest: $(GTEST_LIB) base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 configuration_unittest: $(GTEST_LIB) $(YAML_CPP_LIBS) configuration_unittest.o $(SRC_DIR)/configuration.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-kubernetes_unittest: $(GTEST_LIB) kubernetes_unittest.o $(SRC_DIR)/kubernetes.o
-	$(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/environment.o
-	$(SRC_DIR)/time.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o
-	$(SRC_DIR)/updater.o $(SRC_DIR)/instance.o $(SRC_DIR)/format.o
-	$(SRC_DIR)/configuration.o $(SRC_DIR)/health_checker.o
+kubernetes_unittest: $(GTEST_LIB) kubernetes_unittest.o $(SRC_DIR)/kubernetes.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/environment.o $(SRC_DIR)/time.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o $(SRC_DIR)/updater.o $(SRC_DIR)/instance.o $(SRC_DIR)/format.o $(SRC_DIR)/configuration.o $(SRC_DIR)/health_checker.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 resource_unittest: $(GTEST_LIB) resource_unittest.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
