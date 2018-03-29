@@ -8,12 +8,12 @@ namespace google {
 
 class KubernetesTest : public ::testing::Test {
   protected:
-   MetadataUpdater::ResourceMetadata GetNodeMetadata(
-       const KubernetesReader& reader, const json::Object *node,
-       Timestamp collected_at, bool is_deleted) const
-       throw(json::Exception) {
+    MetadataUpdater::ResourceMetadata GetNodeMetadata(
+	const KubernetesReader& reader, const json::Object *node,
+	Timestamp collected_at, bool is_deleted) const
+	throw(json::Exception) {
       return reader.GetNodeMetadata(node, collected_at, is_deleted);
-   }
+    }
 };
 
 TEST_F(KubernetesTest, GetNodeMetadata) {
