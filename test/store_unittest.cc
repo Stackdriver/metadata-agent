@@ -28,11 +28,11 @@ TEST_F(MetadataStoreTest, ResourceWithOneIdCorrectlyStored) {
   EXPECT_EQ(mr, store.LookupResource("id"));
 }
 
-TEST_F(MetadataStoreTest, EmptyStoreThrowsError) {
+TEST_F(MetadataStoreTest, EmptyStoreLookupThrowsError) {
   EXPECT_THROW(store.LookupResource("missing_id"), std::out_of_range);
 }
 
-TEST_F(MetadataStoreTest, UnknownResourceIdThrowsError) {
+TEST_F(MetadataStoreTest, ResourceLookupFailuresAreIndependent) {
   MonitoredResource mr("type", {});
   store.UpdateResource({"id"}, mr);
   EXPECT_THROW(store.LookupResource("missing_id"), std::out_of_range);
@@ -223,7 +223,7 @@ TEST(MetadataTest, IgnoredMetadataCorrectlyCreated) {
 TEST(MetadataTest, IgnoredMetadataCorrectlyCloned) {
   MetadataStore::Metadata m = MetadataStore::Metadata::IGNORED();
   MetadataStore::Metadata m_clone = m.Clone();
-  EXPECT_TRUE(m_clone.ignore);
+  EXPECT_EQ(m.ignore, m_clone.ignore);
 }
 
 }  // namespace
