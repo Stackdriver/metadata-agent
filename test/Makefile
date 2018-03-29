@@ -92,6 +92,8 @@ gtest_main.o: $(GTEST_SOURCEDIR)/gtest_main.cc
 $(GTEST_LIB): gtest-all.o gtest_main.o
 	$(AR) $(ARFLAGS) $@ $^
 
+$(TESTS): $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
+
 format_unittest: $(GTEST_LIB) format_unittest.o $(SRC_DIR)/format.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 base64_unittest: $(GTEST_LIB) base64_unittest.o $(SRC_DIR)/base64.o
