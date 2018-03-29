@@ -52,6 +52,7 @@ This is the Stackdriver metadata agent.
          libboost-filesystem1.62-dev libboost-program-options1.62-dev \
          libboost-regex1.62-dev libboost-thread1.62-dev libboost-timer1.62-dev
 
+<!---
 ## CentOS 7
 
 1. Install runtime dependencies:
@@ -72,6 +73,7 @@ This is the Stackdriver metadata agent.
           curl -O ${VENDOR_URL}/boost-static-1.54.0-1.el7.x86_64.rpm)
        $ sudo rpm --nodeps -ivp /tmp/boost-{devel,static}-1.54.0-1.el7.x86_64.rpm
 
+-->
 ## MacOS 10.12
 
 1. Install runtime dependencies:
