@@ -16,6 +16,7 @@
 #ifndef JSON_H_
 #define JSON_H_
 
+#include <functional>
 #include <istream>
 #include <ostream>
 #include <map>
@@ -331,6 +332,10 @@ inline std::unique_ptr<Value> object(
 
 class Parser {
  public:
+  class ParseState;
+
+  Parser(std::function<void(std::unique_ptr<Value>)> callback);
+  ~Parser();
   static std::vector<std::unique_ptr<Value>> AllFromStream(
       std::istream& stream) throw(Exception);
   static std::vector<std::unique_ptr<Value>> AllFromString(
@@ -339,6 +344,15 @@ class Parser {
       throw(Exception);
   static std::unique_ptr<Value> FromString(const std::string& input)
       throw(Exception);
+
+  size_t ParseStream(std::istream& stream) throw(Exception);
+  // Used to accept inline construction of streams.
+  size_t ParseStream(std::istream&& stream) throw(Exception) {
+    return ParseStream(stream);
+  }
+
+ private:
+  std::unique_ptr<ParseState> state_;
 };
 
 }
