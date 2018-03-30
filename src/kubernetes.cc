@@ -608,7 +608,7 @@ struct Watcher {
           std::function<void(json::value)> event_callback,
           std::unique_lock<std::mutex>&& completion, bool verbose)
       : name_("Watcher(" + endpoint + ")"),
-        completion_(std::move(completion)), event_callback_(event_callback),
+        completion_(std::move(completion)), event_parser_(event_callback),
         verbose_(verbose) {}
   ~Watcher() {}  // Unlocks the completion_ lock.
 
@@ -618,49 +618,29 @@ struct Watcher {
     const std::string body(std::begin(range), std::end(range));
     if (!body.empty()) {
       try {
-//#ifdef VERBOSE
-//        LOG(DEBUG) << name_ << " => "
-//                   << "Invoking callbacks on '" << body << "'";
-//#endif
-        std::vector<json::value> events = json::Parser::AllFromString(body);
-        for (json::value& event : events) {
-          std::string event_str = event->ToString();
 #ifdef VERBOSE
-          LOG(DEBUG) << name_ << " => "
-                     << "Invoking callback('" << event_str << "')";
+        LOG(DEBUG) << name_ << " => Parsing '" << body << "'";
 #endif
-          event_callback_(std::move(event));
-#ifdef VERBOSE
-          LOG(DEBUG) << name_ << " => "
-                     << "callback('" << event_str << "') completed";
-#endif
-        }
-//#ifdef VERBOSE
-//        LOG(DEBUG) << name_ << " => "
-//                   << "All callbacks on '" << body << "' completed";
-//#endif
+        std::istringstream input(body);
+        event_parser_.ParseStream(input);
       } catch (const json::Exception& e) {
         LOG(ERROR) << "Unable to process events: " << e.what();
       }
     } else if (!error) {
 #ifdef VERBOSE
-      LOG(DEBUG) << name_ << " => "
-                 << "Skipping empty watch notification";
+      LOG(DEBUG) << name_ << " => Skipping empty watch notification";
 #endif
     }
     if (error) {
       if (error == boost::asio::error::eof) {
 #ifdef VERBOSE
-        LOG(DEBUG) << name_ << " => "
-                   << "Watch callback: EOF";
+        LOG(DEBUG) << name_ << " => Watch callback: EOF";
 #endif
       } else {
-        LOG(ERROR) << name_ << " => "
-                   << "Callback got error " << error;
+        LOG(ERROR) << name_ << " => Callback got error " << error;
       }
       if (verbose_) {
-        LOG(ERROR) << name_ << " => "
-                   << "Unlocking completion mutex";
+        LOG(ERROR) << name_ << " => Unlocking completion mutex";
       }
       completion_.unlock();
     }
@@ -669,16 +649,19 @@ struct Watcher {
  private:
   std::string name_;
   std::unique_lock<std::mutex> completion_;
-  std::function<void(json::value)> event_callback_;
+  json::Parser event_parser_;
   bool verbose_;
 };
 
 void WatchEventCallback(
     std::function<void(const json::Object*, Timestamp, bool)> callback,
-    json::value raw_watch) throw(json::Exception) {
+    const std::string& name, json::value raw_watch)
+    throw(json::Exception) {
   Timestamp collected_at = std::chrono::system_clock::now();
 
-  //LOG(ERROR) << "Watch callback: " << *raw_watch;
+#ifdef VERBOSE
+  LOG(DEBUG) << name << " => WatchEventCallback('" << *raw_watch << "')";
+#endif
   const json::Object* watch = raw_watch->As<json::Object>();
   const std::string type = watch->Get<json::String>("type");
   const json::Object* object = watch->Get<json::Object>("object");
@@ -706,11 +689,12 @@ void KubernetesReader::WatchMaster(
   http::client::request request(endpoint);
   request << boost::network::header(
       "Authorization", "Bearer " + KubernetesApiToken());
-  if (config_.VerboseLogging()) {
+  const bool verbose = config_.VerboseLogging();
+  if (verbose) {
     LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint;
   }
   try {
-    if (config_.VerboseLogging()) {
+    if (verbose) {
       LOG(INFO) << "Locking completion mutex";
     }
     // A notification for watch completion.
@@ -719,27 +703,16 @@ void KubernetesReader::WatchMaster(
     Watcher watcher(
       endpoint,
       [=](json::value raw_watch) {
-        WatchEventCallback(callback, std::move(raw_watch));
+        WatchEventCallback(callback, name, std::move(raw_watch));
       },
-      std::move(watch_completion), config_.VerboseLogging());
+      std::move(watch_completion), verbose);
     http::client::response response = client.get(request, std::ref(watcher));
-    if (config_.VerboseLogging()) {
+    if (verbose) {
       LOG(INFO) << "Waiting for completion";
     }
     std::lock_guard<std::mutex> await_completion(completion_mutex);
-    if (config_.VerboseLogging()) {
+    if (verbose) {
       LOG(INFO) << "WatchMaster(" << name << ") completed " << body(response);
-    }
-    std::string encoding;
-#ifdef VERBOSE
-    LOG(DEBUG) << "response headers: " << response.headers();
-#endif
-    auto transfer_encoding_header = headers(response)["Transfer-Encoding"];
-    if (!boost::empty(transfer_encoding_header)) {
-      encoding = boost::begin(transfer_encoding_header)->second;
-    }
-    if (encoding != "chunked") {
-      LOG(ERROR) << "Expected chunked encoding; found '" << encoding << "'";
     }
   } catch (const boost::system::system_error& e) {
     LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
