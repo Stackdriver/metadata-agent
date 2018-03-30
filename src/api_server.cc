@@ -25,54 +25,43 @@
 
 namespace google {
 
-MetadataApiServer::Handler::Handler(const Configuration& config,
-                                    const MetadataStore& store)
-    : config_(config), store_(store) {}
+MetadataApiServer::Dispatcher::Dispatcher(
+    const HandlerMap& handlers, bool verbose)
+    : handlers_(handlers), verbose_(verbose) {}
 
-void MetadataApiServer::Handler::operator()(const HttpServer::request& request,
-                                            std::shared_ptr<HttpServer::connection> conn) {
-  static const std::string kPrefix = "/monitoredResource/";
-  // The format for the local metadata API request is:
-  //   {host}:{port}/monitoredResource/{id}
-  if (config_.VerboseLogging()) {
-    LOG(INFO) << "Handler called: " << request.method
+void MetadataApiServer::Dispatcher::operator()(
+    const HttpServer::request& request,
+    std::shared_ptr<HttpServer::connection> conn) {
+  if (verbose_) {
+    LOG(INFO) << "Dispatcher called: " << request.method
               << " " << request.destination
               << " headers: " << request.headers
               << " body: " << request.body;
   }
-  if (request.method == "GET" && request.destination.find(kPrefix) == 0) {
-    const std::string id = request.destination.substr(kPrefix.size());
-    try {
-      const MonitoredResource& resource = store_.LookupResource(id);
-      if (config_.VerboseLogging()) {
-        LOG(INFO) << "Found resource for " << id << ": " << resource;
-      }
-      conn->set_status(HttpServer::connection::ok);
-      conn->set_headers(std::map<std::string, std::string>({
-        {"Content-Type", "application/json"},
-      }));
-      conn->write(resource.ToJSON()->ToString());
-    } catch (const std::out_of_range& e) {
-      // TODO: This could be considered log spam.
-      // As we add more resource mappings, these will become less and less
-      // frequent, and could be promoted to ERROR.
-      if (config_.VerboseLogging()) {
-        LOG(WARNING) << "No matching resource for " << id;
-      }
-      conn->set_status(HttpServer::connection::not_found);
-      conn->set_headers(std::map<std::string, std::string>({
-        {"Content-Type", "application/json"},
-      }));
-      json::value json_response = json::object({
-        {"status_code", json::number(404)},
-        {"error", json::string("Not found")},
-      });
-      conn->write(json_response->ToString());
+  // Look for the longest match first. This means going backwards through
+  // the map, since strings are sorted in lexicographical order.
+  for (auto it = handlers_.crbegin(); it != handlers_.crend(); --it) {
+    const std::string& method = it->first.first;
+    const std::string& prefix = it->first.second;
+#ifdef VERBOSE
+    LOG(DEBUG) << "Checking " << method << " " << prefix;
+#endif
+    if (request.method != method || request.destination.find(prefix) != 0) {
+#ifdef VERBOSE
+      LOG(DEBUG) << "No match; skipping " << method << " " << prefix;
+#endif
+      continue;
     }
+#ifdef VERBOSE
+    LOG(DEBUG) << "Handler found for " << request.method
+               << " " << request.destination;
+#endif
+    const Handler& handler = it->second;
+    handler(request, conn);
   }
 }
 
-void MetadataApiServer::Handler::log(const HttpServer::string_type& info) {
+void MetadataApiServer::Dispatcher::log(const HttpServer::string_type& info) {
   LOG(ERROR) << info;
 }
 
@@ -81,9 +70,15 @@ MetadataApiServer::MetadataApiServer(const Configuration& config,
                                      const MetadataStore& store,
                                      int server_threads,
                                      const std::string& host, int port)
-    : handler_(config, store),
+    : config_(config), store_(store), dispatcher_({
+        {{"GET", "/monitoredResource/"},
+         [=](const HttpServer::request& request,
+             std::shared_ptr<HttpServer::connection> conn) {
+             HandleMonitoredResource(request, conn);
+         }},
+      }, config_.VerboseLogging()),
       server_(
-          HttpServer::options(handler_)
+          HttpServer::options(dispatcher_)
               .address(host)
               .port(std::to_string(port))),
       server_pool_()
@@ -96,6 +91,45 @@ MetadataApiServer::MetadataApiServer(const Configuration& config,
 MetadataApiServer::~MetadataApiServer() {
   for (auto& thread : server_pool_) {
     thread.join();
+  }
+}
+
+void MetadataApiServer::HandleMonitoredResource(
+    const HttpServer::request& request,
+    std::shared_ptr<HttpServer::connection> conn) {
+  // The format for the local metadata API request is:
+  //   {host}:{port}/monitoredResource/{id}
+  static const std::string kPrefix = "/monitoredResource/";;
+  const std::string id = request.destination.substr(kPrefix.size());
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Handler called for " << id;
+  }
+  try {
+    const MonitoredResource& resource = store_.LookupResource(id);
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "Found resource for " << id << ": " << resource;
+    }
+    conn->set_status(HttpServer::connection::ok);
+    conn->set_headers(std::map<std::string, std::string>({
+      {"Content-Type", "application/json"},
+    }));
+    conn->write(resource.ToJSON()->ToString());
+  } catch (const std::out_of_range& e) {
+    // TODO: This could be considered log spam.
+    // As we add more resource mappings, these will become less and less
+    // frequent, and could be promoted to ERROR.
+    if (config_.VerboseLogging()) {
+      LOG(WARNING) << "No matching resource for " << id;
+    }
+    conn->set_status(HttpServer::connection::not_found);
+    conn->set_headers(std::map<std::string, std::string>({
+      {"Content-Type", "application/json"},
+    }));
+    json::value json_response = json::object({
+      {"status_code", json::number(404)},
+      {"error", json::string("Not found")},
+    });
+    conn->write(json_response->ToString());
   }
 }
 
