@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/asio/ip/host_name.hpp>
+#define BOOST_NETWORK_ENABLE_HTTPS
 #include <boost/network/protocol/http/client.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <chrono>

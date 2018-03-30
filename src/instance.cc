@@ -16,7 +16,6 @@
 
 #include "instance.h"
 
-#include <boost/network/protocol/http/client.hpp>
 #include <chrono>
 
 #include "configuration.h"
@@ -24,8 +23,6 @@
 #include "logging.h"
 #include "store.h"
 #include "time.h"
-
-namespace http = boost::network::http;
 
 namespace google {
 
