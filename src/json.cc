@@ -262,10 +262,23 @@ class ObjectContext : public Context {
   std::unique_ptr<std::string> field_name_;
 };
 
+class CallbackContext : public Context {
+ public:
+  CallbackContext(std::function<void(std::unique_ptr<Value>)> callback)
+      : Context(nullptr), callback_(callback) {}
+  void AddValue(std::unique_ptr<Value> value) override {
+    callback_(std::move(value));
+  }
+ private:
+  std::function<void(std::unique_ptr<Value>)> callback_;
+};
+
 // A builder context that allows building up a JSON object.
 class JSONBuilder {
  public:
   JSONBuilder() : context_(new TopLevelContext()) {}
+  JSONBuilder(std::function<void(std::unique_ptr<Value>)> callback)
+      : context_(new CallbackContext(callback)) {}
   ~JSONBuilder() { delete context_; }
 
   void AddValue(std::unique_ptr<Value> value) {
@@ -415,7 +428,7 @@ yajl_callbacks callbacks = {
     .yajl_end_array = &handle_end_array,
 };
 
-}
+}  // namespace
 
 std::vector<std::unique_ptr<Value>> Parser::AllFromStream(std::istream& stream)
     throw(Exception)
@@ -479,6 +492,76 @@ std::unique_ptr<Value> Parser::FromString(const std::string& input)
 {
   std::istringstream stream(input);
   return FromStream(stream);
+}
+
+class Parser::ParseState {
+ public:
+  ParseState(std::function<void(std::unique_ptr<Value>)> callback)
+      : builder_(callback),
+        handle_(yajl_alloc(&callbacks, NULL, (void*) &builder_)) {
+    yajl_config(handle_, yajl_allow_comments, 1);
+    yajl_config(handle_, yajl_allow_multiple_values, 1);
+    yajl_config(handle_, yajl_allow_partial_values, 1);
+    //yajl_config(handle_, yajl_allow_trailing_garbage, 1);
+    //yajl_config(handle_, yajl_dont_validate_strings, 1);
+  }
+
+  ~ParseState() {
+    yajl_free(handle_);
+  }
+
+  yajl_handle& handle() { return handle_; }
+
+ private:
+  JSONBuilder builder_;
+  yajl_handle handle_;
+};
+
+Parser::Parser(std::function<void(std::unique_ptr<Value>)> callback)
+    : state_(new ParseState(callback)) {}
+
+Parser::~Parser() {}
+
+void Parser::ParseStream(std::istream& stream) throw(Exception) {
+  const int kMax = 65536;
+  unsigned char data[kMax];
+  yajl_status stat;
+  yajl_handle& handle = state_->handle();
+
+  for (;;) {
+    if (stream.eof()) {
+      break;
+    }
+    stream.read(reinterpret_cast<char*>(&data[0]), kMax);
+    size_t count = stream.gcount();
+    std::string str((const char*)data, count);
+
+    stat = yajl_parse(handle, data, count);
+    if (stat != yajl_status_ok) {
+      std::cerr << "Error in yajl_parse" << std::endl;
+      unsigned char* str = yajl_get_error(handle, 1, data, kMax);
+      std::string error_str((const char*)str);
+      yajl_free_error(handle, str);
+      throw Exception(error_str);
+    }
+
+    size_t bytes = yajl_get_bytes_consumed(handle);
+    std::cerr << "Consumed " << bytes << " out of chunk " << count << " from '" << str << "'" << std::endl;
+  }
+
+  stat = yajl_complete_parse(handle);
+
+  size_t bytes = yajl_get_bytes_consumed(handle);
+  std::string str((const char*)data, bytes);
+  std::cerr << "Consumed stream " << bytes << ": '" << str << "'" << std::endl;
+
+  if (stat != yajl_status_ok) {
+    std::cerr << "Error in yajl_complete_parse" << std::endl;
+    unsigned char* str = yajl_get_error(handle, 1, data, kMax);
+    std::string error_str((const char*)str);
+    yajl_free_error(handle, str);
+    throw Exception(error_str);
+  }
 }
 
 }  // json

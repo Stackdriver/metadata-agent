@@ -424,4 +424,88 @@ TEST(ParseError, ObjectNoValue) {
   ASSERT_THROW(json::Parser::FromString("{\"x\":}"), json::Exception);
 }
 
+// Streaming parsing test.
+
+TEST(StreamingTest, CompleteStream) {
+  GuardJsonException([](){
+    json::value v;
+    json::Parser p([&v](json::value r) { v = std::move(r); });
+    p.ParseStream(std::istringstream(
+      "{\n"
+      "  \"foo\": [1, 2, 3],\n"
+      "  \"bar\": {\"x\": 0, \"y\": null},\n"
+      "  \"baz\": true,\n"
+      "  \"str\": \"asdfasdf\"\n"
+      "}\n"
+    ));
+    EXPECT_TOSTRING_EQ(
+      "{"
+      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"baz\":true,"
+      "\"foo\":[1.0,2.0,3.0],"
+      "\"str\":\"asdfasdf\""
+      "}",
+      v);
+  });
+}
+
+TEST(StreamingTest, SplitStream) {
+  GuardJsonException([](){
+    json::value v;
+    json::Parser p([&v](json::value r) { v = std::move(r); });
+    p.ParseStream(std::istringstream(
+      "{\n"
+      "  \"foo\": [1, 2, 3],\n"
+    ));
+    p.ParseStream(std::istringstream(
+      "  \"bar\": {\"x\": 0, \"y\": null},\n"
+      "  \"baz\": true,\n"
+    ));
+    p.ParseStream(std::istringstream(
+      "  \"str\": \"asdfasdf\"\n"
+      "}\n"
+    ));
+    EXPECT_TOSTRING_EQ(
+      "{"
+      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"baz\":true,"
+      "\"foo\":[1.0,2.0,3.0],"
+      "\"str\":\"asdfasdf\""
+      "}",
+      v);
+  });
+}
+
+TEST(StreamingTest, BrokenStream) {
+  GuardJsonException([](){
+    json::value v;
+    json::Parser p([&v](json::value r) { v = std::move(r); });
+    p.ParseStream(std::istringstream(
+      "{\n"
+      "  \"foo\": [1, 2, 3],\n"
+      "  \"ba"
+    ));
+    p.ParseStream(std::istringstream(
+            "r\": {\"x\": 0, \"y\": nu"
+    ));
+    p.ParseStream(std::istringstream(
+                                     "ll},\n"
+      "  \"baz\": true,\n"
+      "  \"str\""
+    ));
+    p.ParseStream(std::istringstream(
+               ": \"asdfasdf\"\n"
+      "}\n"
+    ));
+    EXPECT_TOSTRING_EQ(
+      "{"
+      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"baz\":true,"
+      "\"foo\":[1.0,2.0,3.0],"
+      "\"str\":\"asdfasdf\""
+      "}",
+      v);
+  });
+}
+
 } // namespace
