@@ -89,7 +89,6 @@ TEST_F(KubernetesTest, ComputePodAssociations) {
   ));
   Environment environment(config);
   KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
-  const std::string encoded_ref = "1.2.3/TestKind/TestUID1";
   json::value controller = json::object({
     {"controller", json::boolean(true)},
     {"apiVersion", json::string("1.2.3")},
@@ -102,7 +101,7 @@ TEST_F(KubernetesTest, ComputePodAssociations) {
       {"uid", json::string("InnerTestUID1")},
     })},
   });
-  UpdateOwnersCache(&reader, encoded_ref, controller);
+  UpdateOwnersCache(&reader, "1.2.3/TestKind/TestUID1", controller);
   json::value pod = json::object({
     {"metadata", json::object({
       {"namespace", json::string("TestNamespace")},
