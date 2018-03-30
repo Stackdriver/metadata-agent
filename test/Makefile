@@ -93,25 +93,28 @@ gtest_main.o: $(GTEST_SOURCEDIR)/gtest_main.cc
 $(GTEST_LIB): gtest-all.o gtest_main.o
 	$(AR) $(ARFLAGS) $@ $^
 
-$(TESTS): $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
+$(TESTS): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 
-format_unittest: $(GTEST_LIB) format_unittest.o $(SRC_DIR)/format.o
+# All unittest objects depend on GTEST_LIB.
+$(TESTS:%=%.o): $(GTEST_LIB)
+
+format_unittest: format_unittest.o $(SRC_DIR)/format.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-base64_unittest: $(GTEST_LIB) base64_unittest.o $(SRC_DIR)/base64.o
+base64_unittest: base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-configuration_unittest: $(GTEST_LIB) $(YAML_CPP_LIBS) configuration_unittest.o $(SRC_DIR)/configuration.o
+configuration_unittest: configuration_unittest.o $(SRC_DIR)/configuration.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-kubernetes_unittest: $(GTEST_LIB) kubernetes_unittest.o $(SRC_DIR)/kubernetes.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/environment.o $(SRC_DIR)/time.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o $(SRC_DIR)/updater.o $(SRC_DIR)/instance.o $(SRC_DIR)/format.o $(SRC_DIR)/configuration.o $(SRC_DIR)/health_checker.o
+kubernetes_unittest: kubernetes_unittest.o $(SRC_DIR)/kubernetes.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/environment.o $(SRC_DIR)/time.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o $(SRC_DIR)/updater.o $(SRC_DIR)/instance.o $(SRC_DIR)/format.o $(SRC_DIR)/configuration.o $(SRC_DIR)/health_checker.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-resource_unittest: $(GTEST_LIB) resource_unittest.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o
+resource_unittest: resource_unittest.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-store_unittest: $(GTEST_LIB) store_unittest.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/configuration.o
+store_unittest: store_unittest.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/configuration.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-time_unittest: $(GTEST_LIB) time_unittest.o $(SRC_DIR)/time.o
+time_unittest: time_unittest.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-health_checker_unittest: $(GTEST_LIB) health_checker_unittest.o $(SRC_DIR)/health_checker.o $(SRC_DIR)/configuration.o
+health_checker_unittest: health_checker_unittest.o $(SRC_DIR)/health_checker.o $(SRC_DIR)/configuration.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lboost_filesystem -lboost_system -o $@
-json_unittest: $(GTEST_LIB) json_unittest.o $(SRC_DIR)/json.o
+json_unittest: json_unittest.o $(SRC_DIR)/json.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 .PHONY: all test clean purge
