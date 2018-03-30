@@ -48,7 +48,7 @@ class MetadataUpdater {
     const std::vector<std::string>& ids() const { return ids_; }
 
    private:
-    friend class MetadataUpdater; // Needs write access to metadata_.
+    friend class MetadataUpdater;  // Needs write access to metadata_.
 
     std::vector<std::string> ids_;
     MonitoredResource resource_;
