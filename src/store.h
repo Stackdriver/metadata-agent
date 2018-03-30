@@ -93,6 +93,7 @@ class MetadataStore {
  private:
   friend class MetadataReporter;
   friend class MetadataStoreTest;
+  friend class UpdaterTest;
 
   std::map<MonitoredResource, Metadata> GetMetadataMap() const;
   void PurgeDeletedEntries();

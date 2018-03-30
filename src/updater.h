@@ -115,6 +115,8 @@ class PollingMetadataUpdater : public MetadataUpdater {
   ~PollingMetadataUpdater();
 
  protected:
+  friend class UpdaterTest;
+
   bool ValidateConfiguration() const;
   void StartUpdater();
   void StopUpdater();
