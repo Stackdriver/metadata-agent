@@ -88,8 +88,7 @@ class MetadataUpdater {
 
   // Updates the metadata in the store. Consumes result.
   void UpdateMetadataCallback(ResourceMetadata&& result) {
-    store_->UpdateMetadata(result.resource_,
-                           std::move(result.metadata_));
+    store_->UpdateMetadata(result.resource_, std::move(result.metadata_));
   }
 
   const Configuration& config() {
