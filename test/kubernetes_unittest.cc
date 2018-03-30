@@ -1,5 +1,3 @@
-#include <boost/algorithm/string/join.hpp>
-
 #include "../src/configuration.h"
 #include "../src/kubernetes.h"
 #include "../src/updater.h"
