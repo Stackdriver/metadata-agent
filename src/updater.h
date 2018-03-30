@@ -113,6 +113,7 @@ class PollingMetadataUpdater : public MetadataUpdater {
 
  private:
   friend class InstanceTest;
+
   // Metadata poller.
   void PollForMetadata();
 
