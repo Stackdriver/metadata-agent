@@ -25,7 +25,7 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
     "InstanceId: TestID\n"
   ));
   Environment environment(config);
-  KubernetesReader reader(config, nullptr);
+  KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
   json::value node = json::object({
     {"metadata", json::object({
       {"name", json::string("testname")},
