@@ -46,14 +46,23 @@ TEST(Distinct, Types) {
 TEST(TrivialParseTest, Null) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("null");
-    EXPECT_TRUE(v->Is<json::Null>());
     EXPECT_EQ(json::NullType, v->type());
-    EXPECT_EQ(json::NullType, v->As<json::Null>()->type());
+
+    EXPECT_TRUE(v->Is<json::Null>());
+    EXPECT_FALSE(v->Is<json::Boolean>());
+    EXPECT_FALSE(v->Is<json::Number>());
+    EXPECT_FALSE(v->Is<json::String>());
+    EXPECT_FALSE(v->Is<json::Array>());
+    EXPECT_FALSE(v->Is<json::Object>());
+
+    const auto& null_value = v->As<json::Null>();
     EXPECT_THROW(v->As<json::Boolean>(), json::Exception);
     EXPECT_THROW(v->As<json::Number>(), json::Exception);
     EXPECT_THROW(v->As<json::String>(), json::Exception);
     EXPECT_THROW(v->As<json::Array>(), json::Exception);
     EXPECT_THROW(v->As<json::Object>(), json::Exception);
+
+    EXPECT_EQ(json::NullType, null_value->type());
   });
 }
 
@@ -69,14 +78,23 @@ TEST(TrivialToStringTest, Null) {
 TEST(TrivialParseTest, True) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("true");
-    EXPECT_TRUE(v->Is<json::Boolean>());
     EXPECT_EQ(json::BooleanType, v->type());
-    EXPECT_EQ(true, v->As<json::Boolean>()->value());
+
+    EXPECT_FALSE(v->Is<json::Null>());
+    EXPECT_TRUE(v->Is<json::Boolean>());
+    EXPECT_FALSE(v->Is<json::Number>());
+    EXPECT_FALSE(v->Is<json::String>());
+    EXPECT_FALSE(v->Is<json::Array>());
+    EXPECT_FALSE(v->Is<json::Object>());
+
     EXPECT_THROW(v->As<json::Null>(), json::Exception);
+    const auto& boolean = v->As<json::Boolean>();
     EXPECT_THROW(v->As<json::Number>(), json::Exception);
     EXPECT_THROW(v->As<json::String>(), json::Exception);
     EXPECT_THROW(v->As<json::Array>(), json::Exception);
     EXPECT_THROW(v->As<json::Object>(), json::Exception);
+
+    EXPECT_EQ(true, boolean->value());
   });
 }
 
@@ -89,14 +107,23 @@ TEST(TrivialToStringTest, True) {
 TEST(TrivialParseTest, False) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("false");
-    EXPECT_TRUE(v->Is<json::Boolean>());
     EXPECT_EQ(json::BooleanType, v->type());
-    EXPECT_EQ(false, v->As<json::Boolean>()->value());
+
+    EXPECT_FALSE(v->Is<json::Null>());
+    EXPECT_TRUE(v->Is<json::Boolean>());
+    EXPECT_FALSE(v->Is<json::Number>());
+    EXPECT_FALSE(v->Is<json::String>());
+    EXPECT_FALSE(v->Is<json::Array>());
+    EXPECT_FALSE(v->Is<json::Object>());
+
     EXPECT_THROW(v->As<json::Null>(), json::Exception);
+    const auto& boolean = v->As<json::Boolean>();
     EXPECT_THROW(v->As<json::Number>(), json::Exception);
     EXPECT_THROW(v->As<json::String>(), json::Exception);
     EXPECT_THROW(v->As<json::Array>(), json::Exception);
     EXPECT_THROW(v->As<json::Object>(), json::Exception);
+
+    EXPECT_EQ(false, boolean->value());
   });
 }
 
@@ -112,14 +139,23 @@ TEST(TrivialToStringTest, False) {
 TEST(TrivialParseTest, Number) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("2");
-    EXPECT_TRUE(v->Is<json::Number>());
     EXPECT_EQ(json::NumberType, v->type());
-    EXPECT_EQ(2.0, v->As<json::Number>()->value());
+
+    EXPECT_FALSE(v->Is<json::Null>());
+    EXPECT_FALSE(v->Is<json::Boolean>());
+    EXPECT_TRUE(v->Is<json::Number>());
+    EXPECT_FALSE(v->Is<json::String>());
+    EXPECT_FALSE(v->Is<json::Array>());
+    EXPECT_FALSE(v->Is<json::Object>());
+
     EXPECT_THROW(v->As<json::Null>(), json::Exception);
     EXPECT_THROW(v->As<json::Boolean>(), json::Exception);
+    const auto& num = v->As<json::Number>();
     EXPECT_THROW(v->As<json::String>(), json::Exception);
     EXPECT_THROW(v->As<json::Array>(), json::Exception);
     EXPECT_THROW(v->As<json::Object>(), json::Exception);
+
+    EXPECT_EQ(2.0, num->value());
   });
 }
 
@@ -135,14 +171,23 @@ TEST(TrivialToStringTest, Number) {
 TEST(TrivialParseTest, StringEmpty) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("\"\"");
-    EXPECT_TRUE(v->Is<json::String>());
     EXPECT_EQ(json::StringType, v->type());
-    EXPECT_EQ("", v->As<json::String>()->value());
+
+    EXPECT_FALSE(v->Is<json::Null>());
+    EXPECT_FALSE(v->Is<json::Boolean>());
+    EXPECT_FALSE(v->Is<json::Number>());
+    EXPECT_TRUE(v->Is<json::String>());
+    EXPECT_FALSE(v->Is<json::Array>());
+    EXPECT_FALSE(v->Is<json::Object>());
+
     EXPECT_THROW(v->As<json::Null>(), json::Exception);
     EXPECT_THROW(v->As<json::Boolean>(), json::Exception);
     EXPECT_THROW(v->As<json::Number>(), json::Exception);
+    const auto& str = v->As<json::String>();
     EXPECT_THROW(v->As<json::Array>(), json::Exception);
     EXPECT_THROW(v->As<json::Object>(), json::Exception);
+
+    EXPECT_EQ("", str->value());
   });
 }
 
@@ -155,13 +200,23 @@ TEST(TrivialToStringTest, StringEmpty) {
 TEST(TrivialParseTest, StringOneChar) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("\"x\"");
-    const auto& str = v->As<json::String>();
-    EXPECT_EQ("x", str->value());
+    EXPECT_EQ(json::StringType, v->type());
+
+    EXPECT_FALSE(v->Is<json::Null>());
+    EXPECT_FALSE(v->Is<json::Boolean>());
+    EXPECT_FALSE(v->Is<json::Number>());
+    EXPECT_TRUE(v->Is<json::String>());
+    EXPECT_FALSE(v->Is<json::Array>());
+    EXPECT_FALSE(v->Is<json::Object>());
+
     EXPECT_THROW(v->As<json::Null>(), json::Exception);
     EXPECT_THROW(v->As<json::Boolean>(), json::Exception);
     EXPECT_THROW(v->As<json::Number>(), json::Exception);
+    const auto& str = v->As<json::String>();
     EXPECT_THROW(v->As<json::Array>(), json::Exception);
     EXPECT_THROW(v->As<json::Object>(), json::Exception);
+
+    EXPECT_EQ("x", str->value());
   });
 }
 
@@ -177,15 +232,22 @@ TEST(TrivialToStringTest, StringOneChar) {
 TEST(TrivialParseTest, ArrayEmpty) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("[]");
-    const auto& arr = v->As<json::Array>();
+    EXPECT_EQ(json::ArrayType, v->type());
+
+    EXPECT_FALSE(v->Is<json::Null>());
+    EXPECT_FALSE(v->Is<json::Boolean>());
+    EXPECT_FALSE(v->Is<json::Number>());
+    EXPECT_FALSE(v->Is<json::String>());
     EXPECT_TRUE(v->Is<json::Array>());
+    EXPECT_FALSE(v->Is<json::Object>());
+
     EXPECT_THROW(v->As<json::Null>(), json::Exception);
     EXPECT_THROW(v->As<json::Boolean>(), json::Exception);
     EXPECT_THROW(v->As<json::Number>(), json::Exception);
     EXPECT_THROW(v->As<json::String>(), json::Exception);
+    const auto& arr = v->As<json::Array>();
     EXPECT_THROW(v->As<json::Object>(), json::Exception);
 
-    EXPECT_EQ(json::ArrayType, v->type());
     EXPECT_TRUE(arr->empty());
     EXPECT_EQ(0, arr->size());
   });
@@ -200,11 +262,20 @@ TEST(TrivialToStringTest, ArrayEmpty) {
 TEST(TrivialParseTest, ArrayOneElement) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("[2]");
-    const auto& arr = v->As<json::Array>();
+    EXPECT_EQ(json::ArrayType, v->type());
+
+    EXPECT_FALSE(v->Is<json::Null>());
+    EXPECT_FALSE(v->Is<json::Boolean>());
+    EXPECT_FALSE(v->Is<json::Number>());
+    EXPECT_FALSE(v->Is<json::String>());
+    EXPECT_TRUE(v->Is<json::Array>());
+    EXPECT_FALSE(v->Is<json::Object>());
+
     EXPECT_THROW(v->As<json::Null>(), json::Exception);
     EXPECT_THROW(v->As<json::Boolean>(), json::Exception);
     EXPECT_THROW(v->As<json::Number>(), json::Exception);
     EXPECT_THROW(v->As<json::String>(), json::Exception);
+    const auto& arr = v->As<json::Array>();
     EXPECT_THROW(v->As<json::Object>(), json::Exception);
 
     EXPECT_FALSE(arr->empty());
@@ -226,15 +297,22 @@ TEST(TrivialToStringTest, ArrayOneElement) {
 TEST(TrivialParseTest, ObjectEmpty) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("{}");
-    const auto& obj = v->As<json::Object>();
+    EXPECT_EQ(json::ObjectType, v->type());
+
+    EXPECT_FALSE(v->Is<json::Null>());
+    EXPECT_FALSE(v->Is<json::Boolean>());
+    EXPECT_FALSE(v->Is<json::Number>());
+    EXPECT_FALSE(v->Is<json::String>());
+    EXPECT_FALSE(v->Is<json::Array>());
     EXPECT_TRUE(v->Is<json::Object>());
+
     EXPECT_THROW(v->As<json::Null>(), json::Exception);
     EXPECT_THROW(v->As<json::Boolean>(), json::Exception);
     EXPECT_THROW(v->As<json::Number>(), json::Exception);
     EXPECT_THROW(v->As<json::String>(), json::Exception);
     EXPECT_THROW(v->As<json::Array>(), json::Exception);
+    const auto& obj = v->As<json::Object>();
 
-    EXPECT_EQ(json::ObjectType, v->type());
     EXPECT_TRUE(obj->empty());
     EXPECT_THROW(obj->Get<json::Number>("g"), json::Exception);
     EXPECT_THROW(obj->at("g"), std::out_of_range);
@@ -250,12 +328,21 @@ TEST(TrivialToStringTest, ObjectEmpty) {
 TEST(TrivialParseTest, ObjectOneField) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString("{\"f\":2}");
-    const auto& obj = v->As<json::Object>();
+    EXPECT_EQ(json::ObjectType, v->type());
+
+    EXPECT_FALSE(v->Is<json::Null>());
+    EXPECT_FALSE(v->Is<json::Boolean>());
+    EXPECT_FALSE(v->Is<json::Number>());
+    EXPECT_FALSE(v->Is<json::String>());
+    EXPECT_FALSE(v->Is<json::Array>());
+    EXPECT_TRUE(v->Is<json::Object>());
+
     EXPECT_THROW(v->As<json::Null>(), json::Exception);
     EXPECT_THROW(v->As<json::Boolean>(), json::Exception);
     EXPECT_THROW(v->As<json::Number>(), json::Exception);
     EXPECT_THROW(v->As<json::String>(), json::Exception);
     EXPECT_THROW(v->As<json::Array>(), json::Exception);
+    const auto& obj = v->As<json::Object>();
 
     EXPECT_EQ(1, obj->size());
     EXPECT_TRUE(obj->Has("f"));
@@ -411,7 +498,7 @@ TEST(EdgeTest, NegativeNumbers) {
 
 // Big tests.
 
-const char kComplexExample[] =
+constexpr char kComplexExample[] =
   "{\n"
   "  \"foo\": [1.0, 2, 3],\n"
   "  \"bar\": {\"x\": 0, \"y\": null},\n"
@@ -419,7 +506,7 @@ const char kComplexExample[] =
   "  \"str\": \"asdfasdf\"\n"
   "}\n";
 
-const char kComplexExampleExpected[] =
+constexpr char kComplexExampleExpected[] =
   "{"
   "\"bar\":{\"x\":0.0,\"y\":null},"
   "\"baz\":true,"
