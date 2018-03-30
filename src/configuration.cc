@@ -16,6 +16,7 @@
 
 #include "configuration.h"
 
+#include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
 #include <iostream>
 #include <map>
@@ -122,12 +123,17 @@ Configuration::Configuration(std::istream& input) : Configuration() {
 
 int Configuration::ParseArguments(int ac, char** av) {
   std::string config_file;
+  std::string command_line_options;
   boost::program_options::options_description flags_desc;
   flags_desc.add_options()
       ("help,h", "Print help message")
       ("version,V", "Print the agent version")
       ("verbose,v", boost::program_options::bool_switch(&verbose_logging_),
            "Enable verbose logging")
+      ("options,o",
+            boost::program_options::value<std::vector<std::string>>()
+                ->multitoken()->zero_tokens()->composing(),
+            "Command line options")
       ;
   boost::program_options::options_description hidden_desc;
   hidden_desc.add_options()
@@ -155,6 +161,25 @@ int Configuration::ParseArguments(int ac, char** av) {
       std::cout << "Stackdriver Metadata Agent v" << STRINGIFY(AGENT_VERSION)
                 << std::endl;
       return -1;
+    }
+    if (flags.count("options")) {
+      std::string input_str;
+      const std::vector<std::string> options =
+          flags["options"].as<std::vector<std::string>>();
+      for (const std::string& option: options) {
+        std::vector<std::string> key_value;
+        boost::algorithm::split(key_value, option, boost::is_any_of("="));
+        if (key_value.size() != 2) {
+          std::cerr << "Invalid option " << option;
+          return 1;
+        }
+        input_str += key_value[0] + ": " + key_value[1] + "\n";
+      }
+      if (verbose_logging_) {
+        std::cout << "Options:\n" << input_str;
+      }
+      std::istringstream input { input_str };
+      ParseConfiguration(input);
     }
 
     ParseConfigFile(config_file);
