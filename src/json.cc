@@ -443,10 +443,7 @@ std::vector<std::unique_ptr<Value>> Parser::AllFromStream(std::istream& stream)
   //yajl_config(handle, yajl_allow_trailing_garbage, 1);
   //yajl_config(handle, yajl_dont_validate_strings, 1);
 
-  for (;;) {
-    if (stream.eof()) {
-      break;
-    }
+  while (!stream.eof()) {
     stream.read(reinterpret_cast<char*>(&data[0]), kMax);
     size_t count = stream.gcount();
     yajl_parse(handle, data, count);
@@ -509,7 +506,6 @@ class Parser::ParseState {
   ~ParseState() {
     yajl_status stat = yajl_complete_parse(handle_);
     if (stat != yajl_status_ok) {
-      std::cerr << "Error in yajl_complete_parse" << std::endl;
       unsigned char* str = yajl_get_error(handle_, 0, nullptr, 0);
       std::string error_str((const char*)str);
       yajl_free_error(handle_, str);
@@ -536,16 +532,12 @@ std::size_t Parser::ParseStream(std::istream& stream) throw(Exception) {
   size_t total_bytes_consumed = 0;
   yajl_handle& handle = state_->handle();
 
-  for (;;) {
-    if (stream.eof()) {
-      break;
-    }
+  while (!stream.eof()) {
     stream.read(reinterpret_cast<char*>(&data[0]), kMax);
     size_t count = stream.gcount();
 
     yajl_status stat = yajl_parse(handle, data, count);
     if (stat != yajl_status_ok) {
-      std::cerr << "Error in yajl_parse" << std::endl;
       unsigned char* str = yajl_get_error(handle, 1, data, kMax);
       std::string error_str((const char*)str);
       yajl_free_error(handle, str);
