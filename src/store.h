@@ -52,7 +52,7 @@ class MetadataStore {
 
     Metadata Clone() const {
       if (ignore) {
-        return {};
+        return IGNORED();
       }
       return {version, is_deleted, created_at, collected_at, metadata->Clone()};
     }
@@ -92,6 +92,7 @@ class MetadataStore {
 
  private:
   friend class MetadataReporter;
+  friend class MetadataStoreTest;
 
   std::map<MonitoredResource, Metadata> GetMetadataMap() const;
   void PurgeDeletedEntries();
