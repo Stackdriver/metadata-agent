@@ -16,11 +16,10 @@
 
 #include "configuration.h"
 
-#include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
+#include <fstream>
 #include <iostream>
 #include <map>
-#include <fstream>
 #include <sstream>
 
 #include <yaml-cpp/yaml.h>
@@ -124,7 +123,6 @@ Configuration::Configuration(std::istream& input) : Configuration() {
 
 int Configuration::ParseArguments(int ac, char** av) {
   std::string config_file;
-  std::string command_line_options;
   boost::program_options::options_description flags_desc;
   flags_desc.add_options()
       ("help,h", "Print help message")
@@ -168,7 +166,7 @@ int Configuration::ParseArguments(int ac, char** av) {
 
     // Command line options override the options provided in the config file.
     if (flags.count("option")) {
-      std::stringstream input_stream;
+      std::stringstream option_stream;
       const std::vector<std::string> options =
           flags["option"].as<std::vector<std::string>>();
       for (const std::string& option: options) {
@@ -180,13 +178,13 @@ int Configuration::ParseArguments(int ac, char** av) {
         const std::string key = option.substr(0, separator_pos);
         const std::string value =
             option.substr(separator_pos + 1, std::string::npos);
-        input_stream << key << ": " << value << "\n";
+        option_stream << key << ": " << value << "\n";
       }
 
 #ifdef VERBOSE
-      LOG(DEBUG) << "Options:\n" << input_stream.str();
+      LOG(DEBUG) << "Options:\n" << option_stream.str();
 #endif
-      ParseConfiguration(input_stream);
+      ParseConfiguration(option_stream);
     }
 
     return 0;
