@@ -21,6 +21,7 @@
 #include <iostream>
 #include <map>
 #include <fstream>
+#include <sstream>
 
 #include <yaml-cpp/yaml.h>
 
@@ -165,7 +166,7 @@ int Configuration::ParseArguments(int ac, char** av) {
     }
     ParseConfigFile(config_file);
 
-    // Command line options overwrite the options provided in the config file.
+    // Command line options override the options provided in the config file.
     if (flags.count("option")) {
       std::stringstream input_stream;
       const std::vector<std::string> options =
