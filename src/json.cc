@@ -501,12 +501,20 @@ class Parser::ParseState {
         handle_(yajl_alloc(&callbacks, NULL, (void*) &builder_)) {
     yajl_config(handle_, yajl_allow_comments, 1);
     yajl_config(handle_, yajl_allow_multiple_values, 1);
-    yajl_config(handle_, yajl_allow_partial_values, 1);
+    //yajl_config(handle_, yajl_allow_partial_values, 1);
     //yajl_config(handle_, yajl_allow_trailing_garbage, 1);
     //yajl_config(handle_, yajl_dont_validate_strings, 1);
   }
 
   ~ParseState() {
+    yajl_status stat = yajl_complete_parse(handle_);
+    if (stat != yajl_status_ok) {
+      std::cerr << "Error in yajl_complete_parse" << std::endl;
+      unsigned char* str = yajl_get_error(handle_, 0, nullptr, 0);
+      std::string error_str((const char*)str);
+      yajl_free_error(handle_, str);
+      throw Exception(error_str);
+    }
     yajl_free(handle_);
   }
 
@@ -522,10 +530,10 @@ Parser::Parser(std::function<void(std::unique_ptr<Value>)> callback)
 
 Parser::~Parser() {}
 
-void Parser::ParseStream(std::istream& stream) throw(Exception) {
+std::size_t Parser::ParseStream(std::istream& stream) throw(Exception) {
   const int kMax = 65536;
   unsigned char data[kMax];
-  yajl_status stat;
+  size_t total_bytes_consumed = 0;
   yajl_handle& handle = state_->handle();
 
   for (;;) {
@@ -534,9 +542,8 @@ void Parser::ParseStream(std::istream& stream) throw(Exception) {
     }
     stream.read(reinterpret_cast<char*>(&data[0]), kMax);
     size_t count = stream.gcount();
-    std::string str((const char*)data, count);
 
-    stat = yajl_parse(handle, data, count);
+    yajl_status stat = yajl_parse(handle, data, count);
     if (stat != yajl_status_ok) {
       std::cerr << "Error in yajl_parse" << std::endl;
       unsigned char* str = yajl_get_error(handle, 1, data, kMax);
@@ -545,23 +552,10 @@ void Parser::ParseStream(std::istream& stream) throw(Exception) {
       throw Exception(error_str);
     }
 
-    size_t bytes = yajl_get_bytes_consumed(handle);
-    std::cerr << "Consumed " << bytes << " out of chunk " << count << " from '" << str << "'" << std::endl;
+    total_bytes_consumed += yajl_get_bytes_consumed(handle);
   }
 
-  stat = yajl_complete_parse(handle);
-
-  size_t bytes = yajl_get_bytes_consumed(handle);
-  std::string str((const char*)data, bytes);
-  std::cerr << "Consumed stream " << bytes << ": '" << str << "'" << std::endl;
-
-  if (stat != yajl_status_ok) {
-    std::cerr << "Error in yajl_complete_parse" << std::endl;
-    unsigned char* str = yajl_get_error(handle, 1, data, kMax);
-    std::string error_str((const char*)str);
-    yajl_free_error(handle, str);
-    throw Exception(error_str);
-  }
+  return total_bytes_consumed;
 }
 
 }  // json

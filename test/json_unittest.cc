@@ -508,4 +508,52 @@ TEST(StreamingTest, BrokenStream) {
   });
 }
 
+TEST(StreamingTest, MultipleObjectsStream) {
+  GuardJsonException([](){
+    std::vector<json::value> v;
+    json::Parser p([&v](json::value r) { v.emplace_back(std::move(r)); });
+    p.ParseStream(std::istringstream(
+      "{\n"
+      "  \"foo\": [1, 2, 3],\n"
+      "  \"bar\": {\"x\": 0, \"y\": null},\n"
+      "  \"baz\": true,\n"
+      "  \"str\": \"asdfasdf\"\n"
+      "}\n"
+      "{\n"
+      "  \"foo1\": [1, 2, 3],\n"
+      "  \"bar1\": {\"x\": 0, \"y\": null},\n"
+      "  \"baz1\": true,\n"
+      "  \"str1\": \"asdfasdf\"\n"
+      "}\n"
+    ));
+    EXPECT_EQ(2, v.size());
+    EXPECT_TOSTRING_EQ(
+      "{"
+      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"baz\":true,"
+      "\"foo\":[1.0,2.0,3.0],"
+      "\"str\":\"asdfasdf\""
+      "}",
+      v[0]);
+    EXPECT_TOSTRING_EQ(
+      "{"
+      "\"bar1\":{\"x\":0.0,\"y\":null},"
+      "\"baz1\":true,"
+      "\"foo1\":[1.0,2.0,3.0],"
+      "\"str1\":\"asdfasdf\""
+      "}",
+      v[1]);
+  });
+}
+
+TEST(StreamingTest, ParseStreamReturnsByteCount) {
+  GuardJsonException([](){
+    json::value v;
+    json::Parser p([&v](json::value r) { v = std::move(r); });
+    size_t n = p.ParseStream(std::istringstream("123"));
+    EXPECT_TOSTRING_EQ("123", v);
+    EXPECT_EQ(3, n);
+  });
+}
+
 } // namespace

@@ -345,10 +345,10 @@ class Parser {
   static std::unique_ptr<Value> FromString(const std::string& input)
       throw(Exception);
 
-  void ParseStream(std::istream& stream) throw(Exception);
+  size_t ParseStream(std::istream& stream) throw(Exception);
   // Used to accept inline construction of streams.
-  void ParseStream(std::istream&& stream) throw(Exception) {
-    ParseStream(stream);
+  size_t ParseStream(std::istream&& stream) throw(Exception) {
+    return ParseStream(stream);
   }
 
  private:
