@@ -2,7 +2,7 @@
 #include "gtest/gtest.h"
 
 #include <functional>
-#include <map>
+#include <set>
 #include <vector>
 
 #define EXPECT_TOSTRING_EQ(s, v) EXPECT_EQ(s, v->ToString())
@@ -346,10 +346,15 @@ TEST(TrivialParseTest, ObjectOneField) {
 
     EXPECT_EQ(1, obj->size());
     EXPECT_TRUE(obj->Has("f"));
-    EXPECT_FALSE(obj->Has("g"));
+    EXPECT_THROW(obj->Get<json::Null>("f"), json::Exception);
+    EXPECT_THROW(obj->Get<json::Boolean>("f"), json::Exception);
     EXPECT_EQ(2.0, obj->Get<json::Number>("f"));
-    EXPECT_EQ(2.0, obj->at("f")->As<json::Number>()->value());
     EXPECT_THROW(obj->Get<json::String>("f"), json::Exception);
+    EXPECT_THROW(obj->Get<json::Array>("f"), json::Exception);
+    EXPECT_THROW(obj->Get<json::Object>("f"), json::Exception);
+    EXPECT_EQ(2.0, obj->at("f")->As<json::Number>()->value());
+
+    EXPECT_FALSE(obj->Has("g"));
     EXPECT_THROW(obj->Get<json::Number>("g"), json::Exception);
     EXPECT_THROW(obj->at("g"), std::out_of_range);
   });
