@@ -43,19 +43,12 @@ class MetadataUpdater {
         : ResourceMetadata(other.ids_, other.resource_,
                            std::move(other.metadata_)) {}
 
-    const MetadataStore::Metadata& metadata() const {
-      return metadata_;
-    }
-
-    const MonitoredResource& resource() const {
-      return resource_;
-    }
-
-    const std::vector<std::string>& ids() const {
-      return ids_;
-    }
+    const MetadataStore::Metadata& metadata() const { return metadata_; }
+    const MonitoredResource& resource() const { return resource_; }
+    const std::vector<std::string>& ids() const { return ids_; }
 
    private:
+    // Needs write access to metadata_.
     friend class MetadataUpdater;
 
     std::vector<std::string> ids_;
