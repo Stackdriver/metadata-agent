@@ -9,25 +9,7 @@ namespace google {
 
 namespace {
 
-class InstanceTest : public ::testing::Test {
- protected:
-  static const MetadataStore::Metadata& GetResourceMetadata(
-      const MetadataUpdater::ResourceMetadata& rm) {
-    return rm.metadata;
-  }
-
-  static const MonitoredResource& GetMonitoredResource(
-      const MetadataUpdater::ResourceMetadata& rm) {
-    return rm.resource;
-  }
-
-  static const std::vector<std::string>& GetResourceIds(
-      const MetadataUpdater::ResourceMetadata& rm) {
-    return rm.ids;
-  }
-};
-
-TEST_F(InstanceTest, GetInstanceMonitoredResource) {
+TEST(InstanceTest, GetInstanceMonitoredResource) {
   Configuration config(std::istringstream(
       "InstanceResourceType: gce_instance\n"
       "InstanceId: 1234567891011\n"
@@ -40,7 +22,7 @@ TEST_F(InstanceTest, GetInstanceMonitoredResource) {
   }), InstanceReader::InstanceResource(env));
 }
 
-TEST_F(InstanceTest, GetInstanceMetatadataQuery) {
+TEST(InstanceTest, GetInstanceMetatadataQuery) {
   Configuration config(std::istringstream(
       "InstanceResourceType: gce_instance\n"
       "InstanceId: 1234567891011\n"
@@ -54,9 +36,9 @@ TEST_F(InstanceTest, GetInstanceMetatadataQuery) {
   EXPECT_EQ(MonitoredResource("gce_instance", {
     {"instance_id", "1234567891011"},
     {"zone", "us-east1-b"}
-  }), GetMonitoredResource(rm));
-  EXPECT_EQ(ids_expected, GetResourceIds(rm));
-  EXPECT_TRUE(GetResourceMetadata(rm).ignore);
+  }), rm.resource());
+  EXPECT_EQ(ids_expected, rm.ids());
+  EXPECT_TRUE(rm.metadata().ignore);
 }
 
 }  // namespace

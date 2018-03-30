@@ -35,16 +35,32 @@ class Configuration;
 class MetadataUpdater {
  public:
   struct ResourceMetadata {
-    ResourceMetadata(const std::vector<std::string>& ids_,
-                     const MonitoredResource& resource_,
-                     MetadataStore::Metadata&& metadata_)
-        : ids(ids_), resource(resource_), metadata(std::move(metadata_)) {}
+    ResourceMetadata(const std::vector<std::string>& ids,
+                     const MonitoredResource& resource,
+                     MetadataStore::Metadata&& metadata)
+        : ids_(ids), resource_(resource), metadata_(std::move(metadata)) {}
     ResourceMetadata(ResourceMetadata&& other)
-        : ResourceMetadata(other.ids, other.resource,
-                           std::move(other.metadata)) {}
-    std::vector<std::string> ids;
-    MonitoredResource resource;
-    MetadataStore::Metadata metadata;
+        : ResourceMetadata(other.ids_, other.resource_,
+                           std::move(other.metadata_)) {}
+
+    const MetadataStore::Metadata& metadata() const {
+      return metadata_;
+    }
+
+    const MonitoredResource& resource() const {
+      return resource_;
+    }
+
+    const std::vector<std::string>& ids() const {
+      return ids_;
+    }
+
+   private:
+    friend class MetadataUpdater;
+
+    std::vector<std::string> ids_;
+    MonitoredResource resource_;
+    MetadataStore::Metadata metadata_;
   };
 
   MetadataUpdater(const Configuration& config, MetadataStore* store,
@@ -75,12 +91,13 @@ class MetadataUpdater {
 
   // Updates the resource map in the store.
   void UpdateResourceCallback(const ResourceMetadata& result) {
-    store_->UpdateResource(result.ids, result.resource);
+    store_->UpdateResource(result.ids_, result.resource_);
   }
 
   // Updates the metadata in the store. Consumes result.
   void UpdateMetadataCallback(ResourceMetadata&& result) {
-    store_->UpdateMetadata(result.resource, std::move(result.metadata));
+    store_->UpdateMetadata(result.resource_,
+                           std::move(result.metadata_));
   }
 
   const Configuration& config() {
