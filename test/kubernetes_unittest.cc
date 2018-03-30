@@ -34,18 +34,18 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
   });
   const auto m =
       GetNodeMetadata(reader, node->As<json::Object>(), Timestamp(), false);
-  EXPECT_EQ(1, m.ids.size());
-  EXPECT_EQ("k8s_node.testname", m.ids[0]);
+  EXPECT_EQ(1, m.ids().size());
+  EXPECT_EQ("k8s_node.testname", m.ids()[0]);
   EXPECT_EQ(MonitoredResource("k8s_node", {
     {"cluster_name", "TestClusterName"},
     {"node_name", "testname"},
     {"location", "TestClusterLocation"},
-  }), m.resource);
-  EXPECT_EQ("TestVersion", m.metadata.version);
-  EXPECT_EQ(false, m.metadata.is_deleted);
+  }), m.resource());
+  EXPECT_EQ("TestVersion", m.metadata().version);
+  EXPECT_EQ(false, m.metadata().is_deleted);
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m.metadata.created_at);
-  EXPECT_EQ(Timestamp(), m.metadata.collected_at);
+            m.metadata().created_at);
+  EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   json::value big = json::object({
     {"blobs", json::object({
       {"association", json::object({
@@ -66,6 +66,6 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
       })},
     })},
   });
-  EXPECT_EQ(big->ToString(), m.metadata.metadata->ToString());
+  EXPECT_EQ(big->ToString(), m.metadata().metadata->ToString());
 }
 }  // namespace google
