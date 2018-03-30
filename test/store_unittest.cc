@@ -223,7 +223,6 @@ TEST(MetadataTest, IgnoredMetadataCorrectlyCreated) {
 TEST(MetadataTest, IgnoredMetadataCorrectlyCloned) {
   MetadataStore::Metadata m = MetadataStore::Metadata::IGNORED();
   MetadataStore::Metadata m_clone = m.Clone();
-  EXPECT_TRUE(m.ignore);
   EXPECT_EQ(m.ignore, m_clone.ignore);
 }
 

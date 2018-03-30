@@ -52,7 +52,7 @@ class MetadataStore {
 
     Metadata Clone() const {
       if (ignore) {
-        return {};
+        return IGNORED();
       }
       return {version, is_deleted, created_at, collected_at, metadata->Clone()};
     }
