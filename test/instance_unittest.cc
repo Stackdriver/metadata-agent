@@ -41,16 +41,6 @@ TEST_F(InstanceTest, GetInstanceMonitoredResource) {
   }), mr);
 }
 
-TEST_F(InstanceTest, GetInstanceMonitoredResourceWithEmptyConfig) {
-  Configuration config;
-  Environment env(config);
-  MonitoredResource mr = InstanceReader::InstanceResource(env);
-  EXPECT_EQ(MonitoredResource("gce_instance", {
-      {"instance_id", ""},
-      {"zone", ""}
-  }), mr);
-}
-
 TEST_F(InstanceTest, GetInstanceMetatadataQuery) {
   Configuration config(std::istringstream(
       "InstanceResourceType: gce_instance\n"
