@@ -1,5 +1,4 @@
 #include "../src/configuration.h"
-#include "../src/instance.h"
 #include "../src/kubernetes.h"
 #include "../src/updater.h"
 #include "gtest/gtest.h"
@@ -7,13 +6,13 @@
 namespace google {
 
 class KubernetesTest : public ::testing::Test {
-  protected:
-    MetadataUpdater::ResourceMetadata GetNodeMetadata(
-	const KubernetesReader& reader, const json::Object *node,
-	Timestamp collected_at, bool is_deleted) const
-	throw(json::Exception) {
-      return reader.GetNodeMetadata(node, collected_at, is_deleted);
-    }
+ protected:
+  MetadataUpdater::ResourceMetadata GetNodeMetadata(
+      const KubernetesReader& reader, const json::Object *node,
+      Timestamp collected_at, bool is_deleted) const
+      throw(json::Exception) {
+    return reader.GetNodeMetadata(node, collected_at, is_deleted);
+  }
 };
 
 TEST_F(KubernetesTest, GetNodeMetadata) {
@@ -21,8 +20,8 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
     "KubernetesClusterName: TestClusterName\n"
     "KubernetesClusterLocation: TestClusterLocation\n"
     "MetadataIngestionRawContentVersion: TestVersion\n"
-    "InstanceZone: TestZone\n"
     "InstanceResourceType: gce_instance\n"
+    "InstanceZone: TestZone\n"
     "InstanceId: TestID\n"
   ));
   Environment environment(config);
