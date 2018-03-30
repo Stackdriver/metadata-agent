@@ -16,13 +16,13 @@ class KubernetesTest : public ::testing::Test {
     return reader.GetNodeMetadata(node, collected_at, is_deleted);
   }
 
-  json::value ComputePodAssociations(const json::Object* pod,
-                                     const KubernetesReader& reader) {
+  json::value ComputePodAssociations(const KubernetesReader& reader,
+                                     const json::Object* pod) {
     return reader.ComputePodAssociations(pod);
   }
 
-  void UpdateOwnersCache(const std::string& key, json::value& value,
-                         KubernetesReader* reader) {
+  void UpdateOwnersCache(KubernetesReader* reader, const std::string& key,
+                         const json::value& value) {
     reader->owners_[key] = value->Clone();
   }
 };
@@ -82,9 +82,6 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
 }
 
 TEST_F(KubernetesTest, ComputePodAssociations) {
-  const std::string api_version = "1.2.3";
-  const std::string kind = "TestKind";
-  const std::string uid1 = "TestUID1";
   Configuration config(std::stringstream(
     "KubernetesClusterName: TestClusterName\n"
     "KubernetesClusterLocation: TestClusterLocation\n"
@@ -97,17 +94,17 @@ TEST_F(KubernetesTest, ComputePodAssociations) {
   const std::string encoded_ref = "1.2.3/TestKind/TestUID1";
   json::value controller = json::object({
     {"controller", json::boolean(true)},
-    {"apiVersion", json::string(api_version)},
-    {"kind", json::string(kind)},
+    {"apiVersion", json::string("1.2.3")},
+    {"kind", json::string("TestKind")},
     {"name", json::string("TestName")},
-    {"uid", json::string(uid1)},
+    {"uid", json::string("TestUID1")},
     {"metadata", json::object({
       {"name", json::string("InnerTestName")},
       {"kind", json::string("InnerTestKind")},
       {"uid", json::string("InnerTestUID1")},
     })},
   });
-  UpdateOwnersCache(encoded_ref, controller, &reader);
+  UpdateOwnersCache(&reader, encoded_ref, controller);
   json::value pod = json::object({
     {"metadata", json::object({
       {"namespace", json::string("TestNamespace")},
@@ -126,12 +123,12 @@ TEST_F(KubernetesTest, ComputePodAssociations) {
     {"raw", json::object({
       {"controllers", json::object({
         {"topLevelControllerName", json::string("InnerTestName")},
-        {"topLevelControllerType", json::string(kind)},
+        {"topLevelControllerType", json::string("TestKind")},
       })},
       {"infrastructureResource", json::object({
         {"labels", json::object({
           {"instance_id", json::string("TestID")},
-          {"zone", json::string("TestZone")}
+          {"zone", json::string("TestZone")},
         })},
         {"type", json::string("gce_instance")},
       })},
@@ -140,7 +137,7 @@ TEST_F(KubernetesTest, ComputePodAssociations) {
     {"version", json::string("TestVersion")},
   });
   const auto associations =
-      ComputePodAssociations(pod->As<json::Object>(), reader);
+      ComputePodAssociations(reader, pod->As<json::Object>());
   EXPECT_EQ(expected_associations->ToString(), associations->ToString());
 }
 }  // namespace google
