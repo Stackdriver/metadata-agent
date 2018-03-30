@@ -17,12 +17,12 @@ class KubernetesTest : public ::testing::Test {
   }
 
   json::value ComputePodAssociations(const json::Object* pod,
-				     const KubernetesReader& reader) {
+                                     const KubernetesReader& reader) {
     return reader.ComputePodAssociations(pod);
   }
 
-  void InsertIntoOwners(const std::string& key, json::value& value,
-			KubernetesReader* reader) {
+  void UpdateOwnersCache(const std::string& key, json::value& value,
+                         KubernetesReader* reader) {
     reader->owners_[key] = value->Clone();
   }
 };
@@ -94,28 +94,27 @@ TEST_F(KubernetesTest, ComputePodAssociations) {
   ));
   Environment environment(config);
   KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
-  const std::string encoded_ref = boost::algorithm::join(
-      std::vector<std::string>{api_version, kind, uid1}, "/");
+  const std::string encoded_ref = "1.2.3/TestKind/TestUID1";
   json::value controller = json::object({
-          {"controller", json::boolean(true)},
-          {"apiVersion", json::string(api_version)},
-          {"kind", json::string(kind)},
-          {"name", json::string("TestName")},
-          {"uid", json::string(uid1)},
-	  {"metadata", json::object({
-	    {"name", json::string("InnerTestName")},
-	    {"kind", json::string("InnerTestKind")},
-	    {"uid", json::string("InnerTestUID1")},
-	  })},
+    {"controller", json::boolean(true)},
+    {"apiVersion", json::string(api_version)},
+    {"kind", json::string(kind)},
+    {"name", json::string("TestName")},
+    {"uid", json::string(uid1)},
+    {"metadata", json::object({
+      {"name", json::string("InnerTestName")},
+      {"kind", json::string("InnerTestKind")},
+      {"uid", json::string("InnerTestUID1")},
+    })},
   });
-  InsertIntoOwners(encoded_ref, controller, &reader);
+  UpdateOwnersCache(encoded_ref, controller, &reader);
   json::value pod = json::object({
     {"metadata", json::object({
       {"namespace", json::string("TestNamespace")},
       {"uid", json::string("TestUID0")},
       {"ownerReferences", json::array({
         json::object({{"no_controller", json::boolean(true)}}),
-	controller->Clone(),
+        controller->Clone(),
       })},
     })},
     {"spec", json::object({
@@ -123,24 +122,24 @@ TEST_F(KubernetesTest, ComputePodAssociations) {
     })},
   });
 
-  auto associations = ComputePodAssociations(pod->As<json::Object>(), reader);
-
-  EXPECT_EQ(associations->ToString(), json::object({
+  json::value expected_associations = json::object({
     {"raw", json::object({
       {"controllers", json::object({
-	{"topLevelControllerName", json::string("InnerTestName")},
-	{"topLevelControllerType", json::string(kind)},
+        {"topLevelControllerName", json::string("InnerTestName")},
+        {"topLevelControllerType", json::string(kind)},
       })},
       {"infrastructureResource", json::object({
-	{"labels", json::object({
-	  {"instance_id", json::string("TestID")},
-	  {"zone", json::string("TestZone")}
-	})},
-	{"type", json::string("gce_instance")},
+        {"labels", json::object({
+          {"instance_id", json::string("TestID")},
+          {"zone", json::string("TestZone")}
+        })},
+        {"type", json::string("gce_instance")},
       })},
       {"nodeName", json::string("TestSpecNodeName")},
     })},
     {"version", json::string("TestVersion")},
-  })->ToString());
+  });
+  const auto associations = ComputePodAssociations(pod->As<json::Object>(), reader);
+  EXPECT_EQ(expected_associations->ToString(), associations->ToString());
 }
 }  // namespace google
