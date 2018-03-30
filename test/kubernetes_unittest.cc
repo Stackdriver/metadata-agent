@@ -139,7 +139,8 @@ TEST_F(KubernetesTest, ComputePodAssociations) {
     })},
     {"version", json::string("TestVersion")},
   });
-  const auto associations = ComputePodAssociations(pod->As<json::Object>(), reader);
+  const auto associations =
+      ComputePodAssociations(pod->As<json::Object>(), reader);
   EXPECT_EQ(expected_associations->ToString(), associations->ToString());
 }
 }  // namespace google
