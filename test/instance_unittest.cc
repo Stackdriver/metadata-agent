@@ -16,12 +16,12 @@ class InstanceTest : public ::testing::Test {
     return rm.metadata;
   }
 
-  static MonitoredResource GetMonitoredResource(
+  static const MonitoredResource& GetMonitoredResource(
       const MetadataUpdater::ResourceMetadata& rm) {
     return rm.resource;
   }
 
-  static std::vector<std::string> GetResourceIds(
+  static const std::vector<std::string>& GetResourceIds(
       const MetadataUpdater::ResourceMetadata& rm) {
     return rm.ids;
   }
@@ -34,11 +34,10 @@ TEST_F(InstanceTest, GetInstanceMonitoredResource) {
       "InstanceZone: us-east1-b\n"
   ));
   Environment env(config);
-  MonitoredResource mr = InstanceReader::InstanceResource(env);
   EXPECT_EQ(MonitoredResource("gce_instance", {
     {"instance_id", "1234567891011"},
     {"zone", "us-east1-b"}
-  }), mr);
+  }), InstanceReader::InstanceResource(env));
 }
 
 TEST_F(InstanceTest, GetInstanceMetatadataQuery) {
@@ -49,16 +48,15 @@ TEST_F(InstanceTest, GetInstanceMetatadataQuery) {
   ));
   InstanceReader reader(config);
   const auto result = reader.MetadataQuery();
-  const std::vector<std::string> ids_exp({"", "1234567891011"});
+  const std::vector<std::string> ids_expected({"", "1234567891011"});
   EXPECT_EQ(1, result.size());
   const MetadataUpdater::ResourceMetadata& rm = result[0];
   EXPECT_EQ(MonitoredResource("gce_instance", {
-      {"instance_id", "1234567891011"},
-      {"zone", "us-east1-b"}
+    {"instance_id", "1234567891011"},
+    {"zone", "us-east1-b"}
   }), GetMonitoredResource(rm));
-  EXPECT_EQ(ids_exp, GetResourceIds(rm));
-  EXPECT_EQ(MetadataStore::Metadata::IGNORED().ignore,
-            GetResourceMetadata(rm).ignore);
+  EXPECT_EQ(ids_expected, GetResourceIds(rm));
+  EXPECT_TRUE(GetResourceMetadata(rm).ignore);
 }
 
 }  // namespace
