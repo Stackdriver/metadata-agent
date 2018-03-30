@@ -503,7 +503,7 @@ TEST(EdgeTest, NegativeNumbers) {
 
 // Big tests.
 
-constexpr char kComplexExample[] =
+constexpr const char kComplexExample[] =
   "{\n"
   "  \"foo\": [1.0, 2, 3],\n"
   "  \"bar\": {\"x\": 0, \"y\": null},\n"
@@ -511,7 +511,7 @@ constexpr char kComplexExample[] =
   "  \"str\": \"asdfasdf\"\n"
   "}\n";
 
-constexpr char kComplexExampleExpected[] =
+constexpr const char kComplexExampleExpected[] =
   "{"
   "\"bar\":{\"x\":0.0,\"y\":null},"
   "\"baz\":true,"
