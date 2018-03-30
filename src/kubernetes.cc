@@ -655,8 +655,7 @@ struct Watcher {
 
 void WatchEventCallback(
     std::function<void(const json::Object*, Timestamp, bool)> callback,
-    const std::string& name, json::value raw_watch)
-    throw(json::Exception) {
+    const std::string& name, json::value raw_watch) throw(json::Exception) {
   Timestamp collected_at = std::chrono::system_clock::now();
 
 #ifdef VERBOSE
