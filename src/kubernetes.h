@@ -138,12 +138,12 @@ class KubernetesReader {
       throw(json::Exception);
   // Get a list of service metadata based on the service level caches.
   std::vector<json::value> GetServiceList(
-      const std::string cluster_name, const std::string location)
+      const std::string& cluster_name, const std::string& location)
       const throw(json::Exception);
   // Return the cluster metadata based on the cached values for
   // service_to_metadta_ and service_to_pods_.
   MetadataUpdater::ResourceMetadata GetClusterMetadata(
-      Timestamp collected_at, bool is_deleted) const throw(json::Exception);
+      Timestamp collected_at) const throw(json::Exception);
 
   // Gets the Kubernetes master API token.
   // Returns an empty string if unable to find the token.
@@ -173,6 +173,9 @@ class KubernetesReader {
   void UpdateServiceToPodsCache(
       const json::Object* endpoints, bool is_deleted) throw(json::Exception);
 
+  // Const data.
+  const std::vector<std::string> kNoPods;
+
   // Cached data.
   mutable std::recursive_mutex mutex_;
   mutable std::string current_node_;
@@ -184,7 +187,7 @@ class KubernetesReader {
   // A memoized map from an encoded owner reference to the owner object.
   mutable std::map<std::string, json::value> owners_;
   // Mutex for the service related caches.
-  mutable std::recursive_mutex service_mutex_;
+  mutable std::mutex service_mutex_;
   // Map from service key to service metadata. This map is built based on the
   // response from WatchServices.
   mutable std::map<std::string, json::value> service_to_metadata_;
