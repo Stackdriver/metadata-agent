@@ -24,7 +24,7 @@ YAML_CPP_LIBS=$(YAML_CPP_LIBDIR)/libyaml-cpp.a
 CPPFLAGS+= \
     -DENABLE_KUBERNETES_METADATA \
     -isystem $(GTEST_DIR)/include -I$(GMOCK_DIR)/include \
-    -I$(YAML_CPP_DIR)/include
+    -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include
 CXXFLAGS=\
     -std=c++11 -g -pthread -Wno-write-strings -Wno-deprecated
 LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR)
@@ -99,9 +99,10 @@ $(GTEST_LIB): gtest-all.o gtest_main.o
 $(TESTS): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 
 # All unittest objects depend on GTEST_LIB.
-$(TESTS:%=%.o): $(GTEST_LIB)
+# Some headers need CPP_NETLIB_LIBS and YAML_CPP_LIBS.
+$(TESTS:%=%.o): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 
-api_server_unittest: api_server_unittest.o $(SRC_DIR)/api_server.o $(SRC_DIR)/configuration.o $(SRC_DIR)/store.o $(SRC_DIR)/logging.o
+api_server_unittest: api_server_unittest.o $(SRC_DIR)/api_server.o $(SRC_DIR)/configuration.o $(SRC_DIR)/store.o $(SRC_DIR)/json.o $(SRC_DIR)/resource.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 format_unittest: format_unittest.o $(SRC_DIR)/format.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
