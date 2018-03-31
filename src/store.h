@@ -74,7 +74,7 @@ class MetadataStore {
 
   MetadataStore(const Configuration& config);
 
-  // Returns a copy of the mapping from monitored resources to metadata
+  // Returns a copy of the mapping from a monitored resource to the metadata
   // associated with that resource.
   std::map<MonitoredResource, Metadata> GetMetadataMap() const;
 
