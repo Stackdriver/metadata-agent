@@ -55,7 +55,7 @@ TESTS=\
 
 GTEST_LIB=gtest_lib.a
 
-all: $(TESTS)
+all: $(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(TESTS)
 
 # TODO: Running the test prints "Running main() from gtest_main.cc".
 # Figure out how to fix this.
@@ -76,13 +76,17 @@ init-submodules:
 	git submodule update --init $(GTEST_MODULE)
 	touch init-submodules
 
-$(CPP_NETLIB_LIBS):
-	cd $(SRC_DIR) && $(MAKE) $@
+$(SRC_DIR)/init-submodules:
+	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
-$(YAML_CPP_LIBS):
-	cd $(SRC_DIR) && $(MAKE) $@
+$(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp: $(SRC_DIR)/init-submodules
+	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
-$(SRC_DIR)/%.o: $(SRC_DIR)/%.cc
+$(CPP_NETLIB_LIBS): $(SRC_DIR)/build-cpp-netlib
+
+$(YAML_CPP_LIBS): $(SRC_DIR)/build-yaml-cpp
+
+$(SRC_DIR)/%.o: $(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(SRC_DIR)/%.cc
 	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
 $(GTEST_SOURCEDIR)/gtest-all.cc $(GTEST_SOURCEDIR)/gtest_main.cc: init-submodules
