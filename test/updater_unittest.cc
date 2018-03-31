@@ -12,34 +12,38 @@ namespace google {
 class UpdaterTest : public ::testing::Test {
  protected:
   // query_metadata function not needed to test callbacks.
-  UpdaterTest() : config(), store(config), updater(
-      config, &store, "Test", 60.0, nullptr) {}
+  UpdaterTest() : config(), store(config) {}
 
-  std::map<MonitoredResource, MetadataStore::Metadata> GetMetadataMap() const {
-    return store.GetMetadataMap();
+  static bool ValidateConfiguration(MetadataUpdater* updater) {
+    return updater->ValidateConfiguration();
   }
 
-  bool ValidateConfiguration() const {
-    return updater.ValidateConfiguration();
+  static void UpdateMetadataCallback(
+      MetadataUpdater* updater,
+      MetadataUpdater::ResourceMetadata&& result) {
+    updater->UpdateMetadataCallback(std::move(result));
   }
 
-  void UpdateMetadataCallback(MetadataUpdater::ResourceMetadata&& result) {
-    updater.UpdateMetadataCallback(std::move(result));
-  }
-
-  void UpdateResourceCallback(const MetadataUpdater::ResourceMetadata& result) {
-    updater.UpdateResourceCallback(result);
+  static void UpdateResourceCallback(
+      MetadataUpdater* updater,
+      const MetadataUpdater::ResourceMetadata& result) {
+    updater->UpdateResourceCallback(result);
   }
 
   Configuration config;
   MetadataStore store;
-  PollingMetadataUpdater updater;
 };
 
 namespace {
 
 TEST_F(UpdaterTest, ValidateConfiguration) {
-  EXPECT_TRUE(ValidateConfiguration());
+  PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
+  EXPECT_TRUE(ValidateConfiguration(&updater));
+}
+
+TEST_F(UpdaterTest, UpdaterWithInvalidPollingIntervalTest) {
+  PollingMetadataUpdater updater(config, &store, "BadUpdater", -1, nullptr);
+  EXPECT_FALSE(ValidateConfiguration(&updater));
 }
 
 TEST_F(UpdaterTest, UpdateMetadataCallbackTest) {
@@ -53,8 +57,9 @@ TEST_F(UpdaterTest, UpdateMetadataCallbackTest) {
   MetadataUpdater::ResourceMetadata metadata(
       std::vector<std::string>({"", "test-prefix"}),
       resource, std::move(m));
-  UpdateMetadataCallback(std::move(metadata));
-  const auto metadata_map = GetMetadataMap();
+  PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
+  UpdateMetadataCallback(&updater, std::move(metadata));
+  const auto metadata_map = store.GetMetadataMap();
   EXPECT_EQ(1, metadata_map.size());
   EXPECT_EQ("test-version", metadata_map.at(resource).version);
   EXPECT_EQ("{\"f\":\"test\"}", metadata_map.at(resource).metadata->ToString());
@@ -66,7 +71,8 @@ TEST_F(UpdaterTest, UpdateResourceCallbackTest) {
       MonitoredResource("test_resource", {}),
       MetadataStore::Metadata::IGNORED()
   );
-  UpdateResourceCallback(metadata);
+  PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
+  UpdateResourceCallback(&updater, metadata);
   EXPECT_EQ(MonitoredResource("test_resource", {}),
             store.LookupResource(""));
   EXPECT_EQ(MonitoredResource("test_resource", {}),

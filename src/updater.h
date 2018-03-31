@@ -69,6 +69,8 @@ class MetadataUpdater {
       std::function<void(std::vector<MetadataUpdater::ResourceMetadata>&&)>;
 
  protected:
+  friend class UpdaterTest;
+
   // Validates the relevant configuration and returns true if it's correct.
   // Returns a bool that represents if it's configured properly.
   virtual bool ValidateConfiguration() const {
