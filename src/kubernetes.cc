@@ -1275,7 +1275,7 @@ void KubernetesUpdater::StartUpdater() {
     pod_watch_thread_ = std::thread([=]() {
       reader_.WatchPods(watched_node, cb);
     });
-    if (config().KubernetesClusterLevelMetadata()) {
+    if (config().KubernetesServiceMetadata()) {
       service_watch_thread_ = std::thread([=]() {
         reader_.WatchServices(cb);
       });
