@@ -32,6 +32,8 @@ void VerifyDefaultConfig(const Configuration& config) {
   EXPECT_EQ("", config.KubernetesClusterLocation());
   EXPECT_EQ("", config.KubernetesNodeName());
   EXPECT_EQ(false, config.KubernetesUseWatch());
+  EXPECT_EQ(false, config.KubernetesClusterLevelMetadata());
+  EXPECT_EQ(true, config.KubernetesServiceMetadata());
   EXPECT_EQ("", config.InstanceId());
   EXPECT_EQ("", config.InstanceZone());
   EXPECT_EQ("/var/run/metadata-agent/health/unhealthy", config.HealthCheckFile());
