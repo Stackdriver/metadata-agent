@@ -140,6 +140,10 @@ class Configuration {
     std::lock_guard<std::mutex> lock(mutex_);
     return kubernetes_cluster_level_metadata_;
   }
+  bool KubernetesServiceMetadata() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return kubernetes_service_metadata_;
+  }
   // Common metadata updater options.
   const std::string& InstanceId() const {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -194,6 +198,7 @@ class Configuration {
   std::string kubernetes_node_name_;
   bool kubernetes_use_watch_;
   bool kubernetes_cluster_level_metadata_;
+  bool kubernetes_service_metadata_;
   std::string instance_id_;
   std::string instance_zone_;
   std::string health_check_file_;
