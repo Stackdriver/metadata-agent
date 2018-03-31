@@ -47,6 +47,7 @@ TEST_DIR=.
 TEST_SOURCES=$(wildcard $(TEST_DIR)/*_unittest.cc)
 TEST_OBJS=$(TEST_SOURCES:$(TEST_DIR)/%.cc=%.o)
 TESTS=\
+      api_server_unittest \
       base64_unittest \
       configuration_unittest \
       environment_unittest \
@@ -108,6 +109,8 @@ $(TESTS): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 # All unittest objects depend on GTEST_LIB.
 $(TESTS:%=%.o): $(GTEST_LIB)
 
+api_server_unittest: api_server_unittest.o $(SRC_DIR)/api_server.o $(SRC_DIR)/configuration.o $(SRC_DIR)/store.o $(SRC_DIR)/logging.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 base64_unittest: base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 configuration_unittest: configuration_unittest.o $(SRC_DIR)/configuration.o
