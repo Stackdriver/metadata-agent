@@ -53,7 +53,6 @@ constexpr const char kGkeContainerResourcePrefix[] = "gke_container";
 constexpr const char kK8sContainerResourcePrefix[] = "k8s_container";
 constexpr const char kK8sPodResourcePrefix[] = "k8s_pod";
 constexpr const char kK8sNodeResourcePrefix[] = "k8s_node";
-constexpr const char kK8sClusterResourcePrefix[] = "k8s_cluster";
 
 constexpr const char kNodeSelectorPrefix[] = "?fieldSelector=spec.nodeName%3D";
 
@@ -454,22 +453,20 @@ KubernetesReader::GetPodAndContainerMetadata(
   return std::move(result);
 }
 
-
 std::vector<json::value> KubernetesReader::GetServiceList(
-    const std::string cluster_name, const std::string location
-) const throw(json::Exception) {
-  std::lock_guard<std::recursive_mutex> lock(service_mutex_);
+    const std::string& cluster_name, const std::string& location) const
+    throw(json::Exception) {
+  std::lock_guard<std::mutex> lock(service_mutex_);
   std::vector<json::value> service_list;
-  for (auto const& service_it : service_to_metadata_) {
-    const std::string service_key = service_it.first;
+  for (const auto& service_it : service_to_metadata_) {
+    const std::string& service_key = service_it.first;
     const std::string namespace_name =
         service_key.substr(0, service_key.find("/"));
-    json::value service_metadata = service_it.second->Clone();
-    std::vector<std::string> pod_names;
+    const json::value& service_metadata = service_it.second;
     auto endpoints_it = service_to_pods_.find(service_key);
-    if (endpoints_it != service_to_pods_.end()) {
-      pod_names = endpoints_it->second;
-    }
+    const std::vector<std::string>& pod_names =
+        (endpoints_it != service_to_pods_.end()) ? endpoints_it->second
+                                             : kNoPods;
     std::vector<json::value> pod_resources;
     for (const std::string& pod_name : pod_names) {
       const MonitoredResource k8s_pod("k8s_pod", {
@@ -478,12 +475,12 @@ std::vector<json::value> KubernetesReader::GetServiceList(
         {"pod_name", pod_name},
         {"location", location},
       });
-      pod_resources.push_back(k8s_pod.ToJSON());
+      pod_resources.emplace_back(k8s_pod.ToJSON());
     }
     service_list.emplace_back(json::object({
       {"api", json::object({
         {"version", json::string(kKubernetesApiVersion)},
-        {"raw", std::move(service_metadata)},
+        {"raw", service_metadata->Clone()},
         {"pods", json::array(std::move(pod_resources))},
       })},
     }));
@@ -492,7 +489,7 @@ std::vector<json::value> KubernetesReader::GetServiceList(
 }
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetClusterMetadata(
-    Timestamp collected_at, bool is_deleted) const throw(json::Exception) {
+    Timestamp collected_at) const throw(json::Exception) {
   const std::string cluster_name = environment_.KubernetesClusterName();
   const std::string location = environment_.KubernetesClusterLocation();
   std::vector<json::value> service_list =
@@ -518,7 +515,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetClusterMetadata(
       k8s_cluster,
 #ifdef ENABLE_KUBERNETES_METADATA
       MetadataStore::Metadata(config_.MetadataIngestionRawContentVersion(),
-                              is_deleted, created_at, collected_at,
+                              /*is_deleted=*/ false, created_at, collected_at,
                               std::move(cluster_raw_metadata))
 #else
       MetadataStore::Metadata::IGNORED()
@@ -995,18 +992,17 @@ void KubernetesReader::UpdateServiceToMetadataCache(
   const std::string encoded_ref = boost::algorithm::join(
       std::vector<std::string>{namespace_name, service_name}, "/");
 
-  std::lock_guard<std::recursive_mutex> lock(service_mutex_);
+  std::lock_guard<std::mutex> lock(service_mutex_);
   auto service_it = service_to_metadata_.find(encoded_ref);
   if (is_deleted) {
     if (service_it != service_to_metadata_.end()) {
       service_to_metadata_.erase(service_it);
     }
   } else {
-    json::value service_value = service->Clone();
     if (service_it == service_to_metadata_.end()) {
-      service_to_metadata_.emplace(encoded_ref, std::move(service_value));
+      service_to_metadata_.emplace(encoded_ref, service->Clone());
     } else {
-      service_it->second = std::move(service_value);
+      service_it->second = service->Clone();
     }
   }
 }
@@ -1022,8 +1018,8 @@ void KubernetesReader::UpdateServiceToPodsCache(
   const std::string service_name = metadata->Get<json::String>("name");
   const std::string encoded_ref = boost::algorithm::join(
       std::vector<std::string>{namespace_name, service_name}, "/");
-  std::vector<std::string> pod_names;
 
+  std::vector<std::string> pod_names;
   // Only extract the pod names when this is not a deletion. In the case of
   // a deletion, we delete the mapping below.
   if (!is_deleted && endpoints->Has("subsets") &&
@@ -1044,31 +1040,27 @@ void KubernetesReader::UpdateServiceToPodsCache(
         if (!(ref->Has("kind") && ref->Has("name"))) {
           continue;
         }
-        const std::string& target_kind = ref->Get<json::String>("kind");
+        const std::string target_kind = ref->Get<json::String>("kind");
         if (target_kind != "Pod") {
           LOG(INFO) << "Found a resource other than a pod in Endpoint "
                     << service_name << "'s targetRef: " << target_kind;
           continue;
         }
-        const std::string& pod_name = ref->Get<json::String>("name");
+        const std::string pod_name = ref->Get<json::String>("name");
         pod_names.push_back(pod_name);
       }
     }
   }
 
-  std::lock_guard<std::recursive_mutex> lock(service_mutex_);
-  auto service_it = service_to_pods_.find(encoded_ref);
+  std::lock_guard<std::mutex> lock(service_mutex_);
   if (is_deleted) {
-    if (service_it != service_to_pods_.end()) {
-      service_to_pods_.erase(service_it);
-    }
+    service_to_pods_.erase(encoded_ref);
   } else {
-    if (service_it == service_to_pods_.end()) {
-      service_to_pods_.emplace(encoded_ref, pod_names);
-    } else {
-      service_it->second = pod_names;
-    }
+    auto it_inserted =
+        service_to_pods_.emplace(encoded_ref, std::vector<std::string>());
+    service_to_pods_.at(encoded_ref) = pod_names;
   }
+
 }
 
 bool KubernetesReader::ValidateConfiguration() const {
@@ -1181,7 +1173,7 @@ void KubernetesReader::ServiceCallback(
 
   // TODO: using a temporary did not work here.
   std::vector<MetadataUpdater::ResourceMetadata> result_vector;
-  result_vector.emplace_back(GetClusterMetadata(collected_at, is_deleted));
+  result_vector.emplace_back(GetClusterMetadata(collected_at));
   callback(std::move(result_vector));
 }
 
@@ -1192,7 +1184,8 @@ void KubernetesReader::WatchServices(MetadataUpdater::UpdateCallback callback) {
     WatchMaster(
         "Service",
         std::string(kKubernetesEndpointPath) + "/watch/services/",
-        [=](const json::Object* service, Timestamp collected_at, bool is_deleted) {
+        [=](const json::Object* service, Timestamp collected_at,
+            bool is_deleted) {
           ServiceCallback(callback, service, collected_at, is_deleted);
         });
   } catch (const json::Exception& e) {
@@ -1213,7 +1206,7 @@ void KubernetesReader::EndpointsCallback(
 
   // TODO: using a temporary did not work here.
   std::vector<MetadataUpdater::ResourceMetadata> result_vector;
-  result_vector.emplace_back(GetClusterMetadata(collected_at, is_deleted));
+  result_vector.emplace_back(GetClusterMetadata(collected_at));
   callback(std::move(result_vector));
 }
 
