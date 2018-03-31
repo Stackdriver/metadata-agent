@@ -23,12 +23,12 @@ class UpdaterTest : public ::testing::Test {
     return updater.ValidateConfiguration();
   }
 
-  void UpdateMetadataCallback(MetadataUpdater::ResourceMetadata& result) {
+  void UpdateMetadataCallback(MetadataUpdater::ResourceMetadata&& result) {
     updater.UpdateMetadataCallback(std::move(result));
   }
 
-  void UpdateResourceCallback(MetadataUpdater::ResourceMetadata& result) {
-    updater.UpdateResourceCallback(std::move(result));
+  void UpdateResourceCallback(const MetadataUpdater::ResourceMetadata& result) {
+    updater.UpdateResourceCallback(result);
   }
 
   Configuration config;
@@ -53,7 +53,7 @@ TEST_F(UpdaterTest, UpdateMetadataCallbackTest) {
   MetadataUpdater::ResourceMetadata metadata(
       std::vector<std::string>({"", "test-prefix"}),
       resource, std::move(m));
-  UpdateMetadataCallback(metadata);
+  UpdateMetadataCallback(std::move(metadata));
   const auto metadata_map = GetMetadataMap();
   EXPECT_EQ(1, metadata_map.size());
   EXPECT_EQ("test-version", metadata_map.at(resource).version);
@@ -67,7 +67,8 @@ TEST_F(UpdaterTest, UpdateResourceCallbackTest) {
       MetadataStore::Metadata::IGNORED()
   );
   UpdateResourceCallback(metadata);
-  EXPECT_EQ(MonitoredResource("test_resource", {}), store.LookupResource(""));
+  EXPECT_EQ(MonitoredResource("test_resource", {}),
+            store.LookupResource(""));
   EXPECT_EQ(MonitoredResource("test_resource", {}),
             store.LookupResource("test-prefix"));
 }
