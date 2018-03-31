@@ -12,10 +12,10 @@ namespace {
 // Verifies that the given json parses, clones, and serializes to its original
 // form.
 void ExpectSerializesToSelf(const std::string& json_text) {
-    json::value v = json::Parser::FromString(json_text);
-    EXPECT_TOSTRING_EQ(json_text, v);
-    // May as well test a clone while we're at it.
-    EXPECT_TOSTRING_EQ(json_text, v->Clone());
+  json::value v = json::Parser::FromString(json_text);
+  EXPECT_TOSTRING_EQ(json_text, v);
+  // May as well test a clone while we're at it.
+  EXPECT_TOSTRING_EQ(json_text, v->Clone());
 }
 
 // If an unexpected exception was thrown, this prints the message in the test
