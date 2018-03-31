@@ -17,9 +17,10 @@
 #include "configuration.h"
 
 #include <boost/program_options.hpp>
+#include <fstream>
 #include <iostream>
 #include <map>
-#include <fstream>
+#include <sstream>
 
 #include <yaml-cpp/yaml.h>
 
@@ -128,6 +129,11 @@ int Configuration::ParseArguments(int ac, char** av) {
       ("version,V", "Print the agent version")
       ("verbose,v", boost::program_options::bool_switch(&verbose_logging_),
            "Enable verbose logging")
+      ("option,o",
+            boost::program_options::value<std::vector<std::string>>()
+                ->multitoken()->zero_tokens()->composing(),
+            "Explicit configuration option, e.g. "
+            "-o CredentialsFile=/tmp/token.json")
       ;
   boost::program_options::options_description hidden_desc;
   hidden_desc.add_options()
@@ -156,8 +162,31 @@ int Configuration::ParseArguments(int ac, char** av) {
                 << std::endl;
       return -1;
     }
-
     ParseConfigFile(config_file);
+
+    // Command line options override the options provided in the config file.
+    if (flags.count("option")) {
+      std::stringstream option_stream;
+      const std::vector<std::string> options =
+          flags["option"].as<std::vector<std::string>>();
+      for (const std::string& option: options) {
+        std::size_t separator_pos = option.find("=");
+        if (separator_pos == std::string::npos) {
+          std::cerr << "Invalid option " << option;
+          return 1;
+        }
+        const std::string key = option.substr(0, separator_pos);
+        const std::string value =
+            option.substr(separator_pos + 1, std::string::npos);
+        option_stream << key << ": " << value << "\n";
+      }
+
+#ifdef VERBOSE
+      LOG(DEBUG) << "Options:\n" << option_stream.str();
+#endif
+      ParseConfiguration(option_stream);
+    }
+
     return 0;
   } catch (const boost::program_options::error& arg_error) {
     std::cerr << arg_error.what() << std::endl;
@@ -177,79 +206,77 @@ void Configuration::ParseConfiguration(std::istream& input) {
   YAML::Node config = YAML::Load(input);
   std::lock_guard<std::mutex> lock(mutex_);
   project_id_ =
-      config["ProjectId"].as<std::string>(kDefaultProjectId);
+      config["ProjectId"].as<std::string>(project_id_);
   credentials_file_ =
-      config["CredentialsFile"].as<std::string>(kDefaultCredentialsFile);
+      config["CredentialsFile"].as<std::string>(credentials_file_);
   metadata_api_num_threads_ =
-      config["MetadataApiNumThreads"].as<int>(kMetadataApiDefaultNumThreads);
+      config["MetadataApiNumThreads"].as<int>(metadata_api_num_threads_);
   metadata_api_port_ =
-      config["MetadataApiPort"].as<int>(kMetadataApiDefaultPort);
+      config["MetadataApiPort"].as<int>(metadata_api_port_);
   metadata_api_resource_type_separator_ =
       config["MetadataApiResourceTypeSeparator"].as<std::string>(
-          kMetadataApiDefaultResourceTypeSeparator);
+          metadata_api_resource_type_separator_);
   metadata_reporter_interval_seconds_ =
       config["MetadataReporterIntervalSeconds"].as<int>(
-          kMetadataReporterDefaultIntervalSeconds);
+          metadata_reporter_interval_seconds_);
   metadata_reporter_purge_deleted_ =
       config["MetadataReporterPurgeDeleted"].as<bool>(
-          kMetadataReporterDefaultPurgeDeleted);
+          metadata_reporter_purge_deleted_);
   metadata_reporter_user_agent_ =
       config["MetadataReporterUserAgent"].as<std::string>(
-          kMetadataReporterDefaultUserAgent);
+          metadata_reporter_user_agent_);
   metadata_ingestion_endpoint_format_ =
       config["MetadataIngestionEndpointFormat"].as<std::string>(
-          kMetadataIngestionDefaultEndpointFormat);
+          metadata_ingestion_endpoint_format_);
   metadata_ingestion_request_size_limit_bytes_ =
       config["MetadataIngestionRequestSizeLimitBytes"].as<int>(
-          kMetadataIngestionDefaultRequestSizeLimitBytes);
+          metadata_ingestion_request_size_limit_bytes_);
   metadata_ingestion_raw_content_version_ =
       config["MetadataIngestionRawContentVersion"].as<std::string>(
-          kMetadataIngestionDefaultRawContentVersion);
+          metadata_ingestion_raw_content_version_);
   instance_updater_interval_seconds_ =
       config["InstanceUpdaterIntervalSeconds"].as<int>(
-          kInstanceUpdaterDefaultIntervalSeconds);
+          instance_updater_interval_seconds_);
   instance_resource_type_ =
-      config["InstanceResourceType"].as<std::string>(
-          kDefaultInstanceResourceType);
+      config["InstanceResourceType"].as<std::string>(instance_resource_type_);
   docker_updater_interval_seconds_ =
       config["DockerUpdaterIntervalSeconds"].as<int>(
-          kDockerUpdaterDefaultIntervalSeconds);
+          docker_updater_interval_seconds_);
   docker_endpoint_host_ =
-      config["DockerEndpointHost"].as<std::string>(kDockerDefaultEndpointHost);
+      config["DockerEndpointHost"].as<std::string>(docker_endpoint_host_);
   docker_api_version_ =
-      config["DockerApiVersion"].as<std::string>(
-          kDockerDefaultApiVersion);
+      config["DockerApiVersion"].as<std::string>(docker_api_version_);
   docker_container_filter_ =
       config["DockerContainerFilter"].as<std::string>(
-          kDockerDefaultContainerFilter);
+          docker_container_filter_);
   kubernetes_updater_interval_seconds_ =
       config["KubernetesUpdaterIntervalSeconds"].as<int>(
-          kKubernetesUpdaterDefaultIntervalSeconds);
+          kubernetes_updater_interval_seconds_);
   kubernetes_endpoint_host_ =
       config["KubernetesEndpointHost"].as<std::string>(
-          kKubernetesDefaultEndpointHost);
+          kubernetes_endpoint_host_);
   kubernetes_pod_label_selector_ =
       config["KubernetesPodLabelSelector"].as<std::string>(
-          kKubernetesDefaultPodLabelSelector);
+          kubernetes_pod_label_selector_);
   kubernetes_cluster_name_ =
       config["KubernetesClusterName"].as<std::string>(
-          kKubernetesDefaultClusterName);
+          kubernetes_cluster_name_);
   kubernetes_cluster_location_ =
       config["KubernetesClusterLocation"].as<std::string>(
-          kKubernetesDefaultClusterLocation);
+          kubernetes_cluster_location_);
   kubernetes_node_name_ =
-      config["KubernetesNodeName"].as<std::string>(kKubernetesDefaultNodeName);
+      config["KubernetesNodeName"].as<std::string>(kubernetes_node_name_);
   kubernetes_use_watch_ =
-      config["KubernetesUseWatch"].as<bool>(kKubernetesDefaultUseWatch);
+      config["KubernetesUseWatch"].as<bool>(kubernetes_use_watch_);
   kubernetes_cluster_level_metadata_ =
       config["KubernetesClusterLevelMetadata"].as<bool>(
-          kKubernetesDefaultClusterLevelMetadata);
+          kubernetes_cluster_level_metadata_);
   instance_id_ =
-      config["InstanceId"].as<std::string>(kDefaultInstanceId);
+      config["InstanceId"].as<std::string>(instance_id_);
   instance_zone_ =
-      config["InstanceZone"].as<std::string>(kDefaultInstanceZone);
+      config["InstanceZone"].as<std::string>(instance_zone_);
   health_check_file_ =
-      config["HealthCheckFile"].as<std::string>(kDefaultHealthCheckFile);
+      config["HealthCheckFile"].as<std::string>(health_check_file_);
 }
 
 }  // google
