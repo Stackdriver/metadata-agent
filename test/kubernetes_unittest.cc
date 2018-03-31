@@ -108,7 +108,7 @@ TEST_F(KubernetesTest, ComputePodAssociations) {
       {"uid", json::string("TestUID0")},
       {"ownerReferences", json::array({
         json::object({{"no_controller", json::boolean(true)}}),
-        controller->Clone(),
+        std::move(controller),
       })},
     })},
     {"spec", json::object({
