@@ -74,6 +74,10 @@ class MetadataStore {
 
   MetadataStore(const Configuration& config);
 
+  // Returns a copy of the mapping from a monitored resource to the metadata
+  // associated with that resource.
+  std::map<MonitoredResource, Metadata> GetMetadataMap() const;
+
   // Looks up the local resource map entry for a given resource id.
   // Throws an exception if the resource is not found.
   const MonitoredResource& LookupResource(const std::string& resource_id) const
@@ -94,7 +98,6 @@ class MetadataStore {
   friend class MetadataReporter;
   friend class MetadataStoreTest;
 
-  std::map<MonitoredResource, Metadata> GetMetadataMap() const;
   void PurgeDeletedEntries();
 
   const Configuration& config_;
