@@ -238,16 +238,14 @@ void Configuration::ParseConfiguration(std::istream& input) {
       config["InstanceUpdaterIntervalSeconds"].as<int>(
           instance_updater_interval_seconds_);
   instance_resource_type_ =
-      config["InstanceResourceType"].as<std::string>(
-          instance_resource_type_);
+      config["InstanceResourceType"].as<std::string>(instance_resource_type_);
   docker_updater_interval_seconds_ =
       config["DockerUpdaterIntervalSeconds"].as<int>(
           docker_updater_interval_seconds_);
   docker_endpoint_host_ =
       config["DockerEndpointHost"].as<std::string>(docker_endpoint_host_);
   docker_api_version_ =
-      config["DockerApiVersion"].as<std::string>(
-          docker_api_version_);
+      config["DockerApiVersion"].as<std::string>(docker_api_version_);
   docker_container_filter_ =
       config["DockerContainerFilter"].as<std::string>(
           docker_container_filter_);
