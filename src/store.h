@@ -74,8 +74,8 @@ class MetadataStore {
 
   MetadataStore(const Configuration& config);
 
-  // Returns a copy of the map containing the mapping from monitored
-  // resources to metadata associated with that resource.
+  // Returns a copy of the mapping from monitored resources to metadata
+  // associated with that resource.
   std::map<MonitoredResource, Metadata> GetMetadataMap() const;
 
   // Looks up the local resource map entry for a given resource id.

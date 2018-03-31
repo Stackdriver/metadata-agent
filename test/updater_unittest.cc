@@ -36,17 +36,22 @@ class UpdaterTest : public ::testing::Test {
 
 namespace {
 
-TEST_F(UpdaterTest, ValidateConfiguration) {
+TEST_F(UpdaterTest, OneMinutePollingIntervalIsValid) {
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
   EXPECT_TRUE(ValidateConfiguration(&updater));
 }
 
-TEST_F(UpdaterTest, UpdaterWithInvalidPollingIntervalTest) {
+TEST_F(UpdaterTest, ZeroSecondPollingIntervalIsValid) {
+  PollingMetadataUpdater updater(config, &store, "Test", 0, nullptr);
+  EXPECT_TRUE(ValidateConfiguration(&updater));
+}
+
+TEST_F(UpdaterTest, NegativePollingIntervalIsInvalid) {
   PollingMetadataUpdater updater(config, &store, "BadUpdater", -1, nullptr);
   EXPECT_FALSE(ValidateConfiguration(&updater));
 }
 
-TEST_F(UpdaterTest, UpdateMetadataCallbackTest) {
+TEST_F(UpdaterTest, UpdateMetadataCallback) {
   MetadataStore::Metadata m(
       "test-version",
       false,
@@ -65,7 +70,7 @@ TEST_F(UpdaterTest, UpdateMetadataCallbackTest) {
   EXPECT_EQ("{\"f\":\"test\"}", metadata_map.at(resource).metadata->ToString());
 }
 
-TEST_F(UpdaterTest, UpdateResourceCallbackTest) {
+TEST_F(UpdaterTest, UpdateResourceCallback) {
   MetadataUpdater::ResourceMetadata metadata(
       std::vector<std::string>({"", "test-prefix"}),
       MonitoredResource("test_resource", {}),
