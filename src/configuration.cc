@@ -55,7 +55,7 @@ constexpr const char kMetadataIngestionDefaultRawContentVersion[] = "0.1";
 constexpr const int kInstanceUpdaterDefaultIntervalSeconds = 60*60;
 constexpr const char kDefaultInstanceResourceType[] =
     "";  // A blank value means "unspecified; detect via environment".
-constexpr const int kDockerUpdaterDefaultIntervalSeconds = 60;
+constexpr const int kDockerUpdaterDefaultIntervalSeconds = 0;
 constexpr const char kDockerDefaultEndpointHost[] =
     "unix://%2Fvar%2Frun%2Fdocker.sock/";
 constexpr const char kDockerDefaultApiVersion[] = "1.23";
@@ -67,7 +67,7 @@ constexpr const char kKubernetesDefaultPodLabelSelector[] = "";
 constexpr const char kKubernetesDefaultClusterName[] = "";
 constexpr const char kKubernetesDefaultClusterLocation[] = "";
 constexpr const char kKubernetesDefaultNodeName[] = "";
-constexpr const bool kKubernetesDefaultUseWatch = true;
+constexpr const bool kKubernetesDefaultUseWatch = false;
 constexpr const bool kKubernetesDefaultClusterLevelMetadata = false;
 constexpr const char kDefaultInstanceId[] = "";
 constexpr const char kDefaultInstanceZone[] = "";
