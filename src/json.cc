@@ -217,19 +217,6 @@ class Context {
   Context* parent_;
 };
 
-class TopLevelContext : public Context {
- public:
-  TopLevelContext() : Context(nullptr) {}
-  void AddValue(std::unique_ptr<Value> value) override {
-    values_.emplace_back(std::move(value));
-  }
-  std::vector<std::unique_ptr<Value>> values() {
-    return std::move(values_);
-  }
- private:
-  std::vector<std::unique_ptr<Value>> values_;
-};
-
 class ArrayContext : public Context {
  public:
   ArrayContext(Context* parent) : Context(parent) {}
@@ -276,7 +263,6 @@ class CallbackContext : public Context {
 // A builder context that allows building up a JSON object.
 class JSONBuilder {
  public:
-  JSONBuilder() : context_(new TopLevelContext()) {}
   JSONBuilder(std::function<void(std::unique_ptr<Value>)> callback)
       : context_(new CallbackContext(callback)) {}
   ~JSONBuilder() { delete context_; }
@@ -324,15 +310,6 @@ class JSONBuilder {
     }
     object_context->NewField(name);
     return true;
-  }
-
-  // Top-level context only.
-  std::vector<std::unique_ptr<Value>> values() throw(Exception) {
-    TopLevelContext* top_level = dynamic_cast<TopLevelContext*>(context_);
-    if (top_level == nullptr) {
-      throw Exception("values() called for an inner context");
-    }
-    return top_level->values();
   }
 
  private:
@@ -466,26 +443,13 @@ class YajlError {
 std::vector<std::unique_ptr<Value>> Parser::AllFromStream(std::istream& stream)
     throw(Exception)
 {
-  JSONBuilder builder;
-  const int kMax = 65536;
-  unsigned char data[kMax];
-
-  YajlHandle handle(&builder);
-
-  while (!stream.eof()) {
-    stream.read(reinterpret_cast<char*>(&data[0]), kMax);
-    size_t count = stream.gcount();
-    yajl_parse(handle, data, count);
-  }
-
-  yajl_status stat = yajl_complete_parse(handle);
-
-  if (stat != yajl_status_ok) {
-    YajlError err(handle, 1, data, kMax);
-    throw Exception(err.c_str());
-  }
-
-  return builder.values();
+  std::vector<std::unique_ptr<Value>> values;
+  Parser p([&values](std::unique_ptr<Value> r){
+    values.emplace_back(std::move(r));
+  });
+  p.ParseStream(stream);
+  p.NotifyEOF();
+  return values;
 }
 
 std::unique_ptr<Value> Parser::FromStream(std::istream& stream)
@@ -506,15 +470,13 @@ std::unique_ptr<Value> Parser::FromStream(std::istream& stream)
 std::vector<std::unique_ptr<Value>> Parser::AllFromString(
     const std::string& input) throw(Exception)
 {
-  std::istringstream stream(input);
-  return AllFromStream(stream);
+  return AllFromStream(std::istringstream(input));
 }
 
 std::unique_ptr<Value> Parser::FromString(const std::string& input)
     throw(Exception)
 {
-  std::istringstream stream(input);
-  return FromStream(stream);
+  return FromStream(std::istringstream(input));
 }
 
 class Parser::ParseState {
