@@ -197,7 +197,7 @@ TEST_F(KubernetesTest, GetClusterMetadataEmptyService) {
   UpdateServiceToMetadataCache(
       &reader, service->As<json::Object>(), /*is_deleted=*/false);
   const auto m = GetClusterMetadata(reader, Timestamp());
-  EXPECT_EQ(0, m.ids().size());
+  EXPECT_TRUE(m.ids().empty());
   EXPECT_EQ(MonitoredResource("k8s_cluster", {
     {"cluster_name", "TestClusterName"},
     {"location", "TestClusterLocation"},
