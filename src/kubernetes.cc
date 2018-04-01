@@ -458,14 +458,13 @@ std::vector<json::value> KubernetesReader::GetServiceList(
     throw(json::Exception) {
   std::lock_guard<std::mutex> lock(service_mutex_);
   std::vector<json::value> service_list;
-  for (const auto& service_it : service_to_metadata_) {
-    const ServiceKey& service_key = service_it.first;
+  for (const auto& metadata_it : service_to_metadata_) {
+    const ServiceKey& service_key = metadata_it.first;
     const std::string namespace_name = service_key.first;
-    const json::value& service_metadata = service_it.second;
-    auto endpoints_it = service_to_pods_.find(service_key);
+    const json::value& service_metadata = metadata_it.second;
+    auto pods_it = service_to_pods_.find(service_key);
     const std::vector<std::string>& pod_names =
-        (endpoints_it != service_to_pods_.end()) ? endpoints_it->second
-                                                 : kNoPods;
+        (pods_it != service_to_pods_.end()) ? pods_it->second : kNoPods;
     std::vector<json::value> pod_resources;
     for (const std::string& pod_name : pod_names) {
       const MonitoredResource k8s_pod("k8s_pod", {
@@ -1007,7 +1006,7 @@ void KubernetesReader::UpdateServiceToPodsCache(
 #endif
   const json::Object* metadata = endpoints->Get<json::Object>("metadata");
   const std::string namespace_name = metadata->Get<json::String>("namespace");
-  // Endpoints name is same as the matching service name.
+  // Endpoints name is the same as the matching service name.
   const std::string service_name = metadata->Get<json::String>("name");
   const ServiceKey service_key(namespace_name, service_name);
 

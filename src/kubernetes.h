@@ -169,7 +169,9 @@ class KubernetesReader {
   void UpdateServiceToMetadataCache(
       const json::Object* service, bool is_deleted) throw(json::Exception);
 
-  // Update service_to_pods_ cache based on a newly updated endpoints.
+  // Update service_to_pods_ cache based on a newly updated endpoints. The
+  // Endpoints resource provides a mapping from a single service to its pods:
+  // https://kubernetes.io/docs/concepts/services-networking/service/
   void UpdateServiceToPodsCache(
       const json::Object* endpoints, bool is_deleted) throw(json::Exception);
 
