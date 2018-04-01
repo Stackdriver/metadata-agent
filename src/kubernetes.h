@@ -142,8 +142,8 @@ class KubernetesReader {
       const throw(json::Exception);
   // Return the cluster metadata based on the cached values for
   // service_to_metadta_ and service_to_pods_.
-  MetadataUpdater::ResourceMetadata GetClusterMetadata(
-      Timestamp collected_at) const throw(json::Exception);
+  MetadataUpdater::ResourceMetadata GetClusterMetadata(Timestamp collected_at)
+      const throw(json::Exception);
 
   // Gets the Kubernetes master API token.
   // Returns an empty string if unable to find the token.
@@ -173,7 +173,7 @@ class KubernetesReader {
   void UpdateServiceToPodsCache(
       const json::Object* endpoints, bool is_deleted) throw(json::Exception);
 
-  // Const data.
+  // An empty vector value for endpoints that have no pods.
   const std::vector<std::string> kNoPods;
 
   // Cached data.
@@ -190,10 +190,12 @@ class KubernetesReader {
   mutable std::mutex service_mutex_;
   // Map from service key to service metadata. This map is built based on the
   // response from WatchServices.
-  mutable std::map<std::string, json::value> service_to_metadata_;
+  mutable std::map<std::pair<std::string, std::string>,
+                   json::value> service_to_metadata_;
   // Map from service key to names of pods in the service. This map is built
   // based on the response from WatchEndpoints.
-  mutable std::map<std::string, std::vector<std::string>> service_to_pods_;
+  mutable std::map<std::pair<std::string, std::string>,
+                   std::vector<std::string>> service_to_pods_;
 
   const Configuration& config_;
   HealthChecker* health_checker_;
