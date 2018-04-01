@@ -617,10 +617,10 @@ struct Watcher {
                   const boost::system::error_code& error) {
     const std::string body(std::begin(range), std::end(range));
     if (!body.empty()) {
-      try {
 #ifdef VERBOSE
         LOG(DEBUG) << name_ << " => Parsing '" << body << "'";
 #endif
+      try {
         std::istringstream input(body);
         event_parser_.ParseStream(input);
       } catch (const json::Exception& e) {
@@ -636,6 +636,11 @@ struct Watcher {
 #ifdef VERBOSE
         LOG(DEBUG) << name_ << " => Watch callback: EOF";
 #endif
+      try {
+        event_parser_.NotifyEOF();
+      } catch (const json::Exception& e) {
+        LOG(ERROR) << "Error while processing last event: " << e.what();
+      }
       } else {
         LOG(ERROR) << name_ << " => Callback got error " << error;
       }

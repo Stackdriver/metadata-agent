@@ -528,7 +528,7 @@ class Parser::ParseState {
     //yajl_config(handle_, yajl_dont_validate_strings, 1);
   }
 
-  ~ParseState() {
+  void Done() throw(Exception) {
     yajl_status stat = yajl_complete_parse(handle_);
     if (stat != yajl_status_ok) {
       YajlError err(handle_, 0, nullptr, 0);
@@ -568,6 +568,10 @@ std::size_t Parser::ParseStream(std::istream& stream) throw(Exception) {
   }
 
   return total_bytes_consumed;
+}
+
+void Parser::NotifyEOF() throw(Exception) {
+  state_->Done();
 }
 
 }  // json

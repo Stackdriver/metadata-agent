@@ -350,6 +350,8 @@ class Parser {
   size_t ParseStream(std::istream&& stream) throw(Exception) {
     return ParseStream(stream);
   }
+  // Notifies the parser that no more data is available.
+  void NotifyEOF() throw(Exception);
 
  private:
   std::unique_ptr<ParseState> state_;

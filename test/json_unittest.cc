@@ -751,30 +751,39 @@ TEST(StreamingTest, ParseStreamReturnsByteCount) {
   });
 }
 
-TEST(StreamingTest, ParseStreamWaitsToParseNumbers) {
+TEST(StreamingTest, ParseStreamNeedsEofToParseNumbers) {
   GuardJsonException([](){
     json::value v;
-    {
-      json::Parser p([&v](json::value r) { v = std::move(r); });
-      size_t n = p.ParseStream(std::istringstream("123"));
-      EXPECT_EQ(3, n);
-    }
+    json::Parser p([&v](json::value r) { v = std::move(r); });
+    size_t n = p.ParseStream(std::istringstream("123"));
+    EXPECT_EQ(3, n);
+    EXPECT_EQ(nullptr, v);
+    // The number is not known until EOF is reached.
+    p.NotifyEOF();
     EXPECT_TOSTRING_EQ("123.0", v);
   });
 }
 
-TEST(StreamingTest, ParseStreamThrowsOnParseError) {
+TEST(StreamingTest, ParseStreamThrowsOnParseErrorMidStream) {
   GuardJsonException([](){
     json::value v;
     json::Parser p([&v](json::value r) { v = std::move(r); });
-    //EXPECT_THROW(p.ParseStream(std::istringstream("400 xyz")), json::Exception);
-    try {
-      p.ParseStream(std::istringstream("400 xyz"));
-    } catch (const json::Exception& e) {
-      std::cerr << e.what() << std::endl;
-    }
-    std::cerr << *v << std::endl;
-    //EXPECT_EQ(nullptr, v);
+    EXPECT_THROW(p.ParseStream(std::istringstream("400 xyz")), json::Exception);
+    EXPECT_TOSTRING_EQ("400.0", v);
+  });
+}
+
+TEST(StreamingTest, ParseStreamWaitsForEofOnIncompleteStream) {
+  GuardJsonException([](){
+    json::value v;
+    json::Parser p([&v](json::value r) {
+      std::cerr << "Callback invoked with " << *r << std::endl;
+      v = std::move(r);
+    });
+    EXPECT_EQ(1, p.ParseStream(std::istringstream("[")));
+    EXPECT_EQ(nullptr, v);
+    // Not known to be incomplete until EOF is reached.
+    EXPECT_THROW(p.NotifyEOF(), json::Exception);
   });
 }
 
