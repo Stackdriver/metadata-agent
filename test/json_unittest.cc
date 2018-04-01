@@ -576,47 +576,47 @@ TEST(BigTest, LotsOfObjectNesting) {
 // Parse errors.
 
 TEST(ParseError, Empty) {
-  ASSERT_THROW(json::Parser::FromString(""), json::Exception);
+  EXPECT_THROW(json::Parser::FromString(""), json::Exception);
 }
 
 TEST(ParseError, UnexpectedChar) {
-  ASSERT_THROW(json::Parser::FromString("x"), json::Exception);
+  EXPECT_THROW(json::Parser::FromString("x"), json::Exception);
 }
 
 TEST(ParseError, UnterminatedArray) {
-  ASSERT_THROW(json::Parser::FromString("["), json::Exception);
+  EXPECT_THROW(json::Parser::FromString("["), json::Exception);
 }
 
 TEST(ParseError, UnmatchedArrayClose) {
-  ASSERT_THROW(json::Parser::FromString("]"), json::Exception);
+  EXPECT_THROW(json::Parser::FromString("]"), json::Exception);
 }
 
 TEST(ParseError, UnterminatedObject) {
-  ASSERT_THROW(json::Parser::FromString("{"), json::Exception);
+  EXPECT_THROW(json::Parser::FromString("{"), json::Exception);
 }
 
 TEST(ParseError, UnmatchedObjectClose) {
-  ASSERT_THROW(json::Parser::FromString("}"), json::Exception);
+  EXPECT_THROW(json::Parser::FromString("}"), json::Exception);
 }
 
 TEST(ParseError, UnterminatedString) {
-  ASSERT_THROW(json::Parser::FromString("\""), json::Exception);
+  EXPECT_THROW(json::Parser::FromString("\""), json::Exception);
 }
 
 TEST(ParseError, UnterminatedEscape) {
-  ASSERT_THROW(json::Parser::FromString("\"\\\""), json::Exception);
+  EXPECT_THROW(json::Parser::FromString("\"\\\""), json::Exception);
 }
 
 TEST(ParseError, UnterminatedUnicodeEscape) {
-  ASSERT_THROW(json::Parser::FromString("\"\\u\""), json::Exception);
-  ASSERT_THROW(json::Parser::FromString("\"\\u0\""), json::Exception);
-  ASSERT_THROW(json::Parser::FromString("\"\\u00\""), json::Exception);
-  ASSERT_THROW(json::Parser::FromString("\"\\u000\""), json::Exception);
+  EXPECT_THROW(json::Parser::FromString("\"\\u\""), json::Exception);
+  EXPECT_THROW(json::Parser::FromString("\"\\u0\""), json::Exception);
+  EXPECT_THROW(json::Parser::FromString("\"\\u00\""), json::Exception);
+  EXPECT_THROW(json::Parser::FromString("\"\\u000\""), json::Exception);
 }
 
 TEST(ParseError, ObjectNoValue) {
-  ASSERT_THROW(json::Parser::FromString("{\"x\"}"), json::Exception);
-  ASSERT_THROW(json::Parser::FromString("{\"x\":}"), json::Exception);
+  EXPECT_THROW(json::Parser::FromString("{\"x\"}"), json::Exception);
+  EXPECT_THROW(json::Parser::FromString("{\"x\":}"), json::Exception);
 }
 
 // Streaming parsing test.
@@ -745,9 +745,36 @@ TEST(StreamingTest, ParseStreamReturnsByteCount) {
   GuardJsonException([](){
     json::value v;
     json::Parser p([&v](json::value r) { v = std::move(r); });
-    size_t n = p.ParseStream(std::istringstream("123"));
-    EXPECT_TOSTRING_EQ("123", v);
+    size_t n = p.ParseStream(std::istringstream("[1]"));
+    EXPECT_TOSTRING_EQ("[1.0]", v);
     EXPECT_EQ(3, n);
+  });
+}
+
+TEST(StreamingTest, ParseStreamWaitsToParseNumbers) {
+  GuardJsonException([](){
+    json::value v;
+    {
+      json::Parser p([&v](json::value r) { v = std::move(r); });
+      size_t n = p.ParseStream(std::istringstream("123"));
+      EXPECT_EQ(3, n);
+    }
+    EXPECT_TOSTRING_EQ("123.0", v);
+  });
+}
+
+TEST(StreamingTest, ParseStreamThrowsOnParseError) {
+  GuardJsonException([](){
+    json::value v;
+    json::Parser p([&v](json::value r) { v = std::move(r); });
+    //EXPECT_THROW(p.ParseStream(std::istringstream("400 xyz")), json::Exception);
+    try {
+      p.ParseStream(std::istringstream("400 xyz"));
+    } catch (const json::Exception& e) {
+      std::cerr << e.what() << std::endl;
+    }
+    std::cerr << *v << std::endl;
+    //EXPECT_EQ(nullptr, v);
   });
 }
 
