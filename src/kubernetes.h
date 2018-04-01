@@ -189,8 +189,8 @@ class KubernetesReader {
   // A memoized map from an encoded owner reference to the owner object.
   mutable std::map<std::string, json::value> owners_;
 
-  // Unique identifier of a service in a cluster, based on the namespace name
-  // and the service name.
+  // ServiceKey is a pair of the namespace name and the service name that
+  // uniquely identifies a service in a cluster.
   using ServiceKey = std::pair<std::string, std::string>;
   // Mutex for the service related caches.
   mutable std::mutex service_mutex_;
