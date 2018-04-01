@@ -187,10 +187,9 @@ class KubernetesReader {
   // A memoized map from an encoded owner reference to the owner object.
   mutable std::map<std::string, json::value> owners_;
 
+  using ServiceKey = std::pair<std::string, std::string>;
   // Mutex for the service related caches.
   mutable std::mutex service_mutex_;
-
-  using ServiceKey = std::pair<std::string, std::string>;
   // Map from service key to service metadata. This map is built based on the
   // response from WatchServices.
   mutable std::map<ServiceKey, json::value> service_to_metadata_;
