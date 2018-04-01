@@ -346,12 +346,21 @@ class Parser {
       throw(Exception);
 
   size_t ParseStream(std::istream& stream) throw(Exception);
+  // Notifies the parser that no more data is available.
+  void NotifyEOF() throw(Exception);
+
   // Used to accept inline construction of streams.
+  static std::vector<std::unique_ptr<Value>> AllFromStream(
+      std::istream&& stream) throw(Exception) {
+    return AllFromStream(stream);
+  }
+  static std::unique_ptr<Value> FromStream(std::istream&& stream)
+      throw(Exception) {
+    return FromStream(stream);
+  }
   size_t ParseStream(std::istream&& stream) throw(Exception) {
     return ParseStream(stream);
   }
-  // Notifies the parser that no more data is available.
-  void NotifyEOF() throw(Exception);
 
  private:
   std::unique_ptr<ParseState> state_;
