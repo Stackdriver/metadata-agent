@@ -186,16 +186,17 @@ class KubernetesReader {
       version_to_kind_to_name_;
   // A memoized map from an encoded owner reference to the owner object.
   mutable std::map<std::string, json::value> owners_;
+
   // Mutex for the service related caches.
   mutable std::mutex service_mutex_;
+
+  using ServiceKey = std::pair<std::string, std::string>;
   // Map from service key to service metadata. This map is built based on the
   // response from WatchServices.
-  mutable std::map<std::pair<std::string, std::string>,
-                   json::value> service_to_metadata_;
+  mutable std::map<ServiceKey, json::value> service_to_metadata_;
   // Map from service key to names of pods in the service. This map is built
   // based on the response from WatchEndpoints.
-  mutable std::map<std::pair<std::string, std::string>,
-                   std::vector<std::string>> service_to_pods_;
+  mutable std::map<ServiceKey, std::vector<std::string>> service_to_pods_;
 
   const Configuration& config_;
   HealthChecker* health_checker_;
