@@ -488,7 +488,7 @@ TEST(AllFromStringTest, MultipleObjects) {
   });
 }
 
-TEST(FromStreamTest, Complete) {
+TEST(FromStreamTest, SingleObject) {
   GuardJsonException([](){
     json::value v = json::Parser::FromStream(std::istringstream(
       "{\n"
@@ -509,7 +509,7 @@ TEST(FromStreamTest, Complete) {
   });
 }
 
-TEST(FromStreamTest, ExpectSingle) {
+TEST(FromStreamTest, MultipleObjectsThrows) {
   EXPECT_THROW(json::Parser::FromStream(std::istringstream(
     "{\n"
     "  \"foo\": [1, 2, 3],\n"
@@ -526,7 +526,7 @@ TEST(FromStreamTest, ExpectSingle) {
   )), json::Exception);
 }
 
-TEST(FromStringTest, Complete) {
+TEST(FromStringTest, SingleObject) {
   GuardJsonException([](){
     json::value v = json::Parser::FromString(
       "{\n"
@@ -547,7 +547,7 @@ TEST(FromStringTest, Complete) {
   });
 }
 
-TEST(FromStringTest, ExpectSingle) {
+TEST(FromStringTest, MultipleObjectsThrows) {
   EXPECT_THROW(json::Parser::FromString(
     "{\n"
     "  \"foo\": [1, 2, 3],\n"
@@ -948,7 +948,7 @@ TEST(StreamingTest, ParseStreamNeedsEofToParseNumbers) {
   });
 }
 
-TEST(StreamingTest, ParseStreamThrowsOnParseErrorMidStream) {
+TEST(StreamingTest, ParseStreamThrowsOnMidStreamParseError) {
   GuardJsonException([](){
     json::value v;
     json::Parser p([&v](json::value r) { v = std::move(r); });
@@ -957,7 +957,7 @@ TEST(StreamingTest, ParseStreamThrowsOnParseErrorMidStream) {
   });
 }
 
-TEST(StreamingTest, ParseStreamWaitsForEofOnIncompleteStream) {
+TEST(StreamingTest, ParseStreamThrowsAtEofOnIncompleteStream) {
   GuardJsonException([](){
     json::value v;
     json::Parser p([&v](json::value r) {
