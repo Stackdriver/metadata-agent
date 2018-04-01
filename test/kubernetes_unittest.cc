@@ -30,22 +30,20 @@ class KubernetesTest : public ::testing::Test {
   }
 
   void UpdateServiceToMetadataCache(
-      KubernetesReader& reader, const json::Object* service,
-      bool is_deleted)
+      KubernetesReader* reader, const json::Object* service, bool is_deleted)
       throw(json::Exception) {
-    return reader.UpdateServiceToMetadataCache(service, is_deleted);
+    return reader->UpdateServiceToMetadataCache(service, is_deleted);
   }
 
   void UpdateServiceToPodsCache(
-      KubernetesReader& reader, const json::Object* endpoints,
-      bool is_deleted)
+      KubernetesReader* reader, const json::Object* endpoints, bool is_deleted)
       throw(json::Exception) {
-    return reader.UpdateServiceToPodsCache(endpoints, is_deleted);
+    return reader->UpdateServiceToPodsCache(endpoints, is_deleted);
   }
 };
 
 TEST_F(KubernetesTest, GetNodeMetadata) {
-  Configuration config(std::stringstream(
+  Configuration config(std::istringstream(
     "KubernetesClusterName: TestClusterName\n"
     "KubernetesClusterLocation: TestClusterLocation\n"
     "MetadataIngestionRawContentVersion: TestVersion\n"
@@ -71,7 +69,7 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
     {"location", "TestClusterLocation"},
   }), m.resource());
   EXPECT_EQ("TestVersion", m.metadata().version);
-  EXPECT_EQ(false, m.metadata().is_deleted);
+  EXPECT_FALSE(m.metadata().is_deleted);
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
             m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
@@ -157,7 +155,7 @@ TEST_F(KubernetesTest, ComputePodAssociations) {
   EXPECT_EQ(expected_associations->ToString(), associations->ToString());
 
 TEST_F(KubernetesTest, GetClusterMetadataEmpty) {
-  Configuration config(std::stringstream(
+  Configuration config(std::istringstream(
     "KubernetesClusterName: TestClusterName\n"
     "KubernetesClusterLocation: TestClusterLocation\n"
     "MetadataIngestionRawContentVersion: TestVersion\n"
@@ -165,13 +163,13 @@ TEST_F(KubernetesTest, GetClusterMetadataEmpty) {
   Environment environment(config);
   KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
   const auto m = GetClusterMetadata(reader, Timestamp());
-  EXPECT_EQ(0, m.ids().size());
+  EXPECT_TRUE(m.ids().empty());
   EXPECT_EQ(MonitoredResource("k8s_cluster", {
     {"cluster_name", "TestClusterName"},
     {"location", "TestClusterLocation"},
   }), m.resource());
   EXPECT_EQ("TestVersion", m.metadata().version);
-  EXPECT_EQ(false, m.metadata().is_deleted);
+  EXPECT_FALSE(m.metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   json::value empty_cluster = json::object({
@@ -183,7 +181,7 @@ TEST_F(KubernetesTest, GetClusterMetadataEmpty) {
 }
 
 TEST_F(KubernetesTest, GetClusterMetadataEmptyService) {
-  Configuration config(std::stringstream(
+  Configuration config(std::istringstream(
     "KubernetesClusterName: TestClusterName\n"
     "KubernetesClusterLocation: TestClusterLocation\n"
     "MetadataIngestionRawContentVersion: TestVersion\n"
@@ -193,11 +191,11 @@ TEST_F(KubernetesTest, GetClusterMetadataEmptyService) {
     {"metadata", json::object({
       {"name", json::string("testname")},
       {"namespace", json::string("testnamespace")},
-    })}
+    })},
   });
   KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
   UpdateServiceToMetadataCache(
-      reader, service->As<json::Object>(), /*is_deleted=*/false);
+      &reader, service->As<json::Object>(), /*is_deleted=*/false);
   const auto m = GetClusterMetadata(reader, Timestamp());
   EXPECT_EQ(0, m.ids().size());
   EXPECT_EQ(MonitoredResource("k8s_cluster", {
@@ -205,7 +203,7 @@ TEST_F(KubernetesTest, GetClusterMetadataEmptyService) {
     {"location", "TestClusterLocation"},
   }), m.resource());
   EXPECT_EQ("TestVersion", m.metadata().version);
-  EXPECT_EQ(false, m.metadata().is_deleted);
+  EXPECT_FALSE(m.metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   json::value expected_cluster = json::object({
@@ -225,7 +223,7 @@ TEST_F(KubernetesTest, GetClusterMetadataEmptyService) {
 }
 
 TEST_F(KubernetesTest, GetClusterMetadataServiceWithPods) {
-  Configuration config(std::stringstream(
+  Configuration config(std::istringstream(
     "KubernetesClusterName: TestClusterName\n"
     "KubernetesClusterLocation: TestClusterLocation\n"
     "MetadataIngestionRawContentVersion: TestVersion\n"
@@ -235,7 +233,7 @@ TEST_F(KubernetesTest, GetClusterMetadataServiceWithPods) {
     {"metadata", json::object({
       {"name", json::string("testname")},
       {"namespace", json::string("testnamespace")},
-    })}
+    })},
   });
   json::value endpoints = json::object({
     {"metadata", json::object({
@@ -257,17 +255,17 @@ TEST_F(KubernetesTest, GetClusterMetadataServiceWithPods) {
   });
   KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
   UpdateServiceToMetadataCache(
-      reader, service->As<json::Object>(), /*is_deleted=*/false);
+      &reader, service->As<json::Object>(), /*is_deleted=*/false);
   UpdateServiceToPodsCache(
-      reader, endpoints->As<json::Object>(), /*is_deleted=*/false);
+      &reader, endpoints->As<json::Object>(), /*is_deleted=*/false);
   const auto m = GetClusterMetadata(reader, Timestamp());
-  EXPECT_EQ(0, m.ids().size());
+  EXPECT_TRUE(m.ids().empty());
   EXPECT_EQ(MonitoredResource("k8s_cluster", {
     {"cluster_name", "TestClusterName"},
     {"location", "TestClusterLocation"},
   }), m.resource());
   EXPECT_EQ("TestVersion", m.metadata().version);
-  EXPECT_EQ(false, m.metadata().is_deleted);
+  EXPECT_FALSE(m.metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   MonitoredResource pod_mr = MonitoredResource("k8s_pod", {
@@ -282,7 +280,7 @@ TEST_F(KubernetesTest, GetClusterMetadataServiceWithPods) {
         json::object({
           {"api", json::object({
             {"pods", json::array({
-                pod_mr.ToJSON(),
+              pod_mr.ToJSON(),
             })},
             {"raw", std::move(service)},
             {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
@@ -292,5 +290,33 @@ TEST_F(KubernetesTest, GetClusterMetadataServiceWithPods) {
     })},
   });
   EXPECT_EQ(expected_cluster->ToString(), m.metadata().metadata->ToString());
+}
+
+TEST_F(KubernetesTest, GetClusterMetadataDeletedService) {
+  Configuration config(std::istringstream(
+    "KubernetesClusterName: TestClusterName\n"
+    "KubernetesClusterLocation: TestClusterLocation\n"
+    "MetadataIngestionRawContentVersion: TestVersion\n"
+  ));
+  Environment environment(config);
+  json::value service = json::object({
+    {"metadata", json::object({
+      {"name", json::string("testname")},
+      {"namespace", json::string("testnamespace")},
+    })},
+  });
+  KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
+  UpdateServiceToMetadataCache(
+      &reader, service->As<json::Object>(), /*is_deleted=*/false);
+  UpdateServiceToMetadataCache(
+      &reader, service->As<json::Object>(), /*is_deleted=*/true);
+  const auto m = GetClusterMetadata(reader, Timestamp());
+  EXPECT_TRUE(m.ids().empty());
+  json::value empty_cluster = json::object({
+    {"blobs", json::object({
+      {"services", json::array({})},
+    })},
+  });
+  EXPECT_EQ(empty_cluster->ToString(), m.metadata().metadata->ToString());
 }
 }  // namespace google
