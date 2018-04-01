@@ -69,7 +69,7 @@ constexpr const char kKubernetesDefaultClusterLocation[] = "";
 constexpr const char kKubernetesDefaultNodeName[] = "";
 constexpr const bool kKubernetesDefaultUseWatch = false;
 constexpr const bool kKubernetesDefaultClusterLevelMetadata = false;
-constexpr const bool kKubernetesDefaultServiceMetadata = true;
+constexpr const bool kKubernetesDefaultServiceMetadata = false;
 constexpr const char kDefaultInstanceId[] = "";
 constexpr const char kDefaultInstanceZone[] = "";
 constexpr const char kDefaultHealthCheckFile[] =
@@ -114,8 +114,7 @@ Configuration::Configuration()
       kubernetes_use_watch_(kKubernetesDefaultUseWatch),
       kubernetes_cluster_level_metadata_(
           kKubernetesDefaultClusterLevelMetadata),
-      kubernetes_service_metadata_(
-          kKubernetesDefaultServiceMetadata),
+      kubernetes_service_metadata_(kKubernetesDefaultServiceMetadata),
       instance_id_(kDefaultInstanceId),
       instance_zone_(kDefaultInstanceZone),
       health_check_file_(kDefaultHealthCheckFile) {}

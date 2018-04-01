@@ -459,14 +459,13 @@ std::vector<json::value> KubernetesReader::GetServiceList(
   std::lock_guard<std::mutex> lock(service_mutex_);
   std::vector<json::value> service_list;
   for (const auto& service_it : service_to_metadata_) {
-    const std::string& service_key = service_it.first;
-    const std::string namespace_name =
-        service_key.substr(0, service_key.find("/"));
+    const std::pair<std::string, std::string>& service_key = service_it.first;
+    const std::string namespace_name = service_key.first;
     const json::value& service_metadata = service_it.second;
     auto endpoints_it = service_to_pods_.find(service_key);
     const std::vector<std::string>& pod_names =
         (endpoints_it != service_to_pods_.end()) ? endpoints_it->second
-                                             : kNoPods;
+                                                 : kNoPods;
     std::vector<json::value> pod_resources;
     for (const std::string& pod_name : pod_names) {
       const MonitoredResource k8s_pod("k8s_pod", {
@@ -515,7 +514,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetClusterMetadata(
       k8s_cluster,
 #ifdef ENABLE_KUBERNETES_METADATA
       MetadataStore::Metadata(config_.MetadataIngestionRawContentVersion(),
-                              /*is_deleted=*/ false, created_at, collected_at,
+                              /*is_deleted=*/false, created_at, collected_at,
                               std::move(cluster_raw_metadata))
 #else
       MetadataStore::Metadata::IGNORED()
@@ -989,18 +988,18 @@ void KubernetesReader::UpdateServiceToMetadataCache(
   const json::Object* metadata = service->Get<json::Object>("metadata");
   const std::string namespace_name = metadata->Get<json::String>("namespace");
   const std::string service_name = metadata->Get<json::String>("name");
-  const std::string encoded_ref = boost::algorithm::join(
-      std::vector<std::string>{namespace_name, service_name}, "/");
+  const std::pair<std::string, std::string> service_key (
+    namespace_name, service_name);
 
   std::lock_guard<std::mutex> lock(service_mutex_);
-  auto service_it = service_to_metadata_.find(encoded_ref);
+  auto service_it = service_to_metadata_.find(service_key);
   if (is_deleted) {
     if (service_it != service_to_metadata_.end()) {
       service_to_metadata_.erase(service_it);
     }
   } else {
     if (service_it == service_to_metadata_.end()) {
-      service_to_metadata_.emplace(encoded_ref, service->Clone());
+      service_to_metadata_.emplace(service_key, service->Clone());
     } else {
       service_it->second = service->Clone();
     }
@@ -1016,8 +1015,8 @@ void KubernetesReader::UpdateServiceToPodsCache(
   const std::string namespace_name = metadata->Get<json::String>("namespace");
   // Endpoints name is same as the matching service name.
   const std::string service_name = metadata->Get<json::String>("name");
-  const std::string encoded_ref = boost::algorithm::join(
-      std::vector<std::string>{namespace_name, service_name}, "/");
+  const std::pair<std::string, std::string> service_key (
+    namespace_name, service_name);
 
   std::vector<std::string> pod_names;
   // Only extract the pod names when this is not a deletion. In the case of
@@ -1054,11 +1053,11 @@ void KubernetesReader::UpdateServiceToPodsCache(
 
   std::lock_guard<std::mutex> lock(service_mutex_);
   if (is_deleted) {
-    service_to_pods_.erase(encoded_ref);
+    service_to_pods_.erase(service_key);
   } else {
     auto it_inserted =
-        service_to_pods_.emplace(encoded_ref, std::vector<std::string>());
-    service_to_pods_.at(encoded_ref) = pod_names;
+        service_to_pods_.emplace(service_key, std::vector<std::string>());
+    it_inserted.first->second = pod_names;
   }
 
 }
@@ -1274,7 +1273,8 @@ void KubernetesUpdater::StartUpdater() {
     pod_watch_thread_ = std::thread([=]() {
       reader_.WatchPods(watched_node, cb);
     });
-    if (config().KubernetesServiceMetadata()) {
+    if (config().KubernetesClusterLevelMetadata() &&
+        config().KubernetesServiceMetadata()) {
       service_watch_thread_ = std::thread([=]() {
         reader_.WatchServices(cb);
       });
