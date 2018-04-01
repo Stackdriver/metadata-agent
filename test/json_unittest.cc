@@ -698,29 +698,6 @@ TEST(EdgeTest, NegativeNumbers) {
 
 // Big tests.
 
-constexpr const char kComplexExample[] =
-  "{\n"
-  "  \"foo\": [1.0, 2, 3],\n"
-  "  \"bar\": {\"x\": 0, \"y\": null},\n"
-  "  \"baz\": true,\n"
-  "  \"str\": \"asdfasdf\"\n"
-  "}\n";
-
-constexpr const char kComplexExampleExpected[] =
-  "{"
-  "\"bar\":{\"x\":0.0,\"y\":null},"
-  "\"baz\":true,"
-  "\"foo\":[1.0,2.0,3.0],"
-  "\"str\":\"asdfasdf\""
-  "}";
-
-TEST(BigTest, RealisticParsing) {
-  GuardJsonException([](){
-    json::value v = json::Parser::FromString(kComplexExample);
-    EXPECT_TOSTRING_EQ(kComplexExampleExpected, v);
-  });
-}
-
 TEST(BigTest, RealisticConstruction) {
   GuardJsonException([](){
     json::value v = json::object({
@@ -742,9 +719,21 @@ TEST(BigTest, RealisticConstruction) {
 
 TEST(BigTest, Clone) {
   GuardJsonException([](){
-    json::value v = json::Parser::FromString(kComplexExample);
+    json::value v = json::object({
+      {"foo", json::array({json::number(1), json::number(2), json::number(3)})},
+      {"bar", json::object({{"x", json::number(0)}, {"y", json::null()}})},
+      {"baz", json::boolean(true)},
+      {"str", json::string("asdfasdf")},
+    });
     json::value cloned = v->Clone();
-    EXPECT_TOSTRING_EQ(kComplexExampleExpected, cloned);
+    EXPECT_TOSTRING_EQ(
+      "{"
+      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"baz\":true,"
+      "\"foo\":[1.0,2.0,3.0],"
+      "\"str\":\"asdfasdf\""
+      "}",
+      cloned);
   });
 }
 
