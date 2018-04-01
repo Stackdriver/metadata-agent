@@ -991,17 +991,12 @@ void KubernetesReader::UpdateServiceToMetadataCache(
   const ServiceKey service_key(namespace_name, service_name);
 
   std::lock_guard<std::mutex> lock(service_mutex_);
-  auto service_it = service_to_metadata_.find(service_key);
   if (is_deleted) {
-    if (service_it != service_to_metadata_.end()) {
-      service_to_metadata_.erase(service_it);
-    }
+    service_to_metadata_.erase(service_key);
   } else {
-    if (service_it == service_to_metadata_.end()) {
-      service_to_metadata_.emplace(service_key, service->Clone());
-    } else {
-      service_it->second = service->Clone();
-    }
+    auto it_inserted =
+        service_to_metadata_.emplace(service_key, json::value());
+    it_inserted.first->second = service->Clone();
   }
 }
 
@@ -1057,7 +1052,6 @@ void KubernetesReader::UpdateServiceToPodsCache(
         service_to_pods_.emplace(service_key, std::vector<std::string>());
     it_inserted.first->second = pod_names;
   }
-
 }
 
 bool KubernetesReader::ValidateConfiguration() const {
