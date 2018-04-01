@@ -414,7 +414,7 @@ int handle_end_map(void* arg) {
   return 1;
 }
 
-yajl_callbacks callbacks = {
+const yajl_callbacks callbacks = {
     .yajl_null = &handle_null,
     .yajl_boolean = &handle_bool,
     .yajl_integer = &handle_integer,
@@ -428,20 +428,49 @@ yajl_callbacks callbacks = {
     .yajl_end_array = &handle_end_array,
 };
 
+class YajlHandle {
+ public:
+  YajlHandle(JSONBuilder* builder)
+      : handle_(yajl_alloc(&callbacks, NULL, builder)) {
+    yajl_config(handle_, yajl_allow_comments, 1);
+    yajl_config(handle_, yajl_allow_multiple_values, 1);
+    //yajl_config(handle_, yajl_allow_partial_values, 1);
+    //yajl_config(handle_, yajl_allow_trailing_garbage, 1);
+    //yajl_config(handle_, yajl_dont_validate_strings, 1);
+  }
+  ~YajlHandle() {
+    yajl_free(handle_);
+  }
+  operator yajl_handle() { return handle_; }
+ private:
+  yajl_handle handle_;
+};
+
+class YajlError {
+ public:
+  YajlError(yajl_handle handle, bool verbose,
+            const unsigned char* json_text, size_t json_len)
+      : handle_(handle),
+        str_(yajl_get_error(handle_, (int)verbose, json_text, json_len)) {}
+  ~YajlError() {
+    yajl_free_error(handle_, str_);
+  }
+  const char* c_str() { return reinterpret_cast<const char*>(str_); }
+ private:
+  yajl_handle handle_;
+  unsigned char* str_;
+};
+
 }  // namespace
 
 std::vector<std::unique_ptr<Value>> Parser::AllFromStream(std::istream& stream)
     throw(Exception)
 {
   JSONBuilder builder;
-
   const int kMax = 65536;
   unsigned char data[kMax];
-  yajl_handle handle = yajl_alloc(&callbacks, NULL, (void*) &builder);
-  yajl_config(handle, yajl_allow_comments, 1);
-  yajl_config(handle, yajl_allow_multiple_values, 1);
-  //yajl_config(handle, yajl_allow_trailing_garbage, 1);
-  //yajl_config(handle, yajl_dont_validate_strings, 1);
+
+  YajlHandle handle(&builder);
 
   while (!stream.eof()) {
     stream.read(reinterpret_cast<char*>(&data[0]), kMax);
@@ -452,13 +481,10 @@ std::vector<std::unique_ptr<Value>> Parser::AllFromStream(std::istream& stream)
   yajl_status stat = yajl_complete_parse(handle);
 
   if (stat != yajl_status_ok) {
-    unsigned char* str = yajl_get_error(handle, 1, data, kMax);
-    std::string error_str((const char*)str);
-    yajl_free_error(handle, str);
-    throw Exception(error_str);
+    YajlError err(handle, 1, data, kMax);
+    throw Exception(err.c_str());
   }
 
-  yajl_free(handle);
   return builder.values();
 }
 
@@ -494,8 +520,7 @@ std::unique_ptr<Value> Parser::FromString(const std::string& input)
 class Parser::ParseState {
  public:
   ParseState(std::function<void(std::unique_ptr<Value>)> callback)
-      : builder_(callback),
-        handle_(yajl_alloc(&callbacks, NULL, (void*) &builder_)) {
+      : builder_(callback), handle_(&builder_) {
     yajl_config(handle_, yajl_allow_comments, 1);
     yajl_config(handle_, yajl_allow_multiple_values, 1);
     //yajl_config(handle_, yajl_allow_partial_values, 1);
@@ -506,19 +531,16 @@ class Parser::ParseState {
   ~ParseState() {
     yajl_status stat = yajl_complete_parse(handle_);
     if (stat != yajl_status_ok) {
-      unsigned char* str = yajl_get_error(handle_, 0, nullptr, 0);
-      std::string error_str((const char*)str);
-      yajl_free_error(handle_, str);
-      throw Exception(error_str);
+      YajlError err(handle_, 0, nullptr, 0);
+      throw Exception(err.c_str());
     }
-    yajl_free(handle_);
   }
 
-  yajl_handle& handle() { return handle_; }
+  yajl_handle handle() { return handle_; }
 
  private:
   JSONBuilder builder_;
-  yajl_handle handle_;
+  YajlHandle handle_;
 };
 
 Parser::Parser(std::function<void(std::unique_ptr<Value>)> callback)
@@ -530,7 +552,7 @@ std::size_t Parser::ParseStream(std::istream& stream) throw(Exception) {
   const int kMax = 65536;
   unsigned char data[kMax];
   size_t total_bytes_consumed = 0;
-  yajl_handle& handle = state_->handle();
+  yajl_handle handle = state_->handle();
 
   while (!stream.eof()) {
     stream.read(reinterpret_cast<char*>(&data[0]), kMax);
@@ -538,10 +560,8 @@ std::size_t Parser::ParseStream(std::istream& stream) throw(Exception) {
 
     yajl_status stat = yajl_parse(handle, data, count);
     if (stat != yajl_status_ok) {
-      unsigned char* str = yajl_get_error(handle, 1, data, kMax);
-      std::string error_str((const char*)str);
-      yajl_free_error(handle, str);
-      throw Exception(error_str);
+      YajlError err(handle, 1, data, kMax);
+      throw Exception(err.c_str());
     }
 
     total_bytes_consumed += yajl_get_bytes_consumed(handle);
