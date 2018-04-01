@@ -459,7 +459,7 @@ std::vector<json::value> KubernetesReader::GetServiceList(
   std::lock_guard<std::mutex> lock(service_mutex_);
   std::vector<json::value> service_list;
   for (const auto& service_it : service_to_metadata_) {
-    const std::pair<std::string, std::string>& service_key = service_it.first;
+    const ServiceKey& service_key = service_it.first;
     const std::string namespace_name = service_key.first;
     const json::value& service_metadata = service_it.second;
     auto endpoints_it = service_to_pods_.find(service_key);
@@ -988,8 +988,7 @@ void KubernetesReader::UpdateServiceToMetadataCache(
   const json::Object* metadata = service->Get<json::Object>("metadata");
   const std::string namespace_name = metadata->Get<json::String>("namespace");
   const std::string service_name = metadata->Get<json::String>("name");
-  const std::pair<std::string, std::string> service_key (
-    namespace_name, service_name);
+  const ServiceKey service_key(namespace_name, service_name);
 
   std::lock_guard<std::mutex> lock(service_mutex_);
   auto service_it = service_to_metadata_.find(service_key);
@@ -1015,8 +1014,7 @@ void KubernetesReader::UpdateServiceToPodsCache(
   const std::string namespace_name = metadata->Get<json::String>("namespace");
   // Endpoints name is same as the matching service name.
   const std::string service_name = metadata->Get<json::String>("name");
-  const std::pair<std::string, std::string> service_key (
-    namespace_name, service_name);
+  const ServiceKey service_key(namespace_name, service_name);
 
   std::vector<std::string> pod_names;
   // Only extract the pod names when this is not a deletion. In the case of
