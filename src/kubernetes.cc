@@ -459,7 +459,7 @@ std::vector<json::value> KubernetesReader::GetServiceList(
   std::lock_guard<std::mutex> lock(service_mutex_);
   std::vector<json::value> service_list;
   for (const auto& metadata_it : service_to_metadata_) {
-    // service_key is a std::pair containing (namespace_name, service_name).
+    // A service key consists of a namespace name and a service name.
     const ServiceKey& service_key = metadata_it.first;
     const std::string namespace_name = service_key.first;
     const json::value& service_metadata = metadata_it.second;
