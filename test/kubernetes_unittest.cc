@@ -217,13 +217,15 @@ TEST_F(KubernetesTest, GetLegacyResource) {
   ));
   Environment environment(config);
   KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
-  const auto m = GetLegacyResource(reader, json::object({
+  json::value pod = json::object({
     {"metadata", json::object({
       {"namespace", json::string("TestNamespace")},
       {"name", json::string("TestName")},
       {"uid", json::string("TestUid")},
     })},
-  })->As<json::Object>(), "TestContainerName");
+  });
+  const auto m = GetLegacyResource(reader, pod->As<json::Object>(),
+                                   "TestContainerName");
   EXPECT_EQ(std::vector<std::string>({
     "gke_container.TestNamespace.TestUid.TestContainerName",
     "gke_container.TestNamespace.TestName.TestContainerName",
