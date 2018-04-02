@@ -35,6 +35,7 @@ void VerifyDefaultConfig(const Configuration& config) {
   EXPECT_EQ("", config.InstanceId());
   EXPECT_EQ("", config.InstanceZone());
   EXPECT_EQ("/var/run/metadata-agent/health/unhealthy", config.HealthCheckFile());
+  EXPECT_EQ(false, config.KillAgentOnFailure());
 }
 
 TEST(ConfigurationTest, NoConfig) {
@@ -54,12 +55,14 @@ TEST(ConfigurationTest, PopulatedConfig) {
       "MetadataReporterPurgeDeleted: true\n"
       "MetadataReporterUserAgent: \"foobar/foobaz\"\n"
       "HealthCheckFile: /a/b/c\n"
+      "KillAgentOnFailure: true\n"
   ));
   EXPECT_EQ("TestProjectId", config.ProjectId());
   EXPECT_EQ(13, config.MetadataApiNumThreads());
   EXPECT_EQ(true, config.MetadataReporterPurgeDeleted());
   EXPECT_EQ("foobar/foobaz", config.MetadataReporterUserAgent());
   EXPECT_EQ("/a/b/c", config.HealthCheckFile());
+  EXPECT_EQ(true, config.KillAgentOnFailure());
 }
 
 TEST(ConfigurationTest, CommentSkipped) {

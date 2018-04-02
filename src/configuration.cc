@@ -73,6 +73,7 @@ constexpr const char kDefaultInstanceId[] = "";
 constexpr const char kDefaultInstanceZone[] = "";
 constexpr const char kDefaultHealthCheckFile[] =
     "/var/run/metadata-agent/health/unhealthy";
+constexpr const bool kKillAgentOnFailure = false;
 
 }
 
@@ -115,7 +116,8 @@ Configuration::Configuration()
           kKubernetesDefaultClusterLevelMetadata),
       instance_id_(kDefaultInstanceId),
       instance_zone_(kDefaultInstanceZone),
-      health_check_file_(kDefaultHealthCheckFile) {}
+      health_check_file_(kDefaultHealthCheckFile),
+      kill_agent_on_failure_(kKillAgentOnFailure) {}
 
 Configuration::Configuration(std::istream& input) : Configuration() {
   ParseConfiguration(input);
@@ -277,6 +279,8 @@ void Configuration::ParseConfiguration(std::istream& input) {
       config["InstanceZone"].as<std::string>(instance_zone_);
   health_check_file_ =
       config["HealthCheckFile"].as<std::string>(health_check_file_);
+  kill_agent_on_failure_ =
+      config["KillAgentOnFailure"].as<bool>(kill_agent_on_failure_);
 }
 
 }  // google
