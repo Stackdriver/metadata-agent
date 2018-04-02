@@ -14,6 +14,13 @@ class KubernetesTest : public ::testing::Test {
     return reader.GetNodeMetadata(node, collected_at, is_deleted);
   }
 
+  MetadataUpdater::ResourceMetadata GetPodMetadata(
+      const KubernetesReader& reader, const json::Object* pod,
+      json::value associations, Timestamp collected_at, bool is_deleted) const
+      throw(json::Exception) {
+    return reader.GetPodMetadata(pod, std::move(associations), collected_at, is_deleted);
+  }
+
   json::value ComputePodAssociations(const KubernetesReader& reader,
                                      const json::Object* pod) {
     return reader.ComputePodAssociations(pod);
@@ -136,5 +143,59 @@ TEST_F(KubernetesTest, ComputePodAssociations) {
   const auto associations =
       ComputePodAssociations(reader, pod->As<json::Object>());
   EXPECT_EQ(expected_associations->ToString(), associations->ToString());
+}
+
+TEST_F(KubernetesTest, GetPodMetadata) {
+  Configuration config(std::stringstream(
+    "KubernetesClusterName: TestClusterName\n"
+    "KubernetesClusterLocation: TestClusterLocation\n"
+    "MetadataApiResourceTypePerarator: \",\"\n"
+    "MetadataIngestionRawContentVersion: TestVersion\n"
+    ));
+  Environment environment(config);
+  KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
+
+  const auto m = GetPodMetadata(
+      reader, json::object({
+        {"metadata", json::object({
+          {"namespace", json::string("TestNamespace")},
+          {"name", json::string("TestName")},
+          {"uid", json::string("TestUid")},
+          {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
+        })}
+      })->As<json::Object>(),
+      json::string("TestAssociations"), Timestamp(), false);
+
+  EXPECT_EQ(std::vector<std::string>(
+      {"k8s_pod.TestUid", "k8s_pod.TestNamespace.TestName"}), m.ids());
+  EXPECT_EQ(MonitoredResource("k8s_pod", {
+    {"cluster_name", "TestClusterName"},
+    {"pod_name", "TestName"},
+    {"location", "TestClusterLocation"},
+    {"namespace_name", "TestNamespace"},
+  }), m.resource());
+  EXPECT_EQ("TestVersion", m.metadata().version);
+  EXPECT_EQ(false, m.metadata().is_deleted);
+  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
+            m.metadata().created_at);
+  EXPECT_EQ(Timestamp(), m.metadata().collected_at);
+  EXPECT_EQ(false, m.metadata().ignore);
+  EXPECT_EQ(json::object({
+    {"blobs", json::object({
+      {"api", json::object({
+        {"raw", json::object({
+          {"metadata", json::object({
+            {"creationTimestamp",
+              json::string("2018-03-03T01:23:45.678901234Z")},
+            {"name", json::string("TestName")},
+            {"namespace", json::string("TestNamespace")},
+            {"uid", json::string("TestUid")}
+          })},
+        })},
+        {"version", json::string("1.6")},
+      })},
+      {"association", json::string("TestAssociations")},
+    })},
+  })->ToString(), m.metadata().metadata->ToString());
 }
 }  // namespace google
