@@ -152,7 +152,7 @@ TEST_F(KubernetesTest, GetPodMetadata) {
     "KubernetesClusterLocation: TestClusterLocation\n"
     "MetadataApiResourceTypePerarator: \",\"\n"
     "MetadataIngestionRawContentVersion: TestVersion\n"
-    ));
+  ));
   Environment environment(config);
   KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
 
@@ -163,7 +163,7 @@ TEST_F(KubernetesTest, GetPodMetadata) {
           {"name", json::string("TestName")},
           {"uid", json::string("TestUid")},
           {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
-        })}
+        })},
       })->As<json::Object>(),
       json::string("TestAssociations"), Timestamp(), false);
 
@@ -190,7 +190,7 @@ TEST_F(KubernetesTest, GetPodMetadata) {
               json::string("2018-03-03T01:23:45.678901234Z")},
             {"name", json::string("TestName")},
             {"namespace", json::string("TestNamespace")},
-            {"uid", json::string("TestUid")}
+            {"uid", json::string("TestUid")},
           })},
         })},
         {"version", json::string("1.6")},
