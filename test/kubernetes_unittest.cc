@@ -22,6 +22,12 @@ class KubernetesTest : public ::testing::Test {
         pod, std::move(associations), collected_at, is_deleted);
   }
 
+  MetadataUpdater::ResourceMetadata GetLegacyResource(
+      const KubernetesReader& reader, const json::Object* pod,
+      const std::string& container_name) const throw(json::Exception) {
+    return reader.GetLegacyResource(pod, container_name);
+  }
+
   json::value ComputePodAssociations(const KubernetesReader& reader,
                                      const json::Object* pod) {
     return reader.ComputePodAssociations(pod);
@@ -200,5 +206,48 @@ TEST_F(KubernetesTest, GetPodMetadata) {
     })},
   });
   EXPECT_EQ(expected_metadata->ToString(), m.metadata().metadata->ToString());
+}
+
+TEST_F(KubernetesTest, GetLegacyResource) {
+  Configuration config(std::stringstream(
+    "KubernetesClusterName: TestClusterName\n"
+    "MetadataApiResourceTypeSeparator: \".\"\n"
+    "InstanceZone: TestZone\n"
+    "InstanceId: TestID\n"
+  ));
+  Environment environment(config);
+  KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
+  json::value pod = json::object({
+    {"metadata", json::object({
+      {"namespace", json::string("TestNamespace")},
+      {"name", json::string("TestName")},
+      {"uid", json::string("TestUid")},
+    })}
+  });
+  const auto m = GetLegacyResource(reader, json::object({
+    {"metadata", json::object({
+      {"namespace", json::string("TestNamespace")},
+      {"name", json::string("TestName")},
+      {"uid", json::string("TestUid")},
+    })},
+  })->As<json::Object>(), "TestContainerName");
+  EXPECT_EQ(std::vector<std::string>({
+    "gke_container.TestNamespace.TestUid.TestContainerName",
+    "gke_container.TestNamespace.TestName.TestContainerName"
+  }), m.ids());
+  EXPECT_EQ(MonitoredResource("gke_container", {
+    {"cluster_name", "TestClusterName"},
+    {"container_name", "TestContainerName"},
+    {"instance_id", "TestID"},
+    {"namespace_id", "TestNamespace"},
+    {"pod_id", "TestUid"},
+    {"zone", "TestZone"},
+  }), m.resource());
+  EXPECT_EQ("", m.metadata().version);
+  EXPECT_FALSE(m.metadata().is_deleted);
+  EXPECT_EQ(Timestamp(), m.metadata().created_at);
+  EXPECT_EQ(Timestamp(), m.metadata().collected_at);
+  EXPECT_TRUE(m.metadata().ignore);
+  EXPECT_EQ(json::object({})->ToString(), m.metadata().metadata->ToString());
 }
 }  // namespace google
