@@ -444,17 +444,18 @@ TEST_F(KubernetesTest, GetContainerMetadata) {
   ));
   Environment environment(config);
   KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
+  json::value pod = json::object({
+    {"metadata", json::object({
+      {"namespace", json::string("TestNamespace")},
+      {"name", json::string("TestName")},
+      {"uid", json::string("TestUid")},
+      {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
+      {"labels", json::object({{"label", json::string("TestLabel")}})},
+    })},
+  });
   const auto m = GetContainerMetadata(
       reader,
-      json::object({
-        {"metadata", json::object({
-          {"namespace", json::string("TestNamespace")},
-          {"name", json::string("TestName")},
-          {"uid", json::string("TestUid")},
-          {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
-          {"labels", json::object({{"label", json::string("TestLabel")}})},
-        })},
-      })->As<json::Object>(),
+      pod->As<json::Object>(),
       json::object({{"name", json::string("TestSpecName")}})->As<json::Object>(),
       json::object({
         {"containerID", json::string("docker://TestContainerID")},
@@ -481,7 +482,7 @@ TEST_F(KubernetesTest, GetContainerMetadata) {
             m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   EXPECT_FALSE(m.metadata().ignore);
-  EXPECT_EQ(json::object({
+  json::value expected_metadata = json::object({
     {"blobs", json::object({
       {"association", json::string("TestAssociations")},
       {"labels", json::object({
@@ -503,6 +504,7 @@ TEST_F(KubernetesTest, GetContainerMetadata) {
         {"version", json::string("1.6")},
       })},
     })},
-  })->ToString(), m.metadata().metadata->ToString());
+  });
+  EXPECT_EQ(expected_metadata->ToString(), m.metadata().metadata->ToString());
 }
 }  // namespace google
