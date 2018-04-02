@@ -18,7 +18,8 @@ class KubernetesTest : public ::testing::Test {
       const KubernetesReader& reader, const json::Object* pod,
       json::value associations, Timestamp collected_at, bool is_deleted) const
       throw(json::Exception) {
-    return reader.GetPodMetadata(pod, std::move(associations), collected_at, is_deleted);
+    return reader.GetPodMetadata(
+        pod, std::move(associations), collected_at, is_deleted);
   }
 
   json::value ComputePodAssociations(const KubernetesReader& reader,
