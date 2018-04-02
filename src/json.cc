@@ -209,30 +209,17 @@ namespace {
 class Context {
  public:
   virtual void AddValue(std::unique_ptr<Value> value) = 0;
-  Context* parent() { return parent_; }
+  std::unique_ptr<Context> parent() { return std::move(parent_); }
   virtual ~Context() = default;
  protected:
-  Context(Context* parent) : parent_(parent) {}
+  Context(std::unique_ptr<Context> parent) : parent_(std::move(parent)) {}
  private:
-  Context* parent_;
-};
-
-class TopLevelContext : public Context {
- public:
-  TopLevelContext() : Context(nullptr) {}
-  void AddValue(std::unique_ptr<Value> value) override {
-    values_.emplace_back(std::move(value));
-  }
-  std::vector<std::unique_ptr<Value>> values() {
-    return std::move(values_);
-  }
- private:
-  std::vector<std::unique_ptr<Value>> values_;
+  std::unique_ptr<Context> parent_;
 };
 
 class ArrayContext : public Context {
  public:
-  ArrayContext(Context* parent) : Context(parent) {}
+  ArrayContext(std::unique_ptr<Context> parent) : Context(std::move(parent)) {}
   void AddValue(std::unique_ptr<Value> value) override {
     elements.emplace_back(std::move(value));
   }
@@ -241,7 +228,7 @@ class ArrayContext : public Context {
 
 class ObjectContext : public Context {
  public:
-  ObjectContext(Context* parent) : Context(parent) {}
+  ObjectContext(std::unique_ptr<Context> parent) : Context(std::move(parent)) {}
   void NewField(const std::string& name) {
     if (field_name_ != nullptr) {
       std::cerr << "Replacing " << *field_name_
@@ -276,48 +263,48 @@ class CallbackContext : public Context {
 // A builder context that allows building up a JSON object.
 class JSONBuilder {
  public:
-  JSONBuilder() : context_(new TopLevelContext()) {}
   JSONBuilder(std::function<void(std::unique_ptr<Value>)> callback)
       : context_(new CallbackContext(callback)) {}
-  ~JSONBuilder() { delete context_; }
+  ~JSONBuilder() = default;
 
   void AddValue(std::unique_ptr<Value> value) {
     context_->AddValue(std::move(value));
   }
 
   void PushArray() {
-    context_ = new ArrayContext(context_);
+    context_.reset(new ArrayContext(std::move(context_)));
   }
 
   void PushObject() {
-    context_ = new ObjectContext(context_);
+    context_.reset(new ObjectContext(std::move(context_)));
   }
 
   std::unique_ptr<ArrayContext> PopArray() {
-    std::unique_ptr<ArrayContext> array_context(
-        dynamic_cast<ArrayContext*>(context_));
+    ArrayContext* array_context =
+        dynamic_cast<ArrayContext*>(context_.get());
     if (array_context == nullptr) {
       std::cerr << "Not in array context" << std::endl;
       return nullptr;
     }
-    context_ = context_->parent();
-    return array_context;
+    context_ = context_.release()->parent();
+    return std::unique_ptr<ArrayContext>(array_context);
   }
 
   std::unique_ptr<ObjectContext> PopObject() {
-    std::unique_ptr<ObjectContext> object_context(
-        dynamic_cast<ObjectContext*>(context_));
+    ObjectContext* object_context =
+        dynamic_cast<ObjectContext*>(context_.get());
     if (object_context == nullptr) {
       std::cerr << "Not in object context" << std::endl;
       return nullptr;
     }
-    context_ = context_->parent();
-    return object_context;
+    context_ = context_.release()->parent();
+    return std::unique_ptr<ObjectContext>(object_context);
   }
 
   // Objects only.
   bool NewField(const std::string& name) {
-    ObjectContext* object_context = dynamic_cast<ObjectContext*>(context_);
+    ObjectContext* object_context =
+        dynamic_cast<ObjectContext*>(context_.get());
     if (object_context == nullptr) {
       std::cerr << "NewField " << name << " outside of object" << std::endl;
       return false;
@@ -326,17 +313,8 @@ class JSONBuilder {
     return true;
   }
 
-  // Top-level context only.
-  std::vector<std::unique_ptr<Value>> values() throw(Exception) {
-    TopLevelContext* top_level = dynamic_cast<TopLevelContext*>(context_);
-    if (top_level == nullptr) {
-      throw Exception("values() called for an inner context");
-    }
-    return top_level->values();
-  }
-
  private:
-  Context* context_;
+  std::unique_ptr<Context> context_;
 };
 
 int handle_null(void* arg) {
@@ -414,7 +392,7 @@ int handle_end_map(void* arg) {
   return 1;
 }
 
-yajl_callbacks callbacks = {
+const yajl_callbacks callbacks = {
     .yajl_null = &handle_null,
     .yajl_boolean = &handle_bool,
     .yajl_integer = &handle_integer,
@@ -428,38 +406,51 @@ yajl_callbacks callbacks = {
     .yajl_end_array = &handle_end_array,
 };
 
+class YajlHandle {
+ public:
+  YajlHandle(JSONBuilder* builder)
+      : handle_(yajl_alloc(&callbacks, NULL, builder)) {
+    yajl_config(handle_, yajl_allow_comments, 1);
+    yajl_config(handle_, yajl_allow_multiple_values, 1);
+    //yajl_config(handle_, yajl_allow_partial_values, 1);
+    //yajl_config(handle_, yajl_allow_trailing_garbage, 1);
+    //yajl_config(handle_, yajl_dont_validate_strings, 1);
+  }
+  ~YajlHandle() {
+    yajl_free(handle_);
+  }
+  operator yajl_handle() { return handle_; }
+ private:
+  yajl_handle handle_;
+};
+
+class YajlError {
+ public:
+  YajlError(yajl_handle handle, bool verbose,
+            const unsigned char* json_text, size_t json_len)
+      : handle_(handle),
+        str_(yajl_get_error(handle_, (int)verbose, json_text, json_len)) {}
+  ~YajlError() {
+    yajl_free_error(handle_, str_);
+  }
+  const char* c_str() { return reinterpret_cast<const char*>(str_); }
+ private:
+  yajl_handle handle_;
+  unsigned char* str_;
+};
+
 }  // namespace
 
 std::vector<std::unique_ptr<Value>> Parser::AllFromStream(std::istream& stream)
     throw(Exception)
 {
-  JSONBuilder builder;
-
-  const int kMax = 65536;
-  unsigned char data[kMax];
-  yajl_handle handle = yajl_alloc(&callbacks, NULL, (void*) &builder);
-  yajl_config(handle, yajl_allow_comments, 1);
-  yajl_config(handle, yajl_allow_multiple_values, 1);
-  //yajl_config(handle, yajl_allow_trailing_garbage, 1);
-  //yajl_config(handle, yajl_dont_validate_strings, 1);
-
-  while (!stream.eof()) {
-    stream.read(reinterpret_cast<char*>(&data[0]), kMax);
-    size_t count = stream.gcount();
-    yajl_parse(handle, data, count);
-  }
-
-  yajl_status stat = yajl_complete_parse(handle);
-
-  if (stat != yajl_status_ok) {
-    unsigned char* str = yajl_get_error(handle, 1, data, kMax);
-    std::string error_str((const char*)str);
-    yajl_free_error(handle, str);
-    throw Exception(error_str);
-  }
-
-  yajl_free(handle);
-  return builder.values();
+  std::vector<std::unique_ptr<Value>> values;
+  Parser p([&values](std::unique_ptr<Value> r){
+    values.emplace_back(std::move(r));
+  });
+  p.ParseStream(stream);
+  p.NotifyEOF();
+  return values;
 }
 
 std::unique_ptr<Value> Parser::FromStream(std::istream& stream)
@@ -480,22 +471,19 @@ std::unique_ptr<Value> Parser::FromStream(std::istream& stream)
 std::vector<std::unique_ptr<Value>> Parser::AllFromString(
     const std::string& input) throw(Exception)
 {
-  std::istringstream stream(input);
-  return AllFromStream(stream);
+  return AllFromStream(std::istringstream(input));
 }
 
 std::unique_ptr<Value> Parser::FromString(const std::string& input)
     throw(Exception)
 {
-  std::istringstream stream(input);
-  return FromStream(stream);
+  return FromStream(std::istringstream(input));
 }
 
 class Parser::ParseState {
  public:
   ParseState(std::function<void(std::unique_ptr<Value>)> callback)
-      : builder_(callback),
-        handle_(yajl_alloc(&callbacks, NULL, (void*) &builder_)) {
+      : builder_(callback), handle_(&builder_) {
     yajl_config(handle_, yajl_allow_comments, 1);
     yajl_config(handle_, yajl_allow_multiple_values, 1);
     //yajl_config(handle_, yajl_allow_partial_values, 1);
@@ -503,34 +491,31 @@ class Parser::ParseState {
     //yajl_config(handle_, yajl_dont_validate_strings, 1);
   }
 
-  ~ParseState() {
+  void Done() throw(Exception) {
     yajl_status stat = yajl_complete_parse(handle_);
     if (stat != yajl_status_ok) {
-      unsigned char* str = yajl_get_error(handle_, 0, nullptr, 0);
-      std::string error_str((const char*)str);
-      yajl_free_error(handle_, str);
-      throw Exception(error_str);
+      YajlError err(handle_, 0, nullptr, 0);
+      throw Exception(err.c_str());
     }
-    yajl_free(handle_);
   }
 
-  yajl_handle& handle() { return handle_; }
+  yajl_handle handle() { return handle_; }
 
  private:
   JSONBuilder builder_;
-  yajl_handle handle_;
+  YajlHandle handle_;
 };
 
 Parser::Parser(std::function<void(std::unique_ptr<Value>)> callback)
     : state_(new ParseState(callback)) {}
 
-Parser::~Parser() {}
+Parser::~Parser() = default;
 
 std::size_t Parser::ParseStream(std::istream& stream) throw(Exception) {
   const int kMax = 65536;
   unsigned char data[kMax];
   size_t total_bytes_consumed = 0;
-  yajl_handle& handle = state_->handle();
+  yajl_handle handle = state_->handle();
 
   while (!stream.eof()) {
     stream.read(reinterpret_cast<char*>(&data[0]), kMax);
@@ -538,16 +523,18 @@ std::size_t Parser::ParseStream(std::istream& stream) throw(Exception) {
 
     yajl_status stat = yajl_parse(handle, data, count);
     if (stat != yajl_status_ok) {
-      unsigned char* str = yajl_get_error(handle, 1, data, kMax);
-      std::string error_str((const char*)str);
-      yajl_free_error(handle, str);
-      throw Exception(error_str);
+      YajlError err(handle, 1, data, kMax);
+      throw Exception(err.c_str());
     }
 
     total_bytes_consumed += yajl_get_bytes_consumed(handle);
   }
 
   return total_bytes_consumed;
+}
+
+void Parser::NotifyEOF() throw(Exception) {
+  state_->Done();
 }
 
 }  // json
