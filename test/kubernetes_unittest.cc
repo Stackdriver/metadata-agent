@@ -475,11 +475,11 @@ TEST_F(KubernetesTest, GetContainerMetadata) {
     {"pod_name", "TestName"},
   }), m.resource());
   EXPECT_EQ("1.6", m.metadata().version);
-  EXPECT_EQ(false, m.metadata().is_deleted);
+  EXPECT_FALSE(m.metadata().is_deleted);
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
             m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
-  EXPECT_EQ(false, m.metadata().ignore);
+  EXPECT_FALSE(m.metadata().ignore);
   EXPECT_EQ(json::object({
     {"blobs", json::object({
       {"association", json::string("TestAssociations")},
