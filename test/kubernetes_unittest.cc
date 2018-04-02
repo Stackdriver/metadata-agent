@@ -37,6 +37,8 @@ class KubernetesTest : public ::testing::Test {
   void UpdateOwnersCache(KubernetesReader* reader, const std::string& key,
                          const json::value& value) {
     reader->owners_[key] = value->Clone();
+  }
+
   MetadataUpdater::ResourceMetadata GetClusterMetadata(
       const KubernetesReader& reader, Timestamp collected_at) const
       throw(json::Exception) {
@@ -167,6 +169,7 @@ TEST_F(KubernetesTest, ComputePodAssociations) {
   const auto associations =
       ComputePodAssociations(reader, pod->As<json::Object>());
   EXPECT_EQ(expected_associations->ToString(), associations->ToString());
+}
 
 TEST_F(KubernetesTest, GetPodMetadata) {
   Configuration config(std::stringstream(
