@@ -453,13 +453,14 @@ TEST_F(KubernetesTest, GetContainerMetadata) {
       {"labels", json::object({{"label", json::string("TestLabel")}})},
     })},
   });
+  json::value spec = json::object({{"name", json::string("TestSpecName")}});
+  json::value status = json::object({{
+    "containerID", json::string("docker://TestContainerID")}});
   const auto m = GetContainerMetadata(
       reader,
       pod->As<json::Object>(),
-      json::object({{"name", json::string("TestSpecName")}})->As<json::Object>(),
-      json::object({
-        {"containerID", json::string("docker://TestContainerID")},
-      })->As<json::Object>(),
+      spec->As<json::Object>(),
+      status->As<json::Object>(),
       json::string("TestAssociations"),
       Timestamp(),
       /*is_deleted=*/false);
