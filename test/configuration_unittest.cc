@@ -21,7 +21,7 @@ void VerifyDefaultConfig(const Configuration& config) {
   EXPECT_EQ("0.1", config.MetadataIngestionRawContentVersion());
   EXPECT_EQ(60*60, config.InstanceUpdaterIntervalSeconds());
   EXPECT_EQ("", config.InstanceResourceType());
-  EXPECT_EQ(60, config.DockerUpdaterIntervalSeconds());
+  EXPECT_EQ(0, config.DockerUpdaterIntervalSeconds());
   EXPECT_EQ("unix://%2Fvar%2Frun%2Fdocker.sock/", config.DockerEndpointHost());
   EXPECT_EQ("1.23", config.DockerApiVersion());
   EXPECT_EQ("limit=30", config.DockerContainerFilter());
@@ -31,7 +31,7 @@ void VerifyDefaultConfig(const Configuration& config) {
   EXPECT_EQ("", config.KubernetesClusterName());
   EXPECT_EQ("", config.KubernetesClusterLocation());
   EXPECT_EQ("", config.KubernetesNodeName());
-  EXPECT_EQ(true, config.KubernetesUseWatch());
+  EXPECT_EQ(false, config.KubernetesUseWatch());
   EXPECT_EQ("", config.InstanceId());
   EXPECT_EQ("", config.InstanceZone());
   EXPECT_EQ("/var/run/metadata-agent/health/unhealthy", config.HealthCheckFile());
