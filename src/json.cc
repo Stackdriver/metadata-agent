@@ -209,17 +209,17 @@ namespace {
 class Context {
  public:
   virtual void AddValue(std::unique_ptr<Value> value) = 0;
-  Context* parent() { return parent_; }
+  std::unique_ptr<Context> parent() { return std::move(parent_); }
   virtual ~Context() = default;
  protected:
-  Context(Context* parent) : parent_(parent) {}
+  Context(std::unique_ptr<Context> parent) : parent_(std::move(parent)) {}
  private:
-  Context* parent_;
+  std::unique_ptr<Context> parent_;
 };
 
 class ArrayContext : public Context {
  public:
-  ArrayContext(Context* parent) : Context(parent) {}
+  ArrayContext(std::unique_ptr<Context> parent) : Context(std::move(parent)) {}
   void AddValue(std::unique_ptr<Value> value) override {
     elements.emplace_back(std::move(value));
   }
@@ -228,7 +228,7 @@ class ArrayContext : public Context {
 
 class ObjectContext : public Context {
  public:
-  ObjectContext(Context* parent) : Context(parent) {}
+  ObjectContext(std::unique_ptr<Context> parent) : Context(std::move(parent)) {}
   void NewField(const std::string& name) {
     if (field_name_ != nullptr) {
       std::cerr << "Replacing " << *field_name_
@@ -265,45 +265,46 @@ class JSONBuilder {
  public:
   JSONBuilder(std::function<void(std::unique_ptr<Value>)> callback)
       : context_(new CallbackContext(callback)) {}
-  ~JSONBuilder() { delete context_; }
+  ~JSONBuilder() = default;
 
   void AddValue(std::unique_ptr<Value> value) {
     context_->AddValue(std::move(value));
   }
 
   void PushArray() {
-    context_ = new ArrayContext(context_);
+    context_.reset(new ArrayContext(std::move(context_)));
   }
 
   void PushObject() {
-    context_ = new ObjectContext(context_);
+    context_.reset(new ObjectContext(std::move(context_)));
   }
 
   std::unique_ptr<ArrayContext> PopArray() {
-    std::unique_ptr<ArrayContext> array_context(
-        dynamic_cast<ArrayContext*>(context_));
+    ArrayContext* array_context =
+        dynamic_cast<ArrayContext*>(context_.get());
     if (array_context == nullptr) {
       std::cerr << "Not in array context" << std::endl;
       return nullptr;
     }
-    context_ = context_->parent();
-    return array_context;
+    context_ = context_.release()->parent();
+    return std::unique_ptr<ArrayContext>(array_context);
   }
 
   std::unique_ptr<ObjectContext> PopObject() {
-    std::unique_ptr<ObjectContext> object_context(
-        dynamic_cast<ObjectContext*>(context_));
+    ObjectContext* object_context =
+        dynamic_cast<ObjectContext*>(context_.get());
     if (object_context == nullptr) {
       std::cerr << "Not in object context" << std::endl;
       return nullptr;
     }
-    context_ = context_->parent();
-    return object_context;
+    context_ = context_.release()->parent();
+    return std::unique_ptr<ObjectContext>(object_context);
   }
 
   // Objects only.
   bool NewField(const std::string& name) {
-    ObjectContext* object_context = dynamic_cast<ObjectContext*>(context_);
+    ObjectContext* object_context =
+        dynamic_cast<ObjectContext*>(context_.get());
     if (object_context == nullptr) {
       std::cerr << "NewField " << name << " outside of object" << std::endl;
       return false;
@@ -313,7 +314,7 @@ class JSONBuilder {
   }
 
  private:
-  Context* context_;
+  std::unique_ptr<Context> context_;
 };
 
 int handle_null(void* arg) {
@@ -508,7 +509,7 @@ class Parser::ParseState {
 Parser::Parser(std::function<void(std::unique_ptr<Value>)> callback)
     : state_(new ParseState(callback)) {}
 
-Parser::~Parser() {}
+Parser::~Parser() = default;
 
 std::size_t Parser::ParseStream(std::istream& stream) throw(Exception) {
   const int kMax = 65536;
