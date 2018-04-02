@@ -217,13 +217,6 @@ TEST_F(KubernetesTest, GetLegacyResource) {
   ));
   Environment environment(config);
   KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
-  json::value pod = json::object({
-    {"metadata", json::object({
-      {"namespace", json::string("TestNamespace")},
-      {"name", json::string("TestName")},
-      {"uid", json::string("TestUid")},
-    })}
-  });
   const auto m = GetLegacyResource(reader, json::object({
     {"metadata", json::object({
       {"namespace", json::string("TestNamespace")},
@@ -233,7 +226,7 @@ TEST_F(KubernetesTest, GetLegacyResource) {
   })->As<json::Object>(), "TestContainerName");
   EXPECT_EQ(std::vector<std::string>({
     "gke_container.TestNamespace.TestUid.TestContainerName",
-    "gke_container.TestNamespace.TestName.TestContainerName"
+    "gke_container.TestNamespace.TestName.TestContainerName",
   }), m.ids());
   EXPECT_EQ(MonitoredResource("gke_container", {
     {"cluster_name", "TestClusterName"},
@@ -243,11 +236,6 @@ TEST_F(KubernetesTest, GetLegacyResource) {
     {"pod_id", "TestUid"},
     {"zone", "TestZone"},
   }), m.resource());
-  EXPECT_TRUE(m.metadata().version.empty());
-  EXPECT_FALSE(m.metadata().is_deleted);
-  EXPECT_EQ(Timestamp(), m.metadata().created_at);
-  EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   EXPECT_TRUE(m.metadata().ignore);
-  EXPECT_EQ(json::object({})->ToString(), m.metadata().metadata->ToString());
 }
 }  // namespace google
