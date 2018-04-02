@@ -243,7 +243,7 @@ TEST_F(KubernetesTest, GetLegacyResource) {
     {"pod_id", "TestUid"},
     {"zone", "TestZone"},
   }), m.resource());
-  EXPECT_EQ("", m.metadata().version);
+  EXPECT_TRUE(m.metadata().version.empty());
   EXPECT_FALSE(m.metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
