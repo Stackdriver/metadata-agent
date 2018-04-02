@@ -453,20 +453,21 @@ TEST_F(KubernetesTest, GetContainerMetadata) {
           {"uid", json::string("TestUid")},
           {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
           {"labels", json::object({{"label", json::string("TestLabel")}})},
-        })}
+        })},
       })->As<json::Object>(),
       json::object({{"name", json::string("TestSpecName")}})->As<json::Object>(),
       json::object({
-        {"containerID", json::string("docker://TestContainerID")}
+        {"containerID", json::string("docker://TestContainerID")},
       })->As<json::Object>(),
       json::string("TestAssociations"),
       Timestamp(),
-      false);
+      /*is_deleted=*/false);
 
   EXPECT_EQ(std::vector<std::string>({
     "k8s_container.TestUid.TestSpecName",
     "k8s_container.TestNamespace.TestName.TestSpecName",
-    "k8s_container.TestContainerID"}), m.ids());
+    "k8s_container.TestContainerID",
+  }), m.ids());
   EXPECT_EQ(MonitoredResource("k8s_container", {
     {"cluster_name", "TestClusterName"},
     {"container_name", "TestSpecName"},
@@ -499,7 +500,7 @@ TEST_F(KubernetesTest, GetContainerMetadata) {
         {"raw", json::object({
           {"containerID", json::string("docker://TestContainerID")},
         })},
-        {"version", json::string("1.6")}
+        {"version", json::string("1.6")},
       })},
     })},
   })->ToString(), m.metadata().metadata->ToString());
