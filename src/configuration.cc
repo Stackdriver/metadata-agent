@@ -81,58 +81,86 @@ constexpr const int kDefaultHealthCheckMaxDataAgeSeconds = 5*60;
 
 }
 
+namespace {
+
+class Option {
+ public:
+  virtual void Set(const YAML::Node& value) = 0;
+};
+
+template<class T, class D>
+class OptionDef : public Option {
+ public:
+  OptionDef(T& var, const D& default_) : var_(var) {
+    var = default_;
+  }
+  void Set(const YAML::Node& value) { var_ = value.as<T>(var_); }
+ private:
+  T& var_;
+};
+
+template<class T, class D>
+std::pair<std::string, Option*> option(
+    const std::string& name, T& var, const D& default_) {
+  return {name, new OptionDef<T, D>(var, default_)};
+}
+
+}
+
+class Configuration::OptionMap
+    : public std::map<std::string, std::unique_ptr<Option>> {
+ public:
+  OptionMap(std::vector<std::pair<std::string, Option*>>&& v) {
+    for (const auto& p : v) {
+      emplace(p.first, p.second);
+    }
+  }
+};
+
 Configuration::Configuration()
-    : project_id_(kDefaultProjectId),
-      credentials_file_(kDefaultCredentialsFile),
-      verbose_logging_(false),
-      metadata_api_num_threads_(kMetadataApiDefaultNumThreads),
-      metadata_api_port_(kMetadataApiDefaultPort),
-      metadata_api_bind_address_(kMetadataApiDefaultBindAddress),
-      metadata_api_resource_type_separator_(
-          kMetadataApiDefaultResourceTypeSeparator),
-      metadata_reporter_interval_seconds_(
-          kMetadataReporterDefaultIntervalSeconds),
-      metadata_reporter_purge_deleted_(
-          kMetadataReporterDefaultPurgeDeleted),
-      metadata_reporter_user_agent_(
-          kMetadataReporterDefaultUserAgent),
-      metadata_ingestion_endpoint_format_(
-          kMetadataIngestionDefaultEndpointFormat),
-      metadata_ingestion_request_size_limit_bytes_(
-          kMetadataIngestionDefaultRequestSizeLimitBytes),
-      metadata_ingestion_request_size_limit_count_(
-          kMetadataIngestionDefaultRequestSizeLimitCount),
-      metadata_ingestion_raw_content_version_(
-          kMetadataIngestionDefaultRawContentVersion),
-      instance_updater_interval_seconds_(
-          kInstanceUpdaterDefaultIntervalSeconds),
-      instance_resource_type_(kDefaultInstanceResourceType),
-      docker_updater_interval_seconds_(kDockerUpdaterDefaultIntervalSeconds),
-      docker_endpoint_host_(kDockerDefaultEndpointHost),
-      docker_api_version_(kDockerDefaultApiVersion),
-      docker_container_filter_(kDockerDefaultContainerFilter),
-      kubernetes_updater_interval_seconds_(
-          kKubernetesUpdaterDefaultIntervalSeconds),
-      kubernetes_updater_watch_connection_retries_(
-          kKubernetesUpdaterDefaultWatchConnectionRetries),
-      kubernetes_endpoint_host_(kKubernetesDefaultEndpointHost),
-      kubernetes_pod_label_selector_(kKubernetesDefaultPodLabelSelector),
-      kubernetes_cluster_name_(kKubernetesDefaultClusterName),
-      kubernetes_cluster_location_(kKubernetesDefaultClusterLocation),
-      kubernetes_node_name_(kKubernetesDefaultNodeName),
-      kubernetes_use_watch_(kKubernetesDefaultUseWatch),
-      kubernetes_cluster_level_metadata_(
-          kKubernetesDefaultClusterLevelMetadata),
-      kubernetes_service_metadata_(kKubernetesDefaultServiceMetadata),
-      instance_id_(kDefaultInstanceId),
-      instance_zone_(kDefaultInstanceZone),
-      health_check_file_(kDefaultHealthCheckFile),
-      health_check_max_data_age_seconds_(
-          kDefaultHealthCheckMaxDataAgeSeconds) {}
+    : verbose_logging_(false),
+      options_(new OptionMap({
+        option("ProjectId", project_id_, ""),
+        option("CredentialsFile", credentials_file_, ""),
+        option("MetadataApiNumThreads", metadata_api_num_threads_, 3),
+        option("MetadataApiPort", metadata_api_port_, 8000),
+        option("MetadataApiBindAddress", metadata_api_bind_address_, "0.0.0.0"),
+        option("MetadataApiResourceTypeSeparator", metadata_api_resource_type_separator_, "."),
+        option("MetadataReporterIntervalSeconds", metadata_reporter_interval_seconds_, 60),
+        option("MetadataReporterPurgeDeleted", metadata_reporter_purge_deleted_, false),
+        option("MetadataReporterUserAgent", metadata_reporter_user_agent_, "metadata-agent/" STRINGIFY(AGENT_VERSION)),
+        option("MetadataIngestionEndpointFormat", metadata_ingestion_endpoint_format_, "https://stackdriver.googleapis.com/v1beta2/projects/{{project_id}}/resourceMetadata:batchUpdate"),
+        option("MetadataIngestionRequestSizeLimitBytes", metadata_ingestion_request_size_limit_bytes_, 8*1024*1024),
+        option("MetadataIngestionRequestSizeLimitCount", metadata_ingestion_request_size_limit_count_, 1000),
+        option("MetadataIngestionRawContentVersion", metadata_ingestion_raw_content_version_, "0.1"),
+        option("InstanceUpdaterIntervalSeconds", instance_updater_interval_seconds_, 60*60),
+        // A blank value means "unspecified; detect via environment".
+        option("InstanceResourceType", instance_resource_type_, ""),
+        option("DockerUpdaterIntervalSeconds", docker_updater_interval_seconds_, 0),
+        option("DockerEndpointHost", docker_endpoint_host_, "unix://%2Fvar%2Frun%2Fdocker.sock/"),
+        option("DockerApiVersion", docker_api_version_, "1.23"),
+        option("DockerContainerFilter", docker_container_filter_, "limit=30"),
+        option("KubernetesUpdaterIntervalSeconds", kubernetes_updater_interval_seconds_, 0),
+        option("KubernetesUpdaterWatchConnectionRetries", kubernetes_updater_watch_connection_retries_, 15),
+        option("KubernetesEndpointHost", kubernetes_endpoint_host_, "https://kubernetes.default.svc"),
+        option("KubernetesPodLabelSelector", kubernetes_pod_label_selector_, ""),
+        option("KubernetesClusterName", kubernetes_cluster_name_, ""),
+        option("KubernetesClusterLocation", kubernetes_cluster_location_, ""),
+        option("KubernetesNodeName", kubernetes_node_name_, ""),
+        option("KubernetesUseWatch", kubernetes_use_watch_, false),
+        option("KubernetesClusterLevelMetadata", kubernetes_cluster_level_metadata_, false),
+        option("KubernetesServiceMetadata", kubernetes_service_metadata_, true),
+        option("InstanceId", instance_id_, ""),
+        option("InstanceZone", instance_zone_, ""),
+        option("HealthCheckFile", health_check_file_, "/var/run/metadata-agent/health/unhealthy"),
+        option("HealthCheckMaxDataAgeSeconds", health_check_max_data_age_seconds_, 5*60),
+      })) {}
 
 Configuration::Configuration(std::istream& input) : Configuration() {
   ParseConfiguration(input);
 }
+
+Configuration::~Configuration() = default;
 
 int Configuration::ParseArguments(int ac, char** av) {
   std::string config_file;
@@ -219,93 +247,15 @@ void Configuration::ParseConfigFile(const std::string& filename) {
 void Configuration::ParseConfiguration(std::istream& input) {
   YAML::Node config = YAML::Load(input);
   std::lock_guard<std::mutex> lock(mutex_);
-  project_id_ =
-      config["ProjectId"].as<std::string>(project_id_);
-  credentials_file_ =
-      config["CredentialsFile"].as<std::string>(credentials_file_);
-  metadata_api_num_threads_ =
-      config["MetadataApiNumThreads"].as<int>(metadata_api_num_threads_);
-  metadata_api_port_ =
-      config["MetadataApiPort"].as<int>(metadata_api_port_);
-  metadata_api_bind_address_ =
-      config["MetadataApiBindAddress"].as<std::string>(
-          metadata_api_bind_address_);
-  metadata_api_resource_type_separator_ =
-      config["MetadataApiResourceTypeSeparator"].as<std::string>(
-          metadata_api_resource_type_separator_);
-  metadata_reporter_interval_seconds_ =
-      config["MetadataReporterIntervalSeconds"].as<int>(
-          metadata_reporter_interval_seconds_);
-  metadata_reporter_purge_deleted_ =
-      config["MetadataReporterPurgeDeleted"].as<bool>(
-          metadata_reporter_purge_deleted_);
-  metadata_reporter_user_agent_ =
-      config["MetadataReporterUserAgent"].as<std::string>(
-          metadata_reporter_user_agent_);
-  metadata_ingestion_endpoint_format_ =
-      config["MetadataIngestionEndpointFormat"].as<std::string>(
-          metadata_ingestion_endpoint_format_);
-  metadata_ingestion_request_size_limit_bytes_ =
-      config["MetadataIngestionRequestSizeLimitBytes"].as<int>(
-          metadata_ingestion_request_size_limit_bytes_);
-  metadata_ingestion_request_size_limit_count_ =
-      config["MetadataIngestionRequestSizeLimitCount"].as<int>(
-          metadata_ingestion_request_size_limit_count_);
-  metadata_ingestion_raw_content_version_ =
-      config["MetadataIngestionRawContentVersion"].as<std::string>(
-          metadata_ingestion_raw_content_version_);
-  instance_updater_interval_seconds_ =
-      config["InstanceUpdaterIntervalSeconds"].as<int>(
-          instance_updater_interval_seconds_);
-  instance_resource_type_ =
-      config["InstanceResourceType"].as<std::string>(instance_resource_type_);
-  docker_updater_interval_seconds_ =
-      config["DockerUpdaterIntervalSeconds"].as<int>(
-          docker_updater_interval_seconds_);
-  docker_endpoint_host_ =
-      config["DockerEndpointHost"].as<std::string>(docker_endpoint_host_);
-  docker_api_version_ =
-      config["DockerApiVersion"].as<std::string>(docker_api_version_);
-  docker_container_filter_ =
-      config["DockerContainerFilter"].as<std::string>(
-          docker_container_filter_);
-  kubernetes_updater_interval_seconds_ =
-      config["KubernetesUpdaterIntervalSeconds"].as<int>(
-          kubernetes_updater_interval_seconds_);
-  kubernetes_updater_watch_connection_retries_ =
-      config["KubernetesUpdaterWatchConnectionRetries"].as<int>(
-          kubernetes_updater_watch_connection_retries_);
-  kubernetes_endpoint_host_ =
-      config["KubernetesEndpointHost"].as<std::string>(
-          kubernetes_endpoint_host_);
-  kubernetes_pod_label_selector_ =
-      config["KubernetesPodLabelSelector"].as<std::string>(
-          kubernetes_pod_label_selector_);
-  kubernetes_cluster_name_ =
-      config["KubernetesClusterName"].as<std::string>(
-          kubernetes_cluster_name_);
-  kubernetes_cluster_location_ =
-      config["KubernetesClusterLocation"].as<std::string>(
-          kubernetes_cluster_location_);
-  kubernetes_node_name_ =
-      config["KubernetesNodeName"].as<std::string>(kubernetes_node_name_);
-  kubernetes_use_watch_ =
-      config["KubernetesUseWatch"].as<bool>(kubernetes_use_watch_);
-  kubernetes_cluster_level_metadata_ =
-      config["KubernetesClusterLevelMetadata"].as<bool>(
-          kubernetes_cluster_level_metadata_);
-  kubernetes_service_metadata_ =
-      config["KubernetesServiceMetadata"].as<bool>(
-          kubernetes_service_metadata_);
-  instance_id_ =
-      config["InstanceId"].as<std::string>(instance_id_);
-  instance_zone_ =
-      config["InstanceZone"].as<std::string>(instance_zone_);
-  health_check_file_ =
-      config["HealthCheckFile"].as<std::string>(health_check_file_);
-  health_check_max_data_age_seconds_ =
-      config["HealthCheckMaxDataAgeSeconds"].as<int>(
-          health_check_max_data_age_seconds_);
+  for (const auto& kv : config) {
+    const std::string key = kv.first.as<std::string>();
+    auto option_it = options_->find(key);
+    if (option_it != options_->end()) {
+      option_it->second->Set(kv.second);
+    } else {
+      std::cerr << "Invalid option " << key << std::endl;
+    }
+  }
 }
 
 }  // google
