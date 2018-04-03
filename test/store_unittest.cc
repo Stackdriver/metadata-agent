@@ -10,10 +10,6 @@ class MetadataStoreTest : public ::testing::Test {
  protected:
   MetadataStoreTest() : config(), store(config) {}
 
-  std::map<MonitoredResource, MetadataStore::Metadata> GetMetadataMap() const {
-    return store.GetMetadataMap();
-  }
-
   void PurgeDeletedEntries() {
     store.PurgeDeletedEntries();
   }
@@ -82,14 +78,14 @@ TEST_F(MetadataStoreTest, ResourceToIdsAssociationCorrectlyUpdated) {
 }
 
 TEST_F(MetadataStoreTest, DefaultMetadataMapIsEmpty) {
-  const auto metadata_map = GetMetadataMap();
+  const auto metadata_map = store.GetMetadataMap();
   EXPECT_TRUE(metadata_map.empty());
 }
 
 TEST_F(MetadataStoreTest, UpdateResourceDoesNotUpdateMetadata) {
   MonitoredResource resource("type", {});
   store.UpdateResource({"id1"}, resource);
-  const auto metadata_map = GetMetadataMap();
+  const auto metadata_map = store.GetMetadataMap();
   EXPECT_TRUE(metadata_map.empty());
 }
 
@@ -102,7 +98,7 @@ TEST_F(MetadataStoreTest, UpdateMetadataChangesMetadataMap) {
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}}));
   store.UpdateMetadata(resource, std::move(m));
-  const auto metadata_map = GetMetadataMap();
+  const auto metadata_map = store.GetMetadataMap();
   EXPECT_EQ(1, metadata_map.size());
   EXPECT_EQ("default-version", metadata_map.at(resource).version);
 }
@@ -124,7 +120,7 @@ TEST_F(MetadataStoreTest, MultipleUpdateMetadataChangesMetadataMap) {
       json::object({{"f", json::string("hello")}}));
   store.UpdateMetadata(resource1, std::move(m1));
   store.UpdateMetadata(resource2, std::move(m2));
-  const auto metadata_map = GetMetadataMap();
+  const auto metadata_map = store.GetMetadataMap();
   EXPECT_EQ(2, metadata_map.size());
   EXPECT_EQ("default-version1", metadata_map.at(resource1).version);
   EXPECT_EQ("default-version2", metadata_map.at(resource2).version);
@@ -139,7 +135,7 @@ TEST_F(MetadataStoreTest, UpdateMetadataForResourceChangesMetadataEntry) {
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}}));
   store.UpdateMetadata(resource, std::move(m1));
-  const auto metadata_map_before = GetMetadataMap();
+  const auto metadata_map_before = store.GetMetadataMap();
   EXPECT_EQ(1, metadata_map_before.size());
   EXPECT_EQ("default-version1", metadata_map_before.at(resource).version);
   MetadataStore::Metadata m2(
@@ -149,7 +145,7 @@ TEST_F(MetadataStoreTest, UpdateMetadataForResourceChangesMetadataEntry) {
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}}));
   store.UpdateMetadata(resource, std::move(m2));
-  const auto metadata_map_after = GetMetadataMap();
+  const auto metadata_map_after = store.GetMetadataMap();
   EXPECT_EQ(1, metadata_map_after.size());
   EXPECT_EQ("default-version2", metadata_map_after.at(resource).version);
 }
@@ -171,12 +167,12 @@ TEST_F(MetadataStoreTest, PurgeDeletedEntriesDeletesCorrectMetadata) {
       json::object({{"f", json::string("hello")}}));
   store.UpdateMetadata(resource1, std::move(m1));
   store.UpdateMetadata(resource2, std::move(m2));
-  const auto metadata_map_before = GetMetadataMap();
+  const auto metadata_map_before = store.GetMetadataMap();
   EXPECT_EQ(2, metadata_map_before.size());
   EXPECT_EQ("default-version1", metadata_map_before.at(resource1).version);
   EXPECT_EQ("default-version2", metadata_map_before.at(resource2).version);
   PurgeDeletedEntries();
-  const auto metadata_map_after = GetMetadataMap();
+  const auto metadata_map_after = store.GetMetadataMap();
   EXPECT_EQ(1, metadata_map_after.size());
   EXPECT_EQ("default-version1", metadata_map_after.at(resource1).version);
   EXPECT_THROW(metadata_map_after.at(resource2), std::out_of_range);
