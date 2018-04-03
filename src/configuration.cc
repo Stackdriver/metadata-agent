@@ -73,7 +73,7 @@ constexpr const char kDefaultInstanceId[] = "";
 constexpr const char kDefaultInstanceZone[] = "";
 constexpr const char kDefaultHealthCheckFile[] =
     "/var/run/metadata-agent/health/unhealthy";
-constexpr const bool kKillAgentOnFailure = false;
+constexpr const bool kDefaultKillAgentOnFailure = false;
 
 }
 
@@ -117,7 +117,7 @@ Configuration::Configuration()
       instance_id_(kDefaultInstanceId),
       instance_zone_(kDefaultInstanceZone),
       health_check_file_(kDefaultHealthCheckFile),
-      kill_agent_on_failure_(kKillAgentOnFailure) {}
+      kill_agent_on_failure_(kDefaultKillAgentOnFailure) {}
 
 Configuration::Configuration(std::istream& input) : Configuration() {
   ParseConfiguration(input);
