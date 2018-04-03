@@ -1,6 +1,5 @@
 #include "../src/health_checker.h"
 #include "gtest/gtest.h"
-#include <stdio.h>
 #include <sstream>
 #include <boost/filesystem.hpp>
 
