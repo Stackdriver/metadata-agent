@@ -65,6 +65,7 @@ class MetadataApiServer {
   };
 
  private:
+  friend class ApiServerTest;
   // Handler functions.
   void HandleMonitoredResource(const HttpServer::request& request,
                                std::shared_ptr<HttpServer::connection> conn);
