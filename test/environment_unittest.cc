@@ -38,27 +38,27 @@ class TemporaryFile {
     std::ofstream file(path_.native());
     file << contents << std::flush;
   }
-  const std::string& FullPath() const { return path_.native(); }
+  const boost::filesystem::path& FullPath() const { return path_; }
  private:
   boost::filesystem::path path_;
 };
 }  // namespace
 
 TEST(TemporaryFile, Basic) {
-  std::string path;
+  boost::filesystem::path path;
   {
     TemporaryFile f("foo", "bar");
     path = f.FullPath();
     EXPECT_TRUE(boost::filesystem::exists(path));
     std::string contents;
     {
-      std::ifstream in(path);
+      std::ifstream in(path.native());
       in >> contents;
     }
     EXPECT_EQ("bar", contents);
     f.SetContents("xyz");
     {
-      std::ifstream in(path);
+      std::ifstream in(path.native());
       in >> contents;
     }
     EXPECT_EQ("xyz", contents);
@@ -72,13 +72,13 @@ TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsSucceeds) {
     "{\"client_email\":\"foo@bar.com\",\"private_key\":\"12345\"}");
   std::string cfg;
   Configuration config(std::istringstream(
-      "CredentialsFile: '" + credentials_file.FullPath() + "'\n"
+      "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
   ));
   Environment environment(config);
   EXPECT_NO_THROW(ReadApplicationDefaultCredentials(environment));
   EXPECT_EQ("foo@bar.com", environment.CredentialsClientEmail());
   EXPECT_EQ("12345", environment.CredentialsPrivateKey());
-  &Configuration::CredentialsFile;  // TODO: without this the test crashes.
+  //&Configuration::CredentialsFile;  // TODO: without this the test crashes.
 }
 
 TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsCaches) {
@@ -86,7 +86,7 @@ TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsCaches) {
     std::string(test_info_->name()) + "_creds.json",
     "{\"client_email\":\"foo@bar.com\",\"private_key\":\"12345\"}");
   Configuration config(std::istringstream(
-      "CredentialsFile: '" + credentials_file.FullPath() + "'\n"
+      "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
   ));
   Environment environment(config);
   EXPECT_NO_THROW(ReadApplicationDefaultCredentials(environment));
