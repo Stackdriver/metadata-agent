@@ -453,6 +453,75 @@ KubernetesReader::GetPodAndContainerMetadata(
   return std::move(result);
 }
 
+std::vector<json::value> KubernetesReader::GetServiceList(
+    const std::string& cluster_name, const std::string& location) const
+    throw(json::Exception) {
+  std::lock_guard<std::mutex> lock(service_mutex_);
+  std::vector<json::value> service_list;
+  for (const auto& metadata_it : service_to_metadata_) {
+    // A service key consists of a namespace name and a service name.
+    const ServiceKey& service_key = metadata_it.first;
+    const std::string namespace_name = service_key.first;
+    const json::value& service_metadata = metadata_it.second;
+    auto pods_it = service_to_pods_.find(service_key);
+    const std::vector<std::string>& pod_names =
+        (pods_it != service_to_pods_.end()) ? pods_it->second : kNoPods;
+    std::vector<json::value> pod_resources;
+    for (const std::string& pod_name : pod_names) {
+      const MonitoredResource k8s_pod("k8s_pod", {
+        {"cluster_name", cluster_name},
+        {"namespace_name", namespace_name},
+        {"pod_name", pod_name},
+        {"location", location},
+      });
+      pod_resources.emplace_back(k8s_pod.ToJSON());
+    }
+    service_list.emplace_back(json::object({
+      {"api", json::object({
+        {"version", json::string(kKubernetesApiVersion)},
+        {"raw", service_metadata->Clone()},
+        {"pods", json::array(std::move(pod_resources))},
+      })},
+    }));
+  }
+  return service_list;
+}
+
+MetadataUpdater::ResourceMetadata KubernetesReader::GetClusterMetadata(
+    Timestamp collected_at) const throw(json::Exception) {
+  const std::string cluster_name = environment_.KubernetesClusterName();
+  const std::string location = environment_.KubernetesClusterLocation();
+  std::vector<json::value> service_list =
+      GetServiceList(cluster_name, location);
+  const MonitoredResource k8s_cluster("k8s_cluster", {
+    {"cluster_name", cluster_name},
+    {"location", location},
+  });
+  json::value cluster_raw_metadata = json::object({
+    {"blobs", json::object({
+      {"services", json::array(std::move(service_list))},
+    })},
+  });
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Raw cluster metadata: " << *cluster_raw_metadata;
+  }
+
+  // There is no created_at for the cluster since the metadata contains
+  // ALL current services.
+  Timestamp created_at = time_point();
+  return MetadataUpdater::ResourceMetadata(
+      std::vector<std::string>{},
+      k8s_cluster,
+#ifdef ENABLE_KUBERNETES_METADATA
+      MetadataStore::Metadata(config_.MetadataIngestionRawContentVersion(),
+                              /*is_deleted=*/false, created_at, collected_at,
+                              std::move(cluster_raw_metadata))
+#else
+      MetadataStore::Metadata::IGNORED()
+#endif
+  );
+}
+
 std::vector<MetadataUpdater::ResourceMetadata>
     KubernetesReader::MetadataQuery() const {
   if (config_.VerboseLogging()) {
@@ -911,6 +980,80 @@ json::value KubernetesReader::FindTopLevelController(
   return FindTopLevelController(ns, GetOwner(ns, controller_ref));
 }
 
+void KubernetesReader::UpdateServiceToMetadataCache(
+    const json::Object* service, bool is_deleted) throw(json::Exception) {
+#ifdef VERBOSE
+  LOG(DEBUG) << "UpdateServiceToMetadataCache(" << *service << ")";
+#endif
+  const json::Object* metadata = service->Get<json::Object>("metadata");
+  const std::string namespace_name = metadata->Get<json::String>("namespace");
+  const std::string service_name = metadata->Get<json::String>("name");
+  const ServiceKey service_key(namespace_name, service_name);
+
+  std::lock_guard<std::mutex> lock(service_mutex_);
+  if (is_deleted) {
+    service_to_metadata_.erase(service_key);
+  } else {
+    auto it_inserted =
+        service_to_metadata_.emplace(service_key, json::value());
+    it_inserted.first->second = service->Clone();
+  }
+}
+
+void KubernetesReader::UpdateServiceToPodsCache(
+    const json::Object* endpoints, bool is_deleted) throw(json::Exception) {
+#ifdef VERBOSE
+  LOG(DEBUG) << "UpdateServiceToPodsCache(" << *endpoints << ")";
+#endif
+  const json::Object* metadata = endpoints->Get<json::Object>("metadata");
+  const std::string namespace_name = metadata->Get<json::String>("namespace");
+  // Endpoints name is the same as the matching service name.
+  const std::string service_name = metadata->Get<json::String>("name");
+  const ServiceKey service_key(namespace_name, service_name);
+
+  std::vector<std::string> pod_names;
+  // Only extract the pod names when this is not a deletion. In the case of
+  // a deletion, we delete the mapping below.
+  if (!is_deleted && endpoints->Has("subsets") &&
+      !endpoints->at("subsets")->Is<json::Null>()) {
+    const json::Array* subsets = endpoints->Get<json::Array>("subsets");
+    for (const json::value& subset : *subsets) {
+      const json::Object* subset_obj = subset->As<json::Object>();
+      if (!subset_obj->Has("addresses")) {
+        continue;
+      }
+      const json::Array* addresses = subset_obj->Get<json::Array>("addresses");
+      for (const json::value& address : *addresses) {
+        const json::Object* address_obj = address->As<json::Object>();
+        if (!address_obj->Has("targetRef")) {
+          continue;
+        }
+        const json::Object* ref = address_obj->Get<json::Object>("targetRef");
+        if (!(ref->Has("kind") && ref->Has("name"))) {
+          continue;
+        }
+        const std::string target_kind = ref->Get<json::String>("kind");
+        if (target_kind != "Pod") {
+          LOG(INFO) << "Found a resource other than a pod in Endpoint "
+                    << service_name << "'s targetRef: " << target_kind;
+          continue;
+        }
+        const std::string pod_name = ref->Get<json::String>("name");
+        pod_names.push_back(pod_name);
+      }
+    }
+  }
+
+  std::lock_guard<std::mutex> lock(service_mutex_);
+  if (is_deleted) {
+    service_to_pods_.erase(service_key);
+  } else {
+    auto it_inserted =
+        service_to_pods_.emplace(service_key, std::vector<std::string>());
+    it_inserted.first->second = pod_names;
+  }
+}
+
 bool KubernetesReader::ValidateConfiguration() const {
   try {
     (void) QueryMaster(std::string(kKubernetesEndpointPath) + "/nodes?limit=1");
@@ -1013,6 +1156,73 @@ void KubernetesReader::WatchNodes(
   LOG(INFO) << "Watch thread (node) exiting";
 }
 
+void KubernetesReader::ServiceCallback(
+    MetadataUpdater::UpdateCallback callback,
+    const json::Object* service, Timestamp collected_at, bool is_deleted)
+    throw(json::Exception) {
+  UpdateServiceToMetadataCache(service, is_deleted);
+
+  // TODO: using a temporary did not work here.
+  std::vector<MetadataUpdater::ResourceMetadata> result_vector;
+  result_vector.emplace_back(GetClusterMetadata(collected_at));
+  callback(std::move(result_vector));
+}
+
+void KubernetesReader::WatchServices(MetadataUpdater::UpdateCallback callback) {
+  LOG(INFO) << "Watch thread started for services";
+
+  try {
+    WatchMaster(
+        "Service",
+        std::string(kKubernetesEndpointPath) + "/watch/services/",
+        [=](const json::Object* service, Timestamp collected_at,
+            bool is_deleted) {
+          ServiceCallback(callback, service, collected_at, is_deleted);
+        });
+  } catch (const json::Exception& e) {
+    LOG(ERROR) << e.what();
+    LOG(ERROR) << "No more service metadata will be collected";
+  } catch (const KubernetesReader::QueryException& e) {
+    LOG(ERROR) << "No more service metadata will be collected";
+  }
+  health_checker_->SetUnhealthy("kubernetes_service_thread");
+  LOG(INFO) << "Watch thread (service) exiting";
+}
+
+void KubernetesReader::EndpointsCallback(
+    MetadataUpdater::UpdateCallback callback,
+    const json::Object* endpoints, Timestamp collected_at, bool is_deleted)
+    throw(json::Exception) {
+  UpdateServiceToPodsCache(endpoints, is_deleted);
+
+  // TODO: using a temporary did not work here.
+  std::vector<MetadataUpdater::ResourceMetadata> result_vector;
+  result_vector.emplace_back(GetClusterMetadata(collected_at));
+  callback(std::move(result_vector));
+}
+
+void KubernetesReader::WatchEndpoints(
+    MetadataUpdater::UpdateCallback callback) {
+  LOG(INFO) << "Watch thread started for endpoints";
+
+  try {
+    WatchMaster(
+        "Endpoints",
+        std::string(kKubernetesEndpointPath) + "/watch/endpoints/",
+        [=](const json::Object* endpoints, Timestamp collected_at,
+            bool is_deleted) {
+          EndpointsCallback(callback, endpoints, collected_at, is_deleted);
+        });
+  } catch (const json::Exception& e) {
+    LOG(ERROR) << e.what();
+    LOG(ERROR) << "No more endpoints metadata will be collected";
+  } catch (const KubernetesReader::QueryException& e) {
+    LOG(ERROR) << "No more endpoints metadata will be collected";
+  }
+  health_checker_->SetUnhealthy("kubernetes_endpoints_thread");
+  LOG(INFO) << "Watch thread (endpoints) exiting";
+}
+
 KubernetesUpdater::KubernetesUpdater(const Configuration& config,
                                      HealthChecker* health_checker,
                                      MetadataStore* store)
@@ -1055,6 +1265,15 @@ void KubernetesUpdater::StartUpdater() {
     pod_watch_thread_ = std::thread([=]() {
       reader_.WatchPods(watched_node, cb);
     });
+    if (config().KubernetesClusterLevelMetadata() &&
+        config().KubernetesServiceMetadata()) {
+      service_watch_thread_ = std::thread([=]() {
+        reader_.WatchServices(cb);
+      });
+      endpoints_watch_thread_ = std::thread([=]() {
+        reader_.WatchEndpoints(cb);
+      });
+    }
   } else {
     // Only try to poll if watch is disabled.
     PollingMetadataUpdater::StartUpdater();
@@ -1064,6 +1283,9 @@ void KubernetesUpdater::StartUpdater() {
 void KubernetesUpdater::MetadataCallback(
     std::vector<MetadataUpdater::ResourceMetadata>&& result_vector) {
   for (MetadataUpdater::ResourceMetadata& result : result_vector) {
+#ifdef VERBOSE
+    LOG(DEBUG) << "MetadataCallback (" << result << ")";
+#endif
     UpdateResourceCallback(result);
     UpdateMetadataCallback(std::move(result));
   }

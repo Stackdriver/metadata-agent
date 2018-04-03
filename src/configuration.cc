@@ -69,6 +69,7 @@ constexpr const char kKubernetesDefaultClusterLocation[] = "";
 constexpr const char kKubernetesDefaultNodeName[] = "";
 constexpr const bool kKubernetesDefaultUseWatch = false;
 constexpr const bool kKubernetesDefaultClusterLevelMetadata = false;
+constexpr const bool kKubernetesDefaultServiceMetadata = true;
 constexpr const char kDefaultInstanceId[] = "";
 constexpr const char kDefaultInstanceZone[] = "";
 constexpr const char kDefaultHealthCheckFile[] =
@@ -113,6 +114,7 @@ Configuration::Configuration()
       kubernetes_use_watch_(kKubernetesDefaultUseWatch),
       kubernetes_cluster_level_metadata_(
           kKubernetesDefaultClusterLevelMetadata),
+      kubernetes_service_metadata_(kKubernetesDefaultServiceMetadata),
       instance_id_(kDefaultInstanceId),
       instance_zone_(kDefaultInstanceZone),
       health_check_file_(kDefaultHealthCheckFile) {}
@@ -270,7 +272,10 @@ void Configuration::ParseConfiguration(std::istream& input) {
       config["KubernetesUseWatch"].as<bool>(kubernetes_use_watch_);
   kubernetes_cluster_level_metadata_ =
       config["KubernetesClusterLevelMetadata"].as<bool>(
-          kubernetes_cluster_level_metadata_);
+          kKubernetesDefaultClusterLevelMetadata);
+  kubernetes_service_metadata_ =
+      config["KubernetesServiceMetadata"].as<bool>(
+          kKubernetesDefaultServiceMetadata);
   instance_id_ =
       config["InstanceId"].as<std::string>(instance_id_);
   instance_zone_ =
