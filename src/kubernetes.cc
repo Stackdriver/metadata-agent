@@ -950,7 +950,6 @@ void KubernetesReader::PodCallback(
 void KubernetesReader::WatchPods(
     const std::string& node_name,
     MetadataUpdater::UpdateCallback callback) const {
-  HealthChecker health_reporter(config_);
   LOG(INFO) << "Watch thread (pods) started for node "
             << (node_name.empty() ? "<unscheduled>" : node_name);
 
