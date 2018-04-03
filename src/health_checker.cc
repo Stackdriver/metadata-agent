@@ -20,7 +20,7 @@
 #include <boost/algorithm/string/join.hpp>
 #include <vector>
 #include <fstream>
-#include <stdlib.h>
+#include <cstdlib>
 
 namespace google {
 

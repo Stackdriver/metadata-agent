@@ -24,9 +24,13 @@ class HealthCheckerUnittest : public ::testing::Test {
 
 };
 
+typedef HealthCheckerUnittest HealthCheckerDeathTest;
+
 namespace {
-std::istringstream IsolationPathConfig(const std::string& test_name) {
-  return std::istringstream("HealthCheckFile: './" + test_name + "/unhealthy'");
+std::istringstream IsolationPathConfig(const std::string& test_name,
+                                       const std::string& extra="") {
+  return std::istringstream(
+      "HealthCheckFile: './" + test_name + "/unhealthy'\n" + extra);
 }
 }  // namespace
 
@@ -64,6 +68,15 @@ TEST_F(HealthCheckerUnittest, FailurePersists) {
   EXPECT_FALSE(IsHealthy(health_checker));
   SetUnhealthy(&health_checker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(health_checker));
+  Cleanup(&health_checker);
+}
+
+TEST_F(HealthCheckerDeathTest, Exit) {
+  Configuration config(IsolationPathConfig(test_info_->name(),
+                                           "KillAgentOnFailure: true\n"));
+  HealthChecker health_checker(config);
+  EXPECT_EXIT(SetUnhealthy(&health_checker, "kubernetes_pod_thread"),
+              ::testing::ExitedWithCode(EXIT_FAILURE), "");
   Cleanup(&health_checker);
 }
 }  // namespace google
