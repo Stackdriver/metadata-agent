@@ -18,6 +18,7 @@ void VerifyDefaultConfig(const Configuration& config) {
             "v1beta2/projects/{{project_id}}/resourceMetadata:batchUpdate",
             config.MetadataIngestionEndpointFormat());
   EXPECT_EQ(8*1024*1024, config.MetadataIngestionRequestSizeLimitBytes());
+  EXPECT_EQ(1000, config.MetadataIngestionRequestSizeLimitCount());
   EXPECT_EQ("0.1", config.MetadataIngestionRawContentVersion());
   EXPECT_EQ(60*60, config.InstanceUpdaterIntervalSeconds());
   EXPECT_EQ("", config.InstanceResourceType());
