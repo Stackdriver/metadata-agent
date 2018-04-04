@@ -78,7 +78,6 @@ TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsSucceeds) {
   EXPECT_NO_THROW(ReadApplicationDefaultCredentials(environment));
   EXPECT_EQ("foo@bar.com", environment.CredentialsClientEmail());
   EXPECT_EQ("12345", environment.CredentialsPrivateKey());
-  //&Configuration::CredentialsFile;  // TODO: without this the test crashes.
 }
 
 TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsCaches) {

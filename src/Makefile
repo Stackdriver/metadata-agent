@@ -19,6 +19,7 @@ CMAKE=cmake
 CPPFLAGS=\
     -DAGENT_VERSION='$(PKG_VERSION)-$(PKG_RELEASE)' \
     -DENABLE_DOCKER_METADATA -DENABLE_KUBERNETES_METADATA \
+    -DNOOPT= \
     -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include
 CXXFLAGS=\
     -std=c++11 -g -pthread -Wno-write-strings -Wno-deprecated
@@ -31,8 +32,8 @@ SED_EXTRA=-e 's/-Wall/-Wall -Wno-deprecated/'
 
 UNAME_S=$(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-  CXXFLAGS+= -Wno-deprecated-declarations -Wno-c++14-extensions \
-      -I/usr/local/include
+  CPPFLAGS+= -UNOOPT -DNOOPT='[[clang::optnone]]' -I/usr/local/include
+  CXXFLAGS+= -Wno-deprecated-declarations -Wno-c++14-extensions
   LDFLAGS+= -L/usr/local/lib
   SED_I+= ''
   SED_EXTRA+= -e \
