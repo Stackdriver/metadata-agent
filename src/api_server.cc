@@ -65,19 +65,13 @@ void MetadataApiServer::Dispatcher::log(const HttpServer::string_type& info) {
   LOG(ERROR) << info;
 }
 
-
 MetadataApiServer::MetadataApiServer(const Configuration& config,
                                      const MetadataStore& store,
                                      int server_threads,
-                                     const std::string& host, int port)
-    : config_(config), store_(store), dispatcher_({
-        {{"GET", "/monitoredResource/"},
-         [=](const HttpServer::request& request,
-             std::shared_ptr<HttpServer::connection> conn) {
-             HandleMonitoredResource(request, conn);
-         }},
-      }, config_.VerboseLogging()),
-      server_(
+                                     const std::string& host, int port,
+                                     const HandlerMap& handlers)
+    : config_(config), store_(store),
+      dispatcher_(handlers, config_.VerboseLogging()), server_(
           HttpServer::options(dispatcher_)
               .address(host)
               .port(std::to_string(port))),
@@ -87,6 +81,19 @@ MetadataApiServer::MetadataApiServer(const Configuration& config,
     server_pool_.emplace_back(&HttpServer::run, &server_);
   }
 }
+
+MetadataApiServer::MetadataApiServer(const Configuration& config,
+                                     const MetadataStore& store,
+                                     int server_threads,
+                                     const std::string& host, int port)
+    : MetadataApiServer(config, store, server_threads, host, port,
+                        std::map<std::pair<std::string, std::string>, Handler>({
+    {std::pair<std::string, std::string>({"GET", "/monitoredResource/"}),
+         [=](const HttpServer::request& request,
+             std::shared_ptr<HttpServer::connection> conn) {
+             HandleMonitoredResource(request, conn);
+         }
+    }})) {}
 
 MetadataApiServer::~MetadataApiServer() {
   for (auto& thread : server_pool_) {

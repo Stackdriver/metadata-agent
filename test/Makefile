@@ -24,7 +24,7 @@ YAML_CPP_LIBS=$(YAML_CPP_LIBDIR)/libyaml-cpp.a
 CPPFLAGS+= \
     -DENABLE_KUBERNETES_METADATA \
     -isystem $(GTEST_DIR)/include -I$(GMOCK_DIR)/include \
-    -I$(YAML_CPP_DIR)/include
+    -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include
 CXXFLAGS=\
     -std=c++11 -g -pthread -Wno-write-strings -Wno-deprecated
 LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR)
@@ -40,6 +40,7 @@ TEST_DIR=.
 TEST_SOURCES=$(wildcard $(TEST_DIR)/*_unittest.cc)
 TEST_OBJS=$(TEST_SOURCES:$(TEST_DIR)/%.cc=%.o)
 TESTS=\
+      api_server_unittest \
       base64_unittest \
       configuration_unittest \
       format_unittest \
@@ -54,7 +55,7 @@ TESTS=\
 
 GTEST_LIB=gtest_lib.a
 
-all: $(TESTS)
+all: $(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(TESTS)
 
 # TODO: Running the test prints "Running main() from gtest_main.cc".
 # Figure out how to fix this.
@@ -75,13 +76,17 @@ init-submodules:
 	git submodule update --init $(GTEST_MODULE)
 	touch init-submodules
 
-$(CPP_NETLIB_LIBS):
-	cd $(SRC_DIR) && $(MAKE) $@
+$(SRC_DIR)/init-submodules:
+	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
-$(YAML_CPP_LIBS):
-	cd $(SRC_DIR) && $(MAKE) $@
+$(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp: $(SRC_DIR)/init-submodules
+	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
-$(SRC_DIR)/%.o: $(SRC_DIR)/%.cc
+$(CPP_NETLIB_LIBS): $(SRC_DIR)/build-cpp-netlib
+
+$(YAML_CPP_LIBS): $(SRC_DIR)/build-yaml-cpp
+
+$(SRC_DIR)/%.o: $(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(SRC_DIR)/%.cc
 	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
 $(GTEST_SOURCEDIR)/gtest-all.cc $(GTEST_SOURCEDIR)/gtest_main.cc: init-submodules
@@ -98,8 +103,11 @@ $(GTEST_LIB): gtest-all.o gtest_main.o
 $(TESTS): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 
 # All unittest objects depend on GTEST_LIB.
-$(TESTS:%=%.o): $(GTEST_LIB)
+# Some headers need CPP_NETLIB_LIBS and YAML_CPP_LIBS.
+$(TESTS:%=%.o): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 
+api_server_unittest: api_server_unittest.o $(SRC_DIR)/api_server.o $(SRC_DIR)/configuration.o $(SRC_DIR)/store.o $(SRC_DIR)/json.o $(SRC_DIR)/resource.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 format_unittest: format_unittest.o $(SRC_DIR)/format.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 base64_unittest: base64_unittest.o $(SRC_DIR)/base64.o

@@ -39,19 +39,20 @@ class MetadataStore;
 // A server that implements the metadata agent API.
 class MetadataApiServer {
  public:
-  MetadataApiServer(const Configuration& config, const MetadataStore& store,
-                    int server_threads, const std::string& host, int port);
-  ~MetadataApiServer();
-
- private:
   class Dispatcher;
   using HttpServer = http::server<Dispatcher>;
   using Handler = std::function<void(const HttpServer::request&,
                                      std::shared_ptr<HttpServer::connection>)>;
+  using HandlerMap = std::map<std::pair<std::string, std::string>, Handler>;
+  MetadataApiServer(const Configuration& config, const MetadataStore& store,
+                    int server_threads, const std::string& host, int port,
+                    const HandlerMap& handlers);
+  MetadataApiServer(const Configuration& config, const MetadataStore& store,
+                    int server_threads, const std::string& host, int port);
+  ~MetadataApiServer();
 
   class Dispatcher {
    public:
-    using HandlerMap = std::map<std::pair<std::string, std::string>, Handler>;
     Dispatcher(const HandlerMap& handlers, bool verbose);
     void operator()(const HttpServer::request& request,
                     std::shared_ptr<HttpServer::connection> conn);
@@ -63,6 +64,8 @@ class MetadataApiServer {
     bool verbose_;
   };
 
+ private:
+  friend class ApiServerTest;
   // Handler functions.
   void HandleMonitoredResource(const HttpServer::request& request,
                                std::shared_ptr<HttpServer::connection> conn);
