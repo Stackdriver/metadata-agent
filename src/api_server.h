@@ -44,6 +44,8 @@ class MetadataApiServer {
   ~MetadataApiServer();
 
  private:
+  friend class ApiServerTest;
+
   class Dispatcher;
   using HttpServer = http::server<Dispatcher>;
   using Handler = std::function<void(const HttpServer::request&,
