@@ -738,7 +738,9 @@ void WatchEventCallback(
   const json::Object* watch = raw_watch->As<json::Object>();
   const std::string type = watch->Get<json::String>("type");
   const json::Object* object = watch->Get<json::Object>("object");
-  LOG(ERROR) << "Watch type: " << type << " object: " << *object;
+#ifdef VERBOSE
+  LOG(DEBUG) << "Watch type: " << type << " object: " << *object;
+#endif
   if (type != "MODIFIED" && type != "ADDED" && type != "DELETED") {
     return;
   }
