@@ -57,12 +57,14 @@ TEST(ConfigurationTest, PopulatedConfig) {
       "MetadataReporterPurgeDeleted: true\n"
       "MetadataReporterUserAgent: \"foobar/foobaz\"\n"
       "HealthCheckFile: /a/b/c\n"
+      "MetadataIngestionRequestSizeLimitCount: 500\n"
   ));
   EXPECT_EQ("TestProjectId", config.ProjectId());
   EXPECT_EQ(13, config.MetadataApiNumThreads());
   EXPECT_EQ(true, config.MetadataReporterPurgeDeleted());
   EXPECT_EQ("foobar/foobaz", config.MetadataReporterUserAgent());
   EXPECT_EQ("/a/b/c", config.HealthCheckFile());
+  EXPECT_EQ(500, config.MetadataIngestionRequestSizeLimitCount());
 }
 
 TEST(ConfigurationTest, CommentSkipped) {

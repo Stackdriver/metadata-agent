@@ -166,7 +166,7 @@ void MetadataReporter::SendMetadata(
                  << "B, dropping; entry " << *metadata_entry;
       continue;
     }
-    if (entries.size() > limit_count || total_size + size > limit_bytes) {
+    if (entries.size() == limit_count || total_size + size > limit_bytes) {
       SendMetadataRequest(std::move(entries), endpoint, auth_header, user_agent,
                           config_.VerboseLogging());
       entries.clear();
