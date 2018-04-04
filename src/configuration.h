@@ -77,6 +77,10 @@ class Configuration {
     std::lock_guard<std::mutex> lock(mutex_);
     return metadata_ingestion_request_size_limit_bytes_;
   }
+  int MetadataIngestionRequestSizeLimitCount() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return metadata_ingestion_request_size_limit_count_;
+  }
   const std::string& MetadataIngestionRawContentVersion() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return metadata_ingestion_raw_content_version_;
@@ -183,6 +187,7 @@ class Configuration {
   std::string metadata_reporter_user_agent_;
   std::string metadata_ingestion_endpoint_format_;
   int metadata_ingestion_request_size_limit_bytes_;
+  int metadata_ingestion_request_size_limit_count_;
   std::string metadata_ingestion_raw_content_version_;
   int instance_updater_interval_seconds_;
   std::string instance_resource_type_;

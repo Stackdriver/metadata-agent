@@ -18,6 +18,7 @@ void VerifyDefaultConfig(const Configuration& config) {
             "v1beta2/projects/{{project_id}}/resourceMetadata:batchUpdate",
             config.MetadataIngestionEndpointFormat());
   EXPECT_EQ(8*1024*1024, config.MetadataIngestionRequestSizeLimitBytes());
+  EXPECT_EQ(1000, config.MetadataIngestionRequestSizeLimitCount());
   EXPECT_EQ("0.1", config.MetadataIngestionRawContentVersion());
   EXPECT_EQ(60*60, config.InstanceUpdaterIntervalSeconds());
   EXPECT_EQ("", config.InstanceResourceType());
@@ -56,12 +57,14 @@ TEST(ConfigurationTest, PopulatedConfig) {
       "MetadataReporterPurgeDeleted: true\n"
       "MetadataReporterUserAgent: \"foobar/foobaz\"\n"
       "HealthCheckFile: /a/b/c\n"
+      "MetadataIngestionRequestSizeLimitCount: 500\n"
   ));
   EXPECT_EQ("TestProjectId", config.ProjectId());
   EXPECT_EQ(13, config.MetadataApiNumThreads());
   EXPECT_EQ(true, config.MetadataReporterPurgeDeleted());
   EXPECT_EQ("foobar/foobaz", config.MetadataReporterUserAgent());
   EXPECT_EQ("/a/b/c", config.HealthCheckFile());
+  EXPECT_EQ(500, config.MetadataIngestionRequestSizeLimitCount());
 }
 
 TEST(ConfigurationTest, CommentSkipped) {
