@@ -20,6 +20,7 @@
 #include <boost/algorithm/string/join.hpp>
 #include <vector>
 #include <fstream>
+#include <cstdlib>
 
 namespace google {
 
@@ -35,6 +36,9 @@ void HealthChecker::SetUnhealthy(const std::string& component) {
   unhealthy_components_.insert(component);
   std::ofstream health_file(config_.HealthCheckFile());
   health_file << std::endl;
+  if (config_.KillAgentOnFailure()) {
+    std::exit(EXIT_FAILURE);
+  }
 }
 
 bool HealthChecker::IsHealthy() const {

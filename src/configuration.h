@@ -159,6 +159,11 @@ class Configuration {
     return health_check_file_;
   }
 
+  const bool KillAgentOnFailure() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return kill_agent_on_failure_;
+  }
+
  private:
   friend int ::main(int, char**);  // Calls ParseArguments.
 
@@ -202,6 +207,7 @@ class Configuration {
   std::string instance_id_;
   std::string instance_zone_;
   std::string health_check_file_;
+  bool kill_agent_on_failure_;
 };
 
 }

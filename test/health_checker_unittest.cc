@@ -24,21 +24,21 @@ class HealthCheckerUnittest : public ::testing::Test {
 
 };
 
-namespace {
-std::istringstream IsolationPathConfig(const std::string& test_name) {
-  return std::istringstream("HealthCheckFile: './" + test_name + "/unhealthy'");
-}
-}  // namespace
+using HealthCheckerDeathTest = HealthCheckerUnittest;
 
 TEST_F(HealthCheckerUnittest, DefaultHealthy) {
-  Configuration config(IsolationPathConfig(test_info_->name()));
+  Configuration config(std::istringstream("HealthCheckFile: './" +
+                                          std::string(test_info_->name()) +
+                                          "/unhealthy'\n"));
   HealthChecker health_checker(config);
   EXPECT_TRUE(IsHealthy(health_checker));
   Cleanup(&health_checker);
 }
 
 TEST_F(HealthCheckerUnittest, SimpleFailure) {
-  Configuration config(IsolationPathConfig(test_info_->name()));
+  Configuration config(std::istringstream("HealthCheckFile: './" +
+                                          std::string(test_info_->name()) +
+                                          "/unhealthy'\n"));
   HealthChecker health_checker(config);
   SetUnhealthy(&health_checker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(health_checker));
@@ -46,7 +46,9 @@ TEST_F(HealthCheckerUnittest, SimpleFailure) {
 }
 
 TEST_F(HealthCheckerUnittest, MultiFailure) {
-  Configuration config(IsolationPathConfig(test_info_->name()));
+  Configuration config(std::istringstream("HealthCheckFile: './" +
+                                          std::string(test_info_->name()) +
+                                          "/unhealthy'\n"));
   HealthChecker health_checker(config);
   EXPECT_TRUE(IsHealthy(health_checker));
   SetUnhealthy(&health_checker, "kubernetes_pod_thread");
@@ -57,13 +59,26 @@ TEST_F(HealthCheckerUnittest, MultiFailure) {
 }
 
 TEST_F(HealthCheckerUnittest, FailurePersists) {
-  Configuration config(IsolationPathConfig(test_info_->name()));
+  Configuration config(std::istringstream("HealthCheckFile: './" +
+                                          std::string(test_info_->name()) +
+                                          "/unhealthy'\n"));
   HealthChecker health_checker(config);
   EXPECT_TRUE(IsHealthy(health_checker));
   SetUnhealthy(&health_checker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(health_checker));
   SetUnhealthy(&health_checker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(health_checker));
+  Cleanup(&health_checker);
+}
+
+TEST_F(HealthCheckerDeathTest, Exit) {
+  Configuration config(std::istringstream("HealthCheckFile: './" +
+                                          std::string(test_info_->name()) +
+                                          "/unhealthy'\n"
+                                          "KillAgentOnFailure: true\n"));
+  HealthChecker health_checker(config);
+  EXPECT_EXIT(SetUnhealthy(&health_checker, "kubernetes_pod_thread"),
+              ::testing::ExitedWithCode(EXIT_FAILURE), "");
   Cleanup(&health_checker);
 }
 }  // namespace google
