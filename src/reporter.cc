@@ -139,6 +139,7 @@ void MetadataReporter::SendMetadata(
   const int empty_size = empty_request->ToString().size();
 
   const int limit_bytes = config_.MetadataIngestionRequestSizeLimitBytes();
+  const int limit_count = config_.MetadataIngestionRequestSizeLimitCount();
   int total_size = empty_size;
 
   std::vector<json::value> entries;
@@ -165,7 +166,7 @@ void MetadataReporter::SendMetadata(
                  << "B, dropping; entry " << *metadata_entry;
       continue;
     }
-    if (total_size + size > limit_bytes) {
+    if (entries.size() > limit_count || total_size + size > limit_bytes) {
       SendMetadataRequest(std::move(entries), endpoint, auth_header, user_agent,
                           config_.VerboseLogging());
       entries.clear();
