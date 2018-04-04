@@ -7,13 +7,6 @@ namespace google {
 
 class ApiServerTest : public ::testing::Test {
   protected:
-   static void CallDispatcher(
-       MetadataApiServer* server,
-       const MetadataApiServer::HttpServer::request& request,
-       std::shared_ptr<MetadataApiServer::HttpServer::connection> conn) {
-    server->dispatcher_(request, conn);
-   }
-
    static void BasicDispatcher() {
       bool handler_called;
       MetadataApiServer::Handler handler = [&handler_called](
