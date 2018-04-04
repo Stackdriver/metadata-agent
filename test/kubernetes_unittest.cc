@@ -258,6 +258,7 @@ TEST_F(KubernetesTest, GetLegacyResource) {
     {"zone", "TestZone"},
   }), m.resource());
   EXPECT_TRUE(m.metadata().ignore);
+}
 
 TEST_F(KubernetesTest, GetClusterMetadataEmpty) {
   Configuration config(std::istringstream(
