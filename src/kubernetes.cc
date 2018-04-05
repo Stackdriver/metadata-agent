@@ -1285,9 +1285,6 @@ void KubernetesUpdater::StartUpdater() {
 void KubernetesUpdater::MetadataCallback(
     std::vector<MetadataUpdater::ResourceMetadata>&& result_vector) {
   for (MetadataUpdater::ResourceMetadata& result : result_vector) {
-#ifdef VERBOSE
-    LOG(DEBUG) << "MetadataCallback (" << result << ")";
-#endif
     UpdateResourceCallback(result);
     UpdateMetadataCallback(std::move(result));
   }
