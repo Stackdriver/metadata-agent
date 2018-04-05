@@ -563,14 +563,13 @@ TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
     })},
   });
 
-  auto metadata_list = GetPodAndContainerMetadata(
+  auto m = GetPodAndContainerMetadata(
       reader, pod->As<json::Object>(), Timestamp(), false);
-  EXPECT_EQ(3, metadata_list.size());
-  EXPECT_EQ(2, metadata_list[0].ids().size());
-  EXPECT_EQ("gke_container.TestNamespace.TestPodUid.TestContainerName0",
-            metadata_list[0].ids()[0]);
-  EXPECT_EQ("gke_container.TestNamespace.TestPodName.TestContainerName0",
-            metadata_list[0].ids()[1]);
+  EXPECT_EQ(3, m.size());
+  EXPECT_EQ(std::vector<std::string>({
+    "gke_container.TestNamespace.TestPodUid.TestContainerName0",
+    "gke_container.TestNamespace.TestPodName.TestContainerName0",
+  }), m[0].ids());
   EXPECT_EQ(MonitoredResource("gke_container", {
     {"cluster_name", "TestClusterName"},
     {"container_name", "TestContainerName0"},
@@ -578,28 +577,27 @@ TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
     {"namespace_id", "TestNamespace"},
     {"pod_id", "TestPodUid"},
     {"zone", "TestZone"}
-  }), metadata_list[0].resource());
-  EXPECT_TRUE(metadata_list[0].metadata().ignore);
+  }), m[0].resource());
+  EXPECT_TRUE(m[0].metadata().ignore);
 
-  EXPECT_EQ(2, metadata_list[1].ids().size());
-  EXPECT_EQ("k8s_container.TestPodUid.TestContainerName0",
-            metadata_list[1].ids()[0]);
-  EXPECT_EQ("k8s_container.TestNamespace.TestPodName.TestContainerName0",
-            metadata_list[1].ids()[1]);
+  EXPECT_EQ(std::vector<std::string>({
+    "k8s_container.TestPodUid.TestContainerName0",
+    "k8s_container.TestNamespace.TestPodName.TestContainerName0"
+  }), m[1].ids());
   EXPECT_EQ(MonitoredResource("k8s_container", {
     {"cluster_name", "TestClusterName"},
     {"container_name", "TestContainerName0"},
     {"location", "TestClusterLocation"},
     {"namespace_name", "TestNamespace"},
     {"pod_name", "TestPodName"},
-  }), metadata_list[1].resource());
-  EXPECT_FALSE(metadata_list[1].metadata().ignore);
-  EXPECT_EQ("1.6", metadata_list[1].metadata().version);
-  EXPECT_FALSE(metadata_list[1].metadata().is_deleted);
+  }), m[1].resource());
+  EXPECT_FALSE(m[1].metadata().ignore);
+  EXPECT_EQ("1.6", m[1].metadata().version);
+  EXPECT_FALSE(m[1].metadata().is_deleted);
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            metadata_list[1].metadata().created_at);
-  EXPECT_EQ(Timestamp(), metadata_list[1].metadata().collected_at);
-  json::value container1 = json::object({
+            m[1].metadata().created_at);
+  EXPECT_EQ(Timestamp(), m[1].metadata().collected_at);
+  json::value container_metadata = json::object({
     {"blobs", json::object({
       {"association", json::object({
         {"raw", json::object({
@@ -632,24 +630,25 @@ TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
       })},
     })},
   });
-  EXPECT_EQ(container1->ToString(), metadata_list[1].metadata().metadata->ToString());
+  EXPECT_EQ(container_metadata->ToString(), m[1].metadata().metadata->ToString());
 
-  EXPECT_EQ(2, metadata_list[2].ids().size());
-  EXPECT_EQ("k8s_pod.TestPodUid", metadata_list[2].ids()[0]);
-  EXPECT_EQ("k8s_pod.TestNamespace.TestPodName", metadata_list[2].ids()[1]);
+  EXPECT_EQ(std::vector<std::string>({
+    "k8s_pod.TestPodUid",
+    "k8s_pod.TestNamespace.TestPodName"
+  }), m[2].ids());
   EXPECT_EQ(MonitoredResource("k8s_pod", {
       {"cluster_name", "TestClusterName"},
       {"location", "TestClusterLocation"},
       {"namespace_name", "TestNamespace"},
       {"pod_name", "TestPodName"},
-  }), metadata_list[2].resource());
-  EXPECT_FALSE(metadata_list[2].metadata().ignore);
-  EXPECT_EQ("TestVersion", metadata_list[2].metadata().version);
-  EXPECT_FALSE(metadata_list[2].metadata().is_deleted);
+  }), m[2].resource());
+  EXPECT_FALSE(m[2].metadata().ignore);
+  EXPECT_EQ("TestVersion", m[2].metadata().version);
+  EXPECT_FALSE(m[2].metadata().is_deleted);
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            metadata_list[2].metadata().created_at);
-  EXPECT_EQ(Timestamp(), metadata_list[2].metadata().collected_at);
-  json::value container2 = json::object({
+            m[2].metadata().created_at);
+  EXPECT_EQ(Timestamp(), m[2].metadata().collected_at);
+  json::value pod_metadata = json::object({
     {"blobs", json::object({
       {"api", json::object({
         {"raw", json::object({
@@ -694,7 +693,7 @@ TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
       })},
     })},
   });
-  EXPECT_EQ(container2->ToString(),
-            metadata_list[2].metadata().metadata->ToString());
+  EXPECT_EQ(pod_metadata->ToString(),
+            m[2].metadata().metadata->ToString());
 }
 }  // namespace google
