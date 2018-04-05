@@ -69,33 +69,33 @@ TEST(TemporaryFile, Basic) {
 TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsSucceeds) {
   TemporaryFile credentials_file(
     std::string(test_info_->name()) + "_creds.json",
-    "{\"client_email\":\"foo@bar.com\",\"private_key\":\"12345\"}");
+    "{\"client_email\":\"user@example.com\",\"private_key\":\"some_key\"}");
   std::string cfg;
   Configuration config(std::istringstream(
       "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
   ));
   Environment environment(config);
   EXPECT_NO_THROW(ReadApplicationDefaultCredentials(environment));
-  EXPECT_EQ("foo@bar.com", environment.CredentialsClientEmail());
-  EXPECT_EQ("12345", environment.CredentialsPrivateKey());
+  EXPECT_EQ("user@example.com", environment.CredentialsClientEmail());
+  EXPECT_EQ("some_key", environment.CredentialsPrivateKey());
 }
 
 TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsCaches) {
   TemporaryFile credentials_file(
     std::string(test_info_->name()) + "_creds.json",
-    "{\"client_email\":\"foo@bar.com\",\"private_key\":\"12345\"}");
+    "{\"client_email\":\"user@example.com\",\"private_key\":\"some_key\"}");
   Configuration config(std::istringstream(
       "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
   ));
   Environment environment(config);
   EXPECT_NO_THROW(ReadApplicationDefaultCredentials(environment));
   credentials_file.SetContents(
-      "{\"client_email\":\"x@y.com\",\"private_key\":\"98765\"}"
+      "{\"client_email\":\"changed@example.com\",\"private_key\":\"12345\"}"
   );
-  EXPECT_EQ("foo@bar.com", environment.CredentialsClientEmail());
+  EXPECT_EQ("user@example.com", environment.CredentialsClientEmail());
   credentials_file.SetContents(
-      "{\"client_email\":\"a@b.com\",\"private_key\":\"09876\"}"
+      "{\"client_email\":\"extra@example.com\",\"private_key\":\"09876\"}"
   );
-  EXPECT_EQ("12345", environment.CredentialsPrivateKey());
+  EXPECT_EQ("some_key", environment.CredentialsPrivateKey());
 }
 }  // namespace google
