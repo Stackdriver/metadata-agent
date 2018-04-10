@@ -31,126 +31,126 @@ class Configuration {
   Configuration(std::istream&& input) : Configuration(input) {}
 
   // Shared configuration.
-  NOOPT const std::string& ProjectId() const {
+  const std::string& ProjectId() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return project_id_;
   }
-  NOOPT const std::string& CredentialsFile() const {
+  const std::string& CredentialsFile() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return credentials_file_;
   }
-  NOOPT bool VerboseLogging() const {
+  bool VerboseLogging() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return verbose_logging_;
   }
   // Metadata API server configuration options.
-  NOOPT int MetadataApiNumThreads() const {
+  int MetadataApiNumThreads() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return metadata_api_num_threads_;
   }
-  NOOPT int MetadataApiPort() const {
+  int MetadataApiPort() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return metadata_api_port_;
   }
-  NOOPT const std::string& MetadataApiResourceTypeSeparator() const {
+  const std::string& MetadataApiResourceTypeSeparator() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return metadata_api_resource_type_separator_;
   }
   // Metadata reporter options.
-  NOOPT int MetadataReporterIntervalSeconds() const {
+  int MetadataReporterIntervalSeconds() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return metadata_reporter_interval_seconds_;
   }
-  NOOPT bool MetadataReporterPurgeDeleted() const {
+  bool MetadataReporterPurgeDeleted() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return metadata_reporter_purge_deleted_;
   }
-  NOOPT const std::string& MetadataReporterUserAgent() const {
+  const std::string& MetadataReporterUserAgent() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return metadata_reporter_user_agent_;
   }
-  NOOPT const std::string& MetadataIngestionEndpointFormat() const {
+  const std::string& MetadataIngestionEndpointFormat() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return metadata_ingestion_endpoint_format_;
   }
-  NOOPT int MetadataIngestionRequestSizeLimitBytes() const {
+  int MetadataIngestionRequestSizeLimitBytes() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return metadata_ingestion_request_size_limit_bytes_;
   }
-  NOOPT const std::string& MetadataIngestionRawContentVersion() const {
+  const std::string& MetadataIngestionRawContentVersion() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return metadata_ingestion_raw_content_version_;
   }
   // Instance metadata updater options.
-  NOOPT int InstanceUpdaterIntervalSeconds() const {
+  int InstanceUpdaterIntervalSeconds() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return instance_updater_interval_seconds_;
   }
-  NOOPT const std::string& InstanceResourceType() const {
+  const std::string& InstanceResourceType() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return instance_resource_type_;
   }
   // Docker metadata updater options.
-  NOOPT int DockerUpdaterIntervalSeconds() const {
+  int DockerUpdaterIntervalSeconds() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return docker_updater_interval_seconds_;
   }
-  NOOPT const std::string& DockerEndpointHost() const {
+  const std::string& DockerEndpointHost() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return docker_endpoint_host_;
   }
-  NOOPT const std::string& DockerApiVersion() const {
+  const std::string& DockerApiVersion() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return docker_api_version_;
   }
-  NOOPT const std::string& DockerContainerFilter() const {
+  const std::string& DockerContainerFilter() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return docker_container_filter_;
   }
   // GKE metadata updater options.
-  NOOPT int KubernetesUpdaterIntervalSeconds() const {
+  int KubernetesUpdaterIntervalSeconds() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return kubernetes_updater_interval_seconds_;
   }
-  NOOPT const std::string& KubernetesEndpointHost() const {
+  const std::string& KubernetesEndpointHost() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return kubernetes_endpoint_host_;
   }
-  NOOPT const std::string& KubernetesPodLabelSelector() const {
+  const std::string& KubernetesPodLabelSelector() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return kubernetes_pod_label_selector_;
   }
-  NOOPT const std::string& KubernetesClusterName() const {
+  const std::string& KubernetesClusterName() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return kubernetes_cluster_name_;
   }
-  NOOPT const std::string& KubernetesClusterLocation() const {
+  const std::string& KubernetesClusterLocation() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return kubernetes_cluster_location_;
   }
-  NOOPT const std::string& KubernetesNodeName() const {
+  const std::string& KubernetesNodeName() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return kubernetes_node_name_;
   }
-  NOOPT bool KubernetesUseWatch() const {
+  bool KubernetesUseWatch() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return kubernetes_use_watch_;
   }
-  NOOPT bool KubernetesClusterLevelMetadata() const {
+  bool KubernetesClusterLevelMetadata() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return kubernetes_cluster_level_metadata_;
   }
   // Common metadata updater options.
-  NOOPT const std::string& InstanceId() const {
+  const std::string& InstanceId() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return instance_id_;
   }
-  NOOPT const std::string& InstanceZone() const {
+  const std::string& InstanceZone() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return instance_zone_;
   }
 
-  NOOPT const std::string& HealthCheckFile() const {
+  const std::string& HealthCheckFile() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return health_check_file_;
   }

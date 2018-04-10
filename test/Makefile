@@ -23,7 +23,6 @@ YAML_CPP_LIBS=$(YAML_CPP_LIBDIR)/libyaml-cpp.a
 
 CPPFLAGS+= \
     -DENABLE_KUBERNETES_METADATA \
-    -DNOOPT= \
     -isystem $(GTEST_DIR)/include -I$(GMOCK_DIR)/include \
     -I$(YAML_CPP_DIR)/include
 CXXFLAGS=\
@@ -36,12 +35,9 @@ LDLIBS=\
 
 UNAME_S=$(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-  CPPFLAGS+= -UNOOPT -DNOOPT='[[clang::optnone]]' -I/usr/local/include
+  CPPFLAGS+= -I/usr/local/include
   CXXFLAGS+= -Wno-deprecated-declarations -Wno-c++14-extensions
   LDFLAGS+= -L/usr/local/lib
-  SED_I+= ''
-  SED_EXTRA+= -e \
-      's/-Wall/-Wall -Wno-deprecated-declarations -Wno-unused-local-typedef/'
 endif
 
 # Where to find code under test.
