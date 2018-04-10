@@ -513,7 +513,7 @@ Parser::~Parser() = default;
 
 std::size_t Parser::ParseStream(std::istream& stream) throw(Exception) {
   const int kMax = 65536;
-  unsigned char data[kMax];
+  unsigned char data[kMax] = {0};
   size_t total_bytes_consumed = 0;
   yajl_handle handle = state_->handle();
 

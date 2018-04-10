@@ -33,6 +33,13 @@ LDLIBS=\
     -lboost_program_options -lboost_system -lboost_thread -lboost_filesystem \
     -lpthread -lyajl -lssl -lcrypto -lyaml-cpp
 
+UNAME_S=$(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+  CPPFLAGS+= -I/usr/local/include
+  CXXFLAGS+= -Wno-deprecated-declarations -Wno-c++14-extensions
+  LDFLAGS+= -L/usr/local/lib
+endif
+
 # Where to find code under test.
 SRC_DIR=../src
 
@@ -42,6 +49,7 @@ TEST_OBJS=$(TEST_SOURCES:$(TEST_DIR)/%.cc=%.o)
 TESTS=\
       base64_unittest \
       configuration_unittest \
+      environment_unittest \
       format_unittest \
       health_checker_unittest \
       instance_unittest \
@@ -100,11 +108,13 @@ $(TESTS): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 # All unittest objects depend on GTEST_LIB.
 $(TESTS:%=%.o): $(GTEST_LIB)
 
-format_unittest: format_unittest.o $(SRC_DIR)/format.o
-	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 base64_unittest: base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 configuration_unittest: configuration_unittest.o $(SRC_DIR)/configuration.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+environment_unittest: environment_unittest.o $(SRC_DIR)/environment.o $(SRC_DIR)/configuration.o $(SRC_DIR)/format.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+format_unittest: format_unittest.o $(SRC_DIR)/format.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 health_checker_unittest: health_checker_unittest.o $(SRC_DIR)/health_checker.o $(SRC_DIR)/configuration.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lboost_filesystem -lboost_system -o $@

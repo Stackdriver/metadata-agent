@@ -44,6 +44,8 @@ class Environment {
   }
 
  private:
+  friend class EnvironmentTest;
+
   void ReadApplicationDefaultCredentials() const;
 
   const Configuration& config_;

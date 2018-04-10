@@ -31,8 +31,8 @@ SED_EXTRA=-e 's/-Wall/-Wall -Wno-deprecated/'
 
 UNAME_S=$(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-  CXXFLAGS+= -Wno-deprecated-declarations -Wno-c++14-extensions \
-      -I/usr/local/include
+  CPPFLAGS+= -I/usr/local/include
+  CXXFLAGS+= -Wno-deprecated-declarations -Wno-c++14-extensions
   LDFLAGS+= -L/usr/local/lib
   SED_I+= ''
   SED_EXTRA+= -e \
