@@ -191,7 +191,7 @@ TEST_F(KubernetesTest, GetPodMetadata) {
   Configuration config(std::stringstream(
     "KubernetesClusterName: TestClusterName\n"
     "KubernetesClusterLocation: TestClusterLocation\n"
-    "MetadataApiResourceTypeSeperator: \",\"\n"
+    "MetadataApiResourceTypeSeparator: \".\"\n"
     "MetadataIngestionRawContentVersion: TestVersion\n"
   ));
   Environment environment(config);
@@ -519,7 +519,7 @@ TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
   Configuration config(std::stringstream(
     "KubernetesClusterName: TestClusterName\n"
     "KubernetesClusterLocation: TestClusterLocation\n"
-    "MetadataApiResourceTypeSeperator: \".\"\n"
+    "MetadataApiResourceTypeSeparator: \".\"\n"
     "MetadataIngestionRawContentVersion: TestVersion\n"
     "InstanceZone: TestZone\n"
     "InstanceId: TestID\n"
