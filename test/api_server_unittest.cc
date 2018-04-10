@@ -7,83 +7,72 @@ namespace google {
 
 class ApiServerTest : public ::testing::Test {
  protected:
-  static void BasicDispatcher() {
-    bool handler_called;
-    MetadataApiServer::Handler handler = [&handler_called](
-        const MetadataApiServer::HttpServer::request& request,
-        std::shared_ptr<MetadataApiServer::HttpServer::connection> conn) {
-      handler_called = true;
-    };
-    MetadataApiServer::Handler badHandler = [&handler_called](
-        const MetadataApiServer::HttpServer::request& request,
-        std::shared_ptr<MetadataApiServer::HttpServer::connection> conn) {
-      handler_called = false;
-    };
-    MetadataApiServer::Dispatcher::HandlerMap handlers({
-      {{"GET", "/testPath/"}, handler},
-      {{"GET", "/badPath/"}, badHandler},
-    });
-    MetadataApiServer::Dispatcher dispatcher(handlers, false);
-    MetadataApiServer::HttpServer::request request;
-    request.method = "GET";
-    request.destination = "/testPath/";
-    dispatcher(request, nullptr);
-    EXPECT_TRUE(handler_called);
+  using Dispatcher = MetadataApiServer::Dispatcher;
+  std::unique_ptr<Dispatcher> CreateDispatcher(
+      const std::map<std::pair<std::string, std::string>,
+                     std::function<void()>>& handlers) {
+    Dispatcher::HandlerMap handler_map;
+    for (const auto& element : handlers) {
+      std::function<void()> handler = element.second;
+      handler_map.emplace(element.first, [handler](
+          const MetadataApiServer::HttpServer::request& request,
+          std::shared_ptr<MetadataApiServer::HttpServer::connection> conn) {
+        handler();
+      });
+    }
+    return std::unique_ptr<Dispatcher>(new Dispatcher(handler_map, false));
   }
 
-  static void DispatcherMethodCheck() {
-    bool handler_called;
-    MetadataApiServer::Handler handler = [&handler_called](
-        const MetadataApiServer::HttpServer::request& request,
-        std::shared_ptr<MetadataApiServer::HttpServer::connection> conn) {
-      handler_called = true;
-    };
-    MetadataApiServer::Dispatcher::HandlerMap handlers({
-      {{"GET", "/testPath/"}, handler},
-    });
-    MetadataApiServer::Dispatcher dispatcher(handlers, false);
+  void InvokeDispatcher(
+      const std:: unique_ptr<Dispatcher>& dispatcher,
+      const std::string& method, const std::string& path) {
     MetadataApiServer::HttpServer::request request;
-    request.method = "POST";
-    request.destination = "/testPath/";
-    dispatcher(request, nullptr);
-    EXPECT_FALSE(handler_called);
-  }
-
-  static void DispatcherSubstringCheck() {
-    bool handler_called;
-    MetadataApiServer::Handler handler = [&handler_called](
-        const MetadataApiServer::HttpServer::request& request,
-        std::shared_ptr<MetadataApiServer::HttpServer::connection> conn) {
-      handler_called = true;
-    };
-    MetadataApiServer::Dispatcher::HandlerMap handlers({
-      {{"GET", "/testPath/"}, handler},
-    });
-    MetadataApiServer::Dispatcher dispatcher(handlers, false);
-    MetadataApiServer::HttpServer::request request;
-    request.method = "GET";
-    request.destination = "/testPathFoo/";
-    dispatcher(request, nullptr);
-    EXPECT_FALSE(handler_called);
-    request.destination = "/test/";
-    dispatcher(request, nullptr);
-    EXPECT_FALSE(handler_called);
-    request.destination = "/testFooPath/";
-    dispatcher(request, nullptr);
-    EXPECT_FALSE(handler_called);
+    request.method = method;
+    request.destination = path;
+    (*dispatcher)(request, nullptr);
   }
 };
 
 TEST_F(ApiServerTest, BasicDispacher) {
-  BasicDispatcher();
+  bool handler_called = false;
+  std::unique_ptr<Dispatcher> dispatcher = CreateDispatcher({
+    {{"GET", "/testPath/"}, [&handler_called]() {
+      handler_called = true;
+    }},
+    {{"GET", "/badPath/"}, [&handler_called]() {
+      handler_called = false;
+    }},
+  });
+
+  InvokeDispatcher(dispatcher, "GET", "/testPath/");
+  EXPECT_TRUE(handler_called);
 }
 
 TEST_F(ApiServerTest, DispatcherMethodCheck) {
-  DispatcherMethodCheck();
+  bool handler_called = false;
+  std::unique_ptr<Dispatcher> dispatcher = CreateDispatcher({
+    {{"GET", "/testPath/"}, [&handler_called]() {
+      handler_called = true;
+    }},
+  });
+
+  InvokeDispatcher(dispatcher, "POST", "/testPath/");
+  EXPECT_FALSE(handler_called);
 }
 
 TEST_F(ApiServerTest, DispatcherSubstringCheck) {
-  DispatcherSubstringCheck();
-}
+  bool handler_called = false;
+  std::unique_ptr<Dispatcher> dispatcher = CreateDispatcher({
+    {{"GET", "/testPath/"}, [&handler_called]() {
+      handler_called = true;
+    }},
+  });
 
+  InvokeDispatcher(dispatcher, "GET", "/testPathFoo/");
+  EXPECT_FALSE(handler_called);
+  InvokeDispatcher(dispatcher, "GET", "/test/");
+  EXPECT_FALSE(handler_called);
+  InvokeDispatcher(dispatcher, "GET", "/testFooPath/");
+  EXPECT_FALSE(handler_called);
+}
 }  // namespace google

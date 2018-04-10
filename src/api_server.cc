@@ -31,7 +31,7 @@ MetadataApiServer::Dispatcher::Dispatcher(
 
 void MetadataApiServer::Dispatcher::operator()(
     const HttpServer::request& request,
-    std::shared_ptr<HttpServer::connection> conn) {
+    std::shared_ptr<HttpServer::connection> conn) const {
   if (verbose_) {
     LOG(INFO) << "Dispatcher called: " << request.method
               << " " << request.destination
@@ -40,7 +40,7 @@ void MetadataApiServer::Dispatcher::operator()(
   }
   // Look for the longest match first. This means going backwards through
   // the map, since strings are sorted in lexicographical order.
-  for (auto it = handlers_.crbegin(); it != handlers_.crend(); --it) {
+  for (auto it = handlers_.crbegin(); it != handlers_.crend(); ++it) {
     const std::string& method = it->first.first;
     const std::string& prefix = it->first.second;
 #ifdef VERBOSE
@@ -61,7 +61,7 @@ void MetadataApiServer::Dispatcher::operator()(
   }
 }
 
-void MetadataApiServer::Dispatcher::log(const HttpServer::string_type& info) {
+void MetadataApiServer::Dispatcher::log(const HttpServer::string_type& info) const {
   LOG(ERROR) << info;
 }
 

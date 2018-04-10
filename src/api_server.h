@@ -56,8 +56,8 @@ class MetadataApiServer {
     using HandlerMap = std::map<std::pair<std::string, std::string>, Handler>;
     Dispatcher(const HandlerMap& handlers, bool verbose);
     void operator()(const HttpServer::request& request,
-                    std::shared_ptr<HttpServer::connection> conn);
-    void log(const HttpServer::string_type& info);
+                    std::shared_ptr<HttpServer::connection> conn) const;
+    void log(const HttpServer::string_type& info) const;
    private:
     // A mapping from a method/prefix pair to the handler function.
     // Order matters: later entries override earlier ones.
