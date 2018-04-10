@@ -24,7 +24,7 @@ class ApiServerTest : public ::testing::Test {
   }
 
   void InvokeDispatcher(
-      const std:: unique_ptr<Dispatcher>& dispatcher,
+      const std::unique_ptr<Dispatcher>& dispatcher,
       const std::string& method, const std::string& path) {
     MetadataApiServer::HttpServer::request request;
     request.method = method;
@@ -33,22 +33,24 @@ class ApiServerTest : public ::testing::Test {
   }
 };
 
-TEST_F(ApiServerTest, BasicDispacher) {
+TEST_F(ApiServerTest, DispatcherMatchesFullPath) {
   bool handler_called = false;
+  bool bad_handler_called = false;
   std::unique_ptr<Dispatcher> dispatcher = CreateDispatcher({
     {{"GET", "/testPath/"}, [&handler_called]() {
       handler_called = true;
     }},
-    {{"GET", "/badPath/"}, [&handler_called]() {
-      handler_called = false;
+    {{"GET", "/badPath/"}, [&bad_handler_called]() {
+      bad_handler_called = true;
     }},
   });
 
   InvokeDispatcher(dispatcher, "GET", "/testPath/");
   EXPECT_TRUE(handler_called);
+  EXPECT_FALSE(bad_handler_called);
 }
 
-TEST_F(ApiServerTest, DispatcherMethodCheck) {
+TEST_F(ApiServerTest, DispatcherUnmatchedMethod) {
   bool handler_called = false;
   std::unique_ptr<Dispatcher> dispatcher = CreateDispatcher({
     {{"GET", "/testPath/"}, [&handler_called]() {
@@ -74,5 +76,7 @@ TEST_F(ApiServerTest, DispatcherSubstringCheck) {
   EXPECT_FALSE(handler_called);
   InvokeDispatcher(dispatcher, "GET", "/testFooPath/");
   EXPECT_FALSE(handler_called);
+  InvokeDispatcher(dispatcher, "GET", "/testPath/subPath");
+  EXPECT_TRUE(handler_called);
 }
 }  // namespace google
