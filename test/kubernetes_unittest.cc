@@ -8,66 +8,66 @@ namespace google {
 
 class KubernetesTest : public ::testing::Test {
  protected:
-  MetadataUpdater::ResourceMetadata GetNodeMetadata(
+  static MetadataUpdater::ResourceMetadata GetNodeMetadata(
       const KubernetesReader& reader, const json::Object *node,
-      Timestamp collected_at, bool is_deleted) const
+      Timestamp collected_at, bool is_deleted)
       throw(json::Exception) {
     return reader.GetNodeMetadata(node, collected_at, is_deleted);
   }
 
-  MetadataUpdater::ResourceMetadata GetPodMetadata(
+  static MetadataUpdater::ResourceMetadata GetPodMetadata(
       const KubernetesReader& reader, const json::Object* pod,
-      json::value associations, Timestamp collected_at, bool is_deleted) const
+      json::value associations, Timestamp collected_at, bool is_deleted)
       throw(json::Exception) {
     return reader.GetPodMetadata(
         pod, std::move(associations), collected_at, is_deleted);
   }
 
-  MetadataUpdater::ResourceMetadata GetContainerMetadata(
+  static MetadataUpdater::ResourceMetadata GetContainerMetadata(
       const KubernetesReader& reader, const json::Object* pod,
       const json::Object* container_spec, const json::Object* container_status,
-      json::value associations, Timestamp collected_at, bool is_deleted) const
+      json::value associations, Timestamp collected_at, bool is_deleted)
       throw(json::Exception) {
     return reader.GetContainerMetadata(pod, container_spec, container_status,
                                        std::move(associations), collected_at,
                                        is_deleted);
   }
 
-  std::vector<MetadataUpdater::ResourceMetadata> GetPodAndContainerMetadata(
+  static std::vector<MetadataUpdater::ResourceMetadata> GetPodAndContainerMetadata(
       const KubernetesReader& reader, const json::Object* pod,
-      Timestamp collected_at, bool is_deleted) const throw(json::Exception) {
+      Timestamp collected_at, bool is_deleted) throw(json::Exception) {
     return reader.GetPodAndContainerMetadata(pod, collected_at, is_deleted);
   }
 
-  MetadataUpdater::ResourceMetadata GetLegacyResource(
+  static MetadataUpdater::ResourceMetadata GetLegacyResource(
       const KubernetesReader& reader, const json::Object* pod,
-      const std::string& container_name) const throw(json::Exception) {
+      const std::string& container_name) throw(json::Exception) {
     return reader.GetLegacyResource(pod, container_name);
   }
 
-  json::value ComputePodAssociations(const KubernetesReader& reader,
+  static json::value ComputePodAssociations(const KubernetesReader& reader,
                                      const json::Object* pod) {
     return reader.ComputePodAssociations(pod);
   }
 
-  void UpdateOwnersCache(KubernetesReader* reader, const std::string& key,
+  static void UpdateOwnersCache(KubernetesReader* reader, const std::string& key,
                          const json::value& value) {
     reader->owners_[key] = value->Clone();
   }
 
-  MetadataUpdater::ResourceMetadata GetClusterMetadata(
-      const KubernetesReader& reader, Timestamp collected_at) const
+  static MetadataUpdater::ResourceMetadata GetClusterMetadata(
+      const KubernetesReader& reader, Timestamp collected_at)
       throw(json::Exception) {
     return reader.GetClusterMetadata(collected_at);
   }
 
-  void UpdateServiceToMetadataCache(
+  static void UpdateServiceToMetadataCache(
       KubernetesReader* reader, const json::Object* service, bool is_deleted)
       throw(json::Exception) {
     return reader->UpdateServiceToMetadataCache(service, is_deleted);
   }
 
-  void UpdateServiceToPodsCache(
+  static void UpdateServiceToPodsCache(
       KubernetesReader* reader, const json::Object* endpoints, bool is_deleted)
       throw(json::Exception) {
     return reader->UpdateServiceToPodsCache(endpoints, is_deleted);
