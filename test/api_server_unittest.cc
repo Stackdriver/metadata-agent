@@ -76,7 +76,7 @@ TEST_F(ApiServerTest, DispatcherSubstringCheck) {
   EXPECT_FALSE(handler_called);
   InvokeDispatcher(dispatcher, "GET", "/testFooPath/");
   EXPECT_FALSE(handler_called);
-  InvokeDispatcher(dispatcher, "GET", "/testPath/subPath");
+  InvokeDispatcher(dispatcher, "GET", "/testPath/subPath/");
   EXPECT_TRUE(handler_called);
 }
 }  // namespace google
