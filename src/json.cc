@@ -16,6 +16,7 @@
 
 #include "json.h"
 
+#include <cmath>
 #include <iostream>
 #include <iterator>
 #include <sstream>
@@ -121,7 +122,12 @@ std::unique_ptr<Value> Boolean::Clone() const {
 }
 
 void Number::Serialize(internal::JSONSerializer* serializer) const {
-  yajl_gen_double(serializer->gen(), value_);
+  long long as_int = (long long)value_;
+  if (value_ == as_int && std::signbit(value_) == std::signbit(as_int)) {
+    yajl_gen_integer(serializer->gen(), value_);
+  } else {
+    yajl_gen_double(serializer->gen(), value_);
+  }
 }
 
 std::unique_ptr<Value> Number::Clone() const {
