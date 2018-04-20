@@ -2,6 +2,7 @@
 #include "gtest/gtest.h"
 
 #include <functional>
+#include <limits>
 #include <set>
 #include <vector>
 
@@ -161,7 +162,8 @@ TEST(TrivialParseTest, Number) {
 
 TEST(TrivialToStringTest, Number) {
   GuardJsonException([](){
-    EXPECT_TOSTRING_EQ("2.0", json::number(2.0));
+    EXPECT_TOSTRING_EQ("2", json::number(2));
+    EXPECT_TOSTRING_EQ("2.5", json::number(2.5));
   });
 }
 
@@ -287,7 +289,7 @@ TEST(TrivialParseTest, ArrayOneElement) {
 
 TEST(TrivialToStringTest, ArrayOneElement) {
   GuardJsonException([](){
-    EXPECT_TOSTRING_EQ("[2.0]", json::array({json::number(2.0)}));
+    EXPECT_TOSTRING_EQ("[2]", json::array({json::number(2)}));
   });
 }
 
@@ -365,7 +367,7 @@ TEST(TrivialToStringTest, ObjectOneField) {
     json::value v = json::object({
       {"f", json::number(2.0)},
     });
-    EXPECT_TOSTRING_EQ("{\"f\":2.0}", v);
+    EXPECT_TOSTRING_EQ("{\"f\":2}", v);
   });
 }
 
@@ -385,9 +387,9 @@ TEST(AllFromStreamTest, SingleObject) {
     EXPECT_EQ(1, v.size());
     EXPECT_TOSTRING_EQ(
       "{"
-      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"bar\":{\"x\":0,\"y\":null},"
       "\"baz\":true,"
-      "\"foo\":[1.0,2.0,3.0],"
+      "\"foo\":[1,2,3],"
       "\"str\":\"asdfasdf\""
       "}",
       v[0]);
@@ -413,17 +415,17 @@ TEST(AllFromStreamTest, MultipleObjects) {
     EXPECT_EQ(2, v.size());
     EXPECT_TOSTRING_EQ(
       "{"
-      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"bar\":{\"x\":0,\"y\":null},"
       "\"baz\":true,"
-      "\"foo\":[1.0,2.0,3.0],"
+      "\"foo\":[1,2,3],"
       "\"str\":\"asdfasdf\""
       "}",
       v[0]);
     EXPECT_TOSTRING_EQ(
       "{"
-      "\"bar1\":{\"x\":0.0,\"y\":null},"
+      "\"bar1\":{\"x\":0,\"y\":null},"
       "\"baz1\":true,"
-      "\"foo1\":[1.0,2.0,3.0],"
+      "\"foo1\":[1,2,3],"
       "\"str1\":\"asdfasdf\""
       "}",
       v[1]);
@@ -443,9 +445,9 @@ TEST(AllFromStringTest, SingleObject) {
     EXPECT_EQ(1, v.size());
     EXPECT_TOSTRING_EQ(
       "{"
-      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"bar\":{\"x\":0,\"y\":null},"
       "\"baz\":true,"
-      "\"foo\":[1.0,2.0,3.0],"
+      "\"foo\":[1,2,3],"
       "\"str\":\"asdfasdf\""
       "}",
       v[0]);
@@ -471,17 +473,17 @@ TEST(AllFromStringTest, MultipleObjects) {
     EXPECT_EQ(2, v.size());
     EXPECT_TOSTRING_EQ(
       "{"
-      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"bar\":{\"x\":0,\"y\":null},"
       "\"baz\":true,"
-      "\"foo\":[1.0,2.0,3.0],"
+      "\"foo\":[1,2,3],"
       "\"str\":\"asdfasdf\""
       "}",
       v[0]);
     EXPECT_TOSTRING_EQ(
       "{"
-      "\"bar1\":{\"x\":0.0,\"y\":null},"
+      "\"bar1\":{\"x\":0,\"y\":null},"
       "\"baz1\":true,"
-      "\"foo1\":[1.0,2.0,3.0],"
+      "\"foo1\":[1,2,3],"
       "\"str1\":\"asdfasdf\""
       "}",
       v[1]);
@@ -500,9 +502,9 @@ TEST(FromStreamTest, SingleObject) {
     ));
     EXPECT_TOSTRING_EQ(
       "{"
-      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"bar\":{\"x\":0,\"y\":null},"
       "\"baz\":true,"
-      "\"foo\":[1.0,2.0,3.0],"
+      "\"foo\":[1,2,3],"
       "\"str\":\"asdfasdf\""
       "}",
       v);
@@ -538,9 +540,9 @@ TEST(FromStringTest, SingleObject) {
     );
     EXPECT_TOSTRING_EQ(
       "{"
-      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"bar\":{\"x\":0,\"y\":null},"
       "\"baz\":true,"
-      "\"foo\":[1.0,2.0,3.0],"
+      "\"foo\":[1,2,3],"
       "\"str\":\"asdfasdf\""
       "}",
       v);
@@ -628,30 +630,45 @@ TEST(EdgeTest, PositiveNumbers) {
       "  0.0, 0.0e+0, 0.0e-0, 0.0e0, 0.0E+0, 0.0E-0, 0.0E0,\n"
       "  10, 10e+0, 10e-0, 10e0, 10E+0, 10E-0, 10E0,\n"
       "  10.0, 10.0e+0, 10.0e-0, 10.0e0, 10.0E+0, 10.0E-0, 10.0E0,\n"
-      "  123, 123.456, 789, 1.05, 1.999e-99\n"
+      "  123, 123.456, 789, 1.05, 1.999e-99,\n"
+      "  9007199254740991, 9007199254740992, 9007199254740993,\n"
+      "  18014398509481983, 18014398509481984,\n"
+      "  9223372036854775807, 9223372036854775808.0,\n"
+      "  18446744073709551616.0\n"
       "]"
     );
-    std::vector<double> numbers;
+    std::vector<long double> numbers;
     for (const auto& number : *v->As<json::Array>()) {
       numbers.push_back(number->As<json::Number>()->value());
     }
     EXPECT_EQ(
-      std::vector<double>({
+      std::vector<long double>({
         0, 0e+0, 0e-0, 0e0, 0E+0, 0E-0, 0E0,
         0.0, 0.0e+0, 0.0e-0, 0.0e0, 0.0E+0, 0.0E-0, 0.0E0,
         10, 10e+0, 10e-0, 10e0, 10E+0, 10E-0, 10E0,
         10.0, 10.0e+0, 10.0e-0, 10.0e0, 10.0E+0, 10.0E-0, 10.0E0,
         123, 123.456, 789, 1.05, 1.999e-99,
+        (1L<<std::numeric_limits<double>::digits) - 1,
+        1L<<std::numeric_limits<double>::digits,
+        (1L<<std::numeric_limits<double>::digits) + 1,
+        (1L<<(std::numeric_limits<double>::digits + 1)) - 1,
+        1L<<(std::numeric_limits<double>::digits + 1),
+        std::numeric_limits<long long>::max(),
+        std::numeric_limits<long long>::max() + 1.0L,
+        (std::numeric_limits<long long>::max() + 1.0L) * 2.0L,
       }),
       numbers);
     EXPECT_TOSTRING_EQ(
       "["
-        "0.0,0.0,0.0,0.0,0.0,0.0,0.0,"
-        "0.0,0.0,0.0,0.0,0.0,0.0,0.0,"
-        "10.0,10.0,10.0,10.0,10.0,10.0,10.0,"
-        "10.0,10.0,10.0,10.0,10.0,10.0,10.0,"
-        "123.0,123.45600000000000307,789.0,"
-        "1.0500000000000000444,1.9989999999999998999e-99"
+        "0,0,0,0,0,0,0,"
+        "0,0,0,0,0,0,0,"
+        "10,10,10,10,10,10,10,"
+        "10,10,10,10,10,10,10,"
+        "123,123.45600000000000307,789,"
+        "1.0500000000000000444,1.9989999999999998999e-99,"
+        "9007199254740991,9007199254740992,9007199254740993,"
+        "18014398509481983,18014398509481984,"
+        "9223372036854775807,9223372036854775808.0,18446744073709551616.0"
       "]",
       v);
   });
@@ -665,31 +682,46 @@ TEST(EdgeTest, NegativeNumbers) {
       "  -0.0, -0.0e+0, -0.0e-0, -0.0e0, -0.0E+0, -0.0E-0, -0.0E0,\n"
       "  -10, -10e+0, -10e-0, -10e0, -10E+0, -10E-0, -10E0,\n"
       "  -10.0, -10.0e+0, -10.0e-0, -10.0e0, -10.0E+0, -10.0E-0, -10.0E0,\n"
-      "  -123, -123.456, -789, -1.05, -1.999e-99\n"
+      "  -123, -123.456, -789, -1.05, -1.999e-99,\n"
+      "  -9007199254740991, -9007199254740992, -9007199254740993,\n"
+      "  -18014398509481983, -18014398509481984,\n"
+      "  -9223372036854775807, -9223372036854775808.0,\n"
+      "  -18446744073709551616.0\n"
       "]"
     );
-    std::vector<double> numbers;
+    std::vector<long double> numbers;
     for (const auto& number : *v->As<json::Array>()) {
       numbers.push_back(number->As<json::Number>()->value());
     }
     EXPECT_EQ(
-      std::vector<double>({
+      std::vector<long double>({
         -0, -0e+0, -0e-0, -0e0, -0E+0, -0E-0, -0E0,
         -0.0, -0.0e+0, -0.0e-0, -0.0e0, -0.0E+0, -0.0E-0, -0.0E0,
         -10, -10e+0, -10e-0, -10e0, -10E+0, -10E-0, -10E0,
         -10.0, -10.0e+0, -10.0e-0, -10.0e0, -10.0E+0, -10.0E-0, -10.0E0,
         -123, -123.456, -789, -1.05, -1.999e-99,
+        -(1L<<std::numeric_limits<double>::digits) + 1,
+        -(1L<<std::numeric_limits<double>::digits),
+        -(1L<<std::numeric_limits<double>::digits) - 1,
+        -(1L<<(std::numeric_limits<double>::digits + 1)) + 1,
+        -(1L<<(std::numeric_limits<double>::digits + 1)),
+        std::numeric_limits<long long>::min() + 1,
+        std::numeric_limits<long long>::min(),
+        std::numeric_limits<long long>::min() * 2.0L,
       }),
       numbers);
     // TODO(igorp): This first one looks spurious.
     EXPECT_TOSTRING_EQ(
       "["
-        "0.0,-0.0,-0.0,-0.0,-0.0,-0.0,-0.0,"
+        "0,-0.0,-0.0,-0.0,-0.0,-0.0,-0.0,"
         "-0.0,-0.0,-0.0,-0.0,-0.0,-0.0,-0.0,"
-        "-10.0,-10.0,-10.0,-10.0,-10.0,-10.0,-10.0,"
-        "-10.0,-10.0,-10.0,-10.0,-10.0,-10.0,-10.0,"
-        "-123.0,-123.45600000000000307,-789.0,"
-        "-1.0500000000000000444,-1.9989999999999998999e-99"
+        "-10,-10,-10,-10,-10,-10,-10,"
+        "-10,-10,-10,-10,-10,-10,-10,"
+        "-123,-123.45600000000000307,-789,"
+        "-1.0500000000000000444,-1.9989999999999998999e-99,"
+        "-9007199254740991,-9007199254740992,-9007199254740993,"
+        "-18014398509481983,-18014398509481984,"
+        "-9223372036854775807,-9223372036854775808,-18446744073709551616.0"
       "]",
       v);
   });
@@ -708,9 +740,9 @@ TEST(BigTest, RealisticConstruction) {
     });
     EXPECT_TOSTRING_EQ(
       "{"
-      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"bar\":{\"x\":0,\"y\":null},"
       "\"baz\":true,"
-      "\"foo\":[1.0,2.0,3.0],"
+      "\"foo\":[1,2,3],"
       "\"str\":\"asdfasdf\""
       "}",
       v);
@@ -728,9 +760,9 @@ TEST(BigTest, Clone) {
     json::value cloned = v->Clone();
     EXPECT_TOSTRING_EQ(
       "{"
-      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"bar\":{\"x\":0,\"y\":null},"
       "\"baz\":true,"
-      "\"foo\":[1.0,2.0,3.0],"
+      "\"foo\":[1,2,3],"
       "\"str\":\"asdfasdf\""
       "}",
       cloned);
@@ -819,9 +851,9 @@ TEST(StreamingTest, Complete) {
     ));
     EXPECT_TOSTRING_EQ(
       "{"
-      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"bar\":{\"x\":0,\"y\":null},"
       "\"baz\":true,"
-      "\"foo\":[1.0,2.0,3.0],"
+      "\"foo\":[1,2,3],"
       "\"str\":\"asdfasdf\""
       "}",
       v);
@@ -846,9 +878,9 @@ TEST(StreamingTest, Split) {
     ));
     EXPECT_TOSTRING_EQ(
       "{"
-      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"bar\":{\"x\":0,\"y\":null},"
       "\"baz\":true,"
-      "\"foo\":[1.0,2.0,3.0],"
+      "\"foo\":[1,2,3],"
       "\"str\":\"asdfasdf\""
       "}",
       v);
@@ -878,9 +910,9 @@ TEST(StreamingTest, SplitMidValue) {
     ));
     EXPECT_TOSTRING_EQ(
       "{"
-      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"bar\":{\"x\":0,\"y\":null},"
       "\"baz\":true,"
-      "\"foo\":[1.0,2.0,3.0],"
+      "\"foo\":[1,2,3],"
       "\"str\":\"asdfasdf\""
       "}",
       v);
@@ -908,17 +940,17 @@ TEST(StreamingTest, MultipleObjects) {
     EXPECT_EQ(2, v.size());
     EXPECT_TOSTRING_EQ(
       "{"
-      "\"bar\":{\"x\":0.0,\"y\":null},"
+      "\"bar\":{\"x\":0,\"y\":null},"
       "\"baz\":true,"
-      "\"foo\":[1.0,2.0,3.0],"
+      "\"foo\":[1,2,3],"
       "\"str\":\"asdfasdf\""
       "}",
       v[0]);
     EXPECT_TOSTRING_EQ(
       "{"
-      "\"bar1\":{\"x\":0.0,\"y\":null},"
+      "\"bar1\":{\"x\":0,\"y\":null},"
       "\"baz1\":true,"
-      "\"foo1\":[1.0,2.0,3.0],"
+      "\"foo1\":[1,2,3],"
       "\"str1\":\"asdfasdf\""
       "}",
       v[1]);
@@ -930,7 +962,7 @@ TEST(StreamingTest, ParseStreamReturnsByteCount) {
     json::value v;
     json::Parser p([&v](json::value r) { v = std::move(r); });
     size_t n = p.ParseStream(std::istringstream("[1]"));
-    EXPECT_TOSTRING_EQ("[1.0]", v);
+    EXPECT_TOSTRING_EQ("[1]", v);
     EXPECT_EQ(3, n);
   });
 }
@@ -944,7 +976,7 @@ TEST(StreamingTest, ParseStreamNeedsEofToParseNumbers) {
     EXPECT_EQ(nullptr, v);
     // The number is not known until EOF is reached.
     p.NotifyEOF();
-    EXPECT_TOSTRING_EQ("123.0", v);
+    EXPECT_TOSTRING_EQ("123", v);
   });
 }
 
@@ -953,7 +985,7 @@ TEST(StreamingTest, ParseStreamThrowsOnMidStreamParseError) {
     json::value v;
     json::Parser p([&v](json::value r) { v = std::move(r); });
     EXPECT_THROW(p.ParseStream(std::istringstream("400 xyz")), json::Exception);
-    EXPECT_TOSTRING_EQ("400.0", v);
+    EXPECT_TOSTRING_EQ("400", v);
   });
 }
 

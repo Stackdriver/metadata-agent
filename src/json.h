@@ -172,20 +172,20 @@ class Boolean : public Value {
 
 class Number : public Value {
  public:
-  Number(double value) : value_(value) {}
+  Number(long double value) : value_(value) {}
   Number(const Number&) = default;
 
   Type type() const override { return NumberType; }
 
   std::unique_ptr<Value> Clone() const override;
 
-  double value() const { return value_; }
+  long double value() const { return value_; }
 
  protected:
   void Serialize(internal::JSONSerializer*) const override;
 
  private:
-  double value_;
+  long double value_;
 };
 
 class String : public Value {

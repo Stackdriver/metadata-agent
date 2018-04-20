@@ -16,8 +16,10 @@
 
 #include "json.h"
 
+#include <cmath>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <sstream>
 #include <utility>
 
@@ -120,8 +122,22 @@ std::unique_ptr<Value> Boolean::Clone() const {
   return std::unique_ptr<Value>(new Boolean(value_));
 }
 
+namespace {
+template<class IntType>
+constexpr bool IsEffectivelyInteger(long double value) {
+  return (value == std::floor(value) &&
+          value >= std::numeric_limits<IntType>::min() &&
+          value <= std::numeric_limits<IntType>::max() &&
+          !(value == 0.0 && std::signbit(value)));
+}
+}
+
 void Number::Serialize(internal::JSONSerializer* serializer) const {
-  yajl_gen_double(serializer->gen(), value_);
+  if (IsEffectivelyInteger<long long>(value_)) {
+    yajl_gen_integer(serializer->gen(), static_cast<long long>(value_));
+  } else {
+    yajl_gen_double(serializer->gen(), static_cast<double>(value_));
+  }
 }
 
 std::unique_ptr<Value> Number::Clone() const {
@@ -339,10 +355,8 @@ int handle_string(void* arg, const unsigned char* val, size_t length) {
 
 int handle_integer(void* arg, long long value) {
   JSONBuilder* builder = reinterpret_cast<JSONBuilder*>(arg);
-  // Careful: converting a long long into a double is lossy.
-  // I doubt it'll matter in practice, though.
   builder->AddValue(
-      std::unique_ptr<Value>(new Number(static_cast<double>(value))));
+      std::unique_ptr<Value>(new Number(value)));
   return 1;
 }
 
