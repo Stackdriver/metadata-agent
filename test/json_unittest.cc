@@ -632,12 +632,12 @@ TEST(EdgeTest, PositiveNumbers) {
       "  123, 123.456, 789, 1.05, 1.999e-99\n"
       "]"
     );
-    std::vector<double> numbers;
+    std::vector<long double> numbers;
     for (const auto& number : *v->As<json::Array>()) {
       numbers.push_back(number->As<json::Number>()->value());
     }
     EXPECT_EQ(
-      std::vector<double>({
+      std::vector<long double>({
         0, 0e+0, 0e-0, 0e0, 0E+0, 0E-0, 0E0,
         0.0, 0.0e+0, 0.0e-0, 0.0e0, 0.0E+0, 0.0E-0, 0.0E0,
         10, 10e+0, 10e-0, 10e0, 10E+0, 10E-0, 10E0,
@@ -669,12 +669,12 @@ TEST(EdgeTest, NegativeNumbers) {
       "  -123, -123.456, -789, -1.05, -1.999e-99\n"
       "]"
     );
-    std::vector<double> numbers;
+    std::vector<long double> numbers;
     for (const auto& number : *v->As<json::Array>()) {
       numbers.push_back(number->As<json::Number>()->value());
     }
     EXPECT_EQ(
-      std::vector<double>({
+      std::vector<long double>({
         -0, -0e+0, -0e-0, -0e0, -0E+0, -0E-0, -0E0,
         -0.0, -0.0e+0, -0.0e-0, -0.0e0, -0.0E+0, -0.0E-0, -0.0E0,
         -10, -10e+0, -10e-0, -10e0, -10E+0, -10E-0, -10E0,

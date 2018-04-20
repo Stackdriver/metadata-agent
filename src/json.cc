@@ -124,9 +124,9 @@ std::unique_ptr<Value> Boolean::Clone() const {
 void Number::Serialize(internal::JSONSerializer* serializer) const {
   long long as_int = (long long)value_;
   if (value_ == as_int && std::signbit(value_) == std::signbit(as_int)) {
-    yajl_gen_integer(serializer->gen(), value_);
+    yajl_gen_integer(serializer->gen(), static_cast<long long>(value_));
   } else {
-    yajl_gen_double(serializer->gen(), value_);
+    yajl_gen_double(serializer->gen(), static_cast<double>(value_));
   }
 }
 
@@ -345,10 +345,8 @@ int handle_string(void* arg, const unsigned char* val, size_t length) {
 
 int handle_integer(void* arg, long long value) {
   JSONBuilder* builder = reinterpret_cast<JSONBuilder*>(arg);
-  // Careful: converting a long long into a double is lossy.
-  // I doubt it'll matter in practice, though.
   builder->AddValue(
-      std::unique_ptr<Value>(new Number(static_cast<double>(value))));
+      std::unique_ptr<Value>(new Number(value)));
   return 1;
 }
 
