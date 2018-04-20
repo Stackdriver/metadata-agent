@@ -19,6 +19,7 @@
 #include <cmath>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <sstream>
 #include <utility>
 
@@ -121,9 +122,18 @@ std::unique_ptr<Value> Boolean::Clone() const {
   return std::unique_ptr<Value>(new Boolean(value_));
 }
 
+namespace {
+template<class IntType>
+constexpr bool IsEffectivelyInteger(long double value) {
+  return (value == std::floor(value) &&
+          value >= std::numeric_limits<IntType>::min() &&
+          value <= std::numeric_limits<IntType>::max() &&
+          !(value == 0.0 && std::signbit(value)));
+}
+}
+
 void Number::Serialize(internal::JSONSerializer* serializer) const {
-  long long as_int = (long long)value_;
-  if (value_ == as_int && std::signbit(value_) == std::signbit(as_int)) {
+  if (IsEffectivelyInteger<long long>(value_)) {
     yajl_gen_integer(serializer->gen(), static_cast<long long>(value_));
   } else {
     yajl_gen_double(serializer->gen(), static_cast<double>(value_));
