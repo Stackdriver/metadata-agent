@@ -27,7 +27,8 @@ namespace util {
 
 // Executes the work function while it throws exception Fail, up to a given
 // number of times, with a delay between executions. If it throws exception
-// Terminate, pass it through (no retries).
+// Terminate, which may be a subclass of Fail, pass it through (no retries).
+// Any other exception outside of the Fail hierarchy will be passed through.
 template<class Terminate, class Fail>
 void Retry(int max_retries, time::seconds delay,
            std::function<void()> work);
@@ -39,7 +40,7 @@ void Retry(int max_retries, time::seconds delay,
     try {
       work();
       return;
-    } catch (const Terminate& e) {
+    } catch (const Terminate& e) {  // Catch first due to inheritance.
       throw e;
     } catch (const Fail& e) {
       if (i < max_retries - 1) {
