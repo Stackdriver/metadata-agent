@@ -29,12 +29,16 @@
 #include "resource.h"
 #include "store.h"
 #include "time.h"
+#include "util.h"
 
 namespace http = boost::network::http;
 
 namespace google {
 
 namespace {
+
+constexpr const int kDockerValidationRetryLimit = 10;
+constexpr const int kDockerValidationRetryDelaySeconds = 1;
 
 #if 0
 constexpr const char kDockerEndpointHost[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
@@ -45,24 +49,38 @@ constexpr const char kDockerContainerResourcePrefix[] = "container";
 
 }
 
+// A subclass of QueryException to represent non-retriable errors.
+class DockerReader::NonRetriableError : public DockerReader::QueryException {
+ public:
+  NonRetriableError(const std::string& what) : QueryException(what) {}
+};
+
 DockerReader::DockerReader(const Configuration& config)
     : config_(config), environment_(config) {}
 
-bool DockerReader::ValidateConfiguration() const {
+void DockerReader::ValidateConfiguration() const
+    throw(MetadataUpdater::ConfigurationValidationError) {
+  const std::string container_filter(
+      config_.DockerContainerFilter().empty()
+      ? "" : "&" + config_.DockerContainerFilter());
+
   try {
-    const std::string container_filter(
-        config_.DockerContainerFilter().empty()
-        ? "" : "&" + config_.DockerContainerFilter());
-
-    // A limit may exist in the container_filter, however, the docker API only
-    // uses the first limit provided in the query params.
-    (void) QueryDocker(std::string(kDockerEndpointPath) + 
-                       "/json?all=true&limit=1" + container_filter);
-
-    return true;
+    util::Retry<NonRetriableError, QueryException>(
+        kDockerValidationRetryLimit,
+        time::seconds(kDockerValidationRetryDelaySeconds),
+        [this, &container_filter]() {
+          // A limit may exist in the container_filter, however, the docker API only
+          // uses the first limit provided in the query params.
+          (void) QueryDocker(std::string(kDockerEndpointPath) +
+                             "/json?all=true&limit=1" + container_filter);
+        });
+  } catch (const NonRetriableError& e) {
+    throw MetadataUpdater::ConfigurationValidationError(
+        "Docker query validation failed: " + e.what());
   } catch (const QueryException& e) {
     // Already logged.
-    return false;
+    throw MetadataUpdater::ConfigurationValidationError(
+        "Docker query validation retry limit reached: " + e.what());
   }
 }
 
@@ -190,7 +208,12 @@ json::value DockerReader::QueryDocker(const std::string& path) const
   }
   try {
     http::local_client::response response = client.get(request);
-    if (status(response) >= 300) {
+    if (status(response) >= 400 && status(response) <= 403) {
+      throw NonRetriableError(
+          format::Substitute("Server responded with '{{message}}' ({{code}})",
+                             {{"message", status_message(response)},
+                              {"code", format::str(status(response))}}));
+    } else if (status(response) >= 300) {
       throw boost::system::system_error(
           boost::system::errc::make_error_code(boost::system::errc::not_connected),
           format::Substitute("Server responded with '{{message}}' ({{code}})",
@@ -207,12 +230,10 @@ json::value DockerReader::QueryDocker(const std::string& path) const
   }
 }
 
-bool DockerUpdater::ValidateConfiguration() const {
-  if (!PollingMetadataUpdater::ValidateConfiguration()) {
-    return false;
-  }
-
-  return reader_.ValidateConfiguration();
+void DockerUpdater::ValidateConfiguration() const
+    throw(ConfigurationValidationError) {
+  PollingMetadataUpdater::ValidateConfiguration();
+  reader_.ValidateConfiguration();
 }
 
 }

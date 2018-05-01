@@ -50,7 +50,8 @@ TESTS=\
       resource_unittest \
       store_unittest \
       time_unittest \
-      updater_unittest
+      updater_unittest \
+      util_unittest
 
 GTEST_LIB=gtest_lib.a
 
@@ -120,7 +121,9 @@ store_unittest: store_unittest.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o $(SRC_
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 time_unittest: time_unittest.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-updater_unittest: updater_unittest.o $(SRC_DIR)/updater.o $(SRC_DIR)/resource.o $(SRC_DIR)/store.o $(SRC_DIR)/configuration.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/json.o
+updater_unittest: updater_unittest.o $(SRC_DIR)/updater.o $(SRC_DIR)/resource.o $(SRC_DIR)/store.o $(SRC_DIR)/configuration.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/json.o $(SRC_DIR)/format.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+util_unittest: util_unittest.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 .PHONY: all test clean purge

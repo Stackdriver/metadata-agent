@@ -36,12 +36,16 @@
 #include "resource.h"
 #include "store.h"
 #include "time.h"
+#include "util.h"
 
 namespace http = boost::network::http;
 
 namespace google {
 
 namespace {
+
+constexpr const int kKubernetesValidationRetryLimit = 10;
+constexpr const int kKubernetesValidationRetryDelaySeconds = 1;
 
 #if 0
 constexpr const char kKubernetesEndpointHost[] = "https://kubernetes.default.svc";
@@ -88,6 +92,13 @@ bool ReadServiceAccountSecret(
 }
 
 }
+
+// A subclass of QueryException to represent non-retriable errors.
+class KubernetesReader::NonRetriableError
+    : public KubernetesReader::QueryException {
+ public:
+  NonRetriableError(const std::string& what) : QueryException(what) {}
+};
 
 KubernetesReader::KubernetesReader(const Configuration& config,
                                    HealthChecker* health_checker)
@@ -654,7 +665,12 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
   }
   try {
     http::client::response response = client.get(request);
-    if (status(response) >= 300) {
+    if (status(response) >= 400 && status(response) <= 403) {
+      throw NonRetriableError(
+          format::Substitute("Server responded with '{{message}}' ({{code}})",
+                             {{"message", status_message(response)},
+                              {"code", format::str(status(response))}}));
+    } else if (status(response) >= 300) {
       throw boost::system::system_error(
           boost::system::errc::make_error_code(boost::system::errc::not_connected),
           format::Substitute("Server responded with '{{message}}' ({{code}})",
@@ -1056,31 +1072,50 @@ void KubernetesReader::UpdateServiceToPodsCache(
   }
 }
 
-bool KubernetesReader::ValidateConfiguration() const {
+void KubernetesReader::ValidateConfiguration() const
+    throw(MetadataUpdater::ConfigurationValidationError) {
   try {
-    (void) QueryMaster(std::string(kKubernetesEndpointPath) + "/nodes?limit=1");
+    util::Retry<NonRetriableError, QueryException>(
+        kKubernetesValidationRetryLimit,
+        time::seconds(kKubernetesValidationRetryDelaySeconds),
+        [this]() {
+          (void) QueryMaster(std::string(kKubernetesEndpointPath)
+                             + "/nodes?limit=1");
+        });
+  } catch (const NonRetriableError& e) {
+    throw MetadataUpdater::ConfigurationValidationError(
+        "Node query validation failed: " + e.what());
   } catch (const QueryException& e) {
     // Already logged.
-    return false;
+    throw MetadataUpdater::ConfigurationValidationError(
+        "Node query validation retry limit reached: " + e.what());
   }
 
-  try {
-    const std::string pod_label_selector(
-        config_.KubernetesPodLabelSelector().empty()
-        ? "" : "&" + config_.KubernetesPodLabelSelector());
+  const std::string pod_label_selector(
+      config_.KubernetesPodLabelSelector().empty()
+      ? "" : "&" + config_.KubernetesPodLabelSelector());
 
-    (void) QueryMaster(std::string(kKubernetesEndpointPath) + "/pods?limit=1" +
-                       pod_label_selector);
+  try {
+    util::Retry<NonRetriableError, QueryException>(
+      kKubernetesValidationRetryLimit,
+      time::seconds(kKubernetesValidationRetryDelaySeconds),
+      [this, &pod_label_selector]() {
+        (void) QueryMaster(std::string(kKubernetesEndpointPath)
+                           + "/pods?limit=1" + pod_label_selector);
+      });
+  } catch (const NonRetriableError& e) {
+    throw MetadataUpdater::ConfigurationValidationError(
+        "Pod query validation failed: " + e.what());
   } catch (const QueryException& e) {
     // Already logged.
-    return false;
+    throw MetadataUpdater::ConfigurationValidationError(
+        "Pod query validation retry limit reached: " + e.what());
   }
 
   if (CurrentNode().empty()) {
-    return false;
+    throw new MetadataUpdater::ConfigurationValidationError(
+        "Current node cannot be empty");
   }
-
-  return true;
 }
 
 void KubernetesReader::PodCallback(
@@ -1233,12 +1268,16 @@ KubernetesUpdater::KubernetesUpdater(const Configuration& config,
         config.KubernetesUpdaterIntervalSeconds(),
         [=]() { return reader_.MetadataQuery(); }) { }
 
-bool KubernetesUpdater::ValidateConfiguration() const {
-  if (!PollingMetadataUpdater::ValidateConfiguration()) {
-    return false;
-  }
+void KubernetesUpdater::ValidateConfiguration() const
+    throw(ConfigurationValidationError) {
+  PollingMetadataUpdater::ValidateConfiguration();
+  reader_.ValidateConfiguration();
+}
 
-  return reader_.ValidateConfiguration();
+bool KubernetesUpdater::ShouldStartUpdater() const {
+  return
+      PollingMetadataUpdater::ShouldStartUpdater() ||
+      config().KubernetesUseWatch();
 }
 
 void KubernetesUpdater::StartUpdater() {

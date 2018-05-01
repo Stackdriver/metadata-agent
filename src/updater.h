@@ -55,12 +55,22 @@ class MetadataUpdater {
     MetadataStore::Metadata metadata_;
   };
 
+  // A representation of all validation errors.
+  class ConfigurationValidationError {
+   public:
+    ConfigurationValidationError(const std::string& what)
+        : explanation_(what) {}
+    const std::string& what() const { return explanation_; }
+   private:
+    std::string explanation_;
+  };
+
   MetadataUpdater(const Configuration& config, MetadataStore* store,
                   const std::string& name);
   virtual ~MetadataUpdater();
 
   // Starts updating.
-  void start();
+  void start() throw(ConfigurationValidationError);
 
   // Stops updating.
   void stop();
@@ -71,9 +81,15 @@ class MetadataUpdater {
  protected:
   friend class UpdaterTest;
 
-  // Validates the relevant configuration and returns true if it's correct.
-  // Returns a bool that represents if it's configured properly.
-  virtual bool ValidateConfiguration() const {
+  // Validates the relevant configuration.
+  // If the configuration is invalid, throws a ConfigurationValidationError,
+  // which is generally expected to pass through and terminate the program.
+  virtual void ValidateConfiguration() const
+      throw(ConfigurationValidationError) {}
+
+  // Decides whether the updater logic should be started based on the current
+  // configuration.
+  virtual bool ShouldStartUpdater() const {
     return true;
   }
 
@@ -93,7 +109,7 @@ class MetadataUpdater {
     store_->UpdateMetadata(result.resource_, std::move(result.metadata_));
   }
 
-  const Configuration& config() {
+  const Configuration& config() const {
     return config_;
   }
 
@@ -119,7 +135,8 @@ class PollingMetadataUpdater : public MetadataUpdater {
  protected:
   friend class UpdaterTest;
 
-  bool ValidateConfiguration() const;
+  void ValidateConfiguration() const throw(ConfigurationValidationError);
+  bool ShouldStartUpdater() const;
   void StartUpdater();
   void StopUpdater();
 
