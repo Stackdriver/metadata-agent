@@ -31,9 +31,10 @@ MetadataUpdater::MetadataUpdater(const Configuration& config,
 MetadataUpdater::~MetadataUpdater() {}
 
 void MetadataUpdater::start() throw(ConfigurationValidationError) {
-  ValidateConfiguration();
+  ValidateStaticConfiguration();
 
   if (ShouldStartUpdater()) {
+    ValidateDynamicConfiguration();
     StartUpdater();
   } else {
     LOG(INFO) << "Not starting " << name_;
@@ -60,7 +61,7 @@ PollingMetadataUpdater::~PollingMetadataUpdater() {
   }
 }
 
-void PollingMetadataUpdater::ValidateConfiguration() const
+void PollingMetadataUpdater::ValidateStaticConfiguration() const
     throw(ConfigurationValidationError) {
   if (period_ < time::seconds::zero()) {
     throw ConfigurationValidationError(

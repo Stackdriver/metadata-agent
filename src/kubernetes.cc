@@ -1072,7 +1072,7 @@ void KubernetesReader::UpdateServiceToPodsCache(
   }
 }
 
-void KubernetesReader::ValidateConfiguration() const
+void KubernetesReader::ValidateDynamicConfiguration() const
     throw(MetadataUpdater::ConfigurationValidationError) {
   try {
     util::Retry<NonRetriableError, QueryException>(
@@ -1268,10 +1268,10 @@ KubernetesUpdater::KubernetesUpdater(const Configuration& config,
         config.KubernetesUpdaterIntervalSeconds(),
         [=]() { return reader_.MetadataQuery(); }) { }
 
-void KubernetesUpdater::ValidateConfiguration() const
+void KubernetesUpdater::ValidateDynamicConfiguration() const
     throw(ConfigurationValidationError) {
-  PollingMetadataUpdater::ValidateConfiguration();
-  reader_.ValidateConfiguration();
+  PollingMetadataUpdater::ValidateDynamicConfiguration();
+  reader_.ValidateDynamicConfiguration();
 }
 
 bool KubernetesUpdater::ShouldStartUpdater() const {
