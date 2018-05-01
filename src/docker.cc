@@ -58,7 +58,7 @@ class DockerReader::NonRetriableError : public DockerReader::QueryException {
 DockerReader::DockerReader(const Configuration& config)
     : config_(config), environment_(config) {}
 
-void DockerReader::ValidateConfiguration() const
+void DockerReader::ValidateDynamicConfiguration() const
     throw(MetadataUpdater::ConfigurationValidationError) {
   const std::string container_filter(
       config_.DockerContainerFilter().empty()
@@ -230,10 +230,10 @@ json::value DockerReader::QueryDocker(const std::string& path) const
   }
 }
 
-void DockerUpdater::ValidateConfiguration() const
+void DockerUpdater::ValidateDynamicConfiguration() const
     throw(ConfigurationValidationError) {
-  PollingMetadataUpdater::ValidateConfiguration();
-  reader_.ValidateConfiguration();
+  PollingMetadataUpdater::ValidateDynamicConfiguration();
+  reader_.ValidateDynamicConfiguration();
 }
 
 }
