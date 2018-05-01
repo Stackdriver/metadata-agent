@@ -43,6 +43,9 @@ namespace google {
 
 namespace {
 
+constexpr const int kKubernetesValidationRetryLimit = 10;
+constexpr const int kKubernetesValidationRetryDelaySeconds = 1;
+
 #if 0
 constexpr const char kKubernetesEndpointHost[] = "https://kubernetes.default.svc";
 #endif
@@ -88,6 +91,13 @@ bool ReadServiceAccountSecret(
 }
 
 }
+
+// A subclass of QueryException to represent non-retriable errors.
+class KubernetesReader::NonRetriableError
+    : public KubernetesReader::QueryException {
+ public:
+  NonRetriableError(const std::string& what) : QueryException(what) {}
+};
 
 KubernetesReader::KubernetesReader(const Configuration& config,
                                    HealthChecker* health_checker)
@@ -654,7 +664,12 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
   }
   try {
     http::client::response response = client.get(request);
-    if (status(response) >= 300) {
+    if (status(response) >= 400 && status(response) <= 403) {
+      throw NonRetriableError(
+          format::Substitute("Server responded with '{{message}}' ({{code}})",
+                             {{"message", status_message(response)},
+                              {"code", format::str(status(response))}}));
+    } else if (status(response) >= 300) {
       throw boost::system::system_error(
           boost::system::errc::make_error_code(boost::system::errc::not_connected),
           format::Substitute("Server responded with '{{message}}' ({{code}})",
@@ -1056,28 +1071,51 @@ void KubernetesReader::UpdateServiceToPodsCache(
   }
 }
 
-bool KubernetesReader::ValidateConfiguration() const {
-  try {
-    (void) QueryMaster(std::string(kKubernetesEndpointPath) + "/nodes?limit=1");
-  } catch (const QueryException& e) {
-    // Already logged.
-    return false;
+bool KubernetesReader::ValidateConfiguration() const
+    throw(MetadataUpdater::ValidationError) {
+  for (int i = 0; true; ++i) {
+    try {
+      (void) QueryMaster(std::string(kKubernetesEndpointPath) + "/nodes?limit=1");
+    } catch (const NonRetriableError& e) {
+      throw MetadataUpdater::ValidationError(
+          "Node query validation failed: " + e.what());
+    } catch (const QueryException& e) {
+      // Already logged.
+      if (i < kKubernetesValidationRetryLimit) {
+        std::this_thread::sleep_for(
+          time::seconds(kKubernetesValidationRetryDelaySeconds));
+      } else {
+        throw MetadataUpdater::ValidationError(
+            "Node query retry limit reached: " + e.what());
+      }
+    }
   }
 
-  try {
-    const std::string pod_label_selector(
-        config_.KubernetesPodLabelSelector().empty()
-        ? "" : "&" + config_.KubernetesPodLabelSelector());
+  for (int i = 0; true; ++i) {
+    try {
+      const std::string pod_label_selector(
+          config_.KubernetesPodLabelSelector().empty()
+          ? "" : "&" + config_.KubernetesPodLabelSelector());
 
-    (void) QueryMaster(std::string(kKubernetesEndpointPath) + "/pods?limit=1" +
-                       pod_label_selector);
-  } catch (const QueryException& e) {
-    // Already logged.
-    return false;
+      (void) QueryMaster(std::string(kKubernetesEndpointPath)
+                         + "/pods?limit=1" + pod_label_selector);
+    } catch (const NonRetriableError& e) {
+      throw MetadataUpdater::ValidationError(
+          "Pod query validation failed: " + e.what());
+    } catch (const QueryException& e) {
+      // Already logged.
+      if (i < kKubernetesValidationRetryLimit) {
+        std::this_thread::sleep_for(
+            time::seconds(kKubernetesValidationRetryDelaySeconds));
+      } else {
+        throw MetadataUpdater::ValidationError(
+            "Pod query retry limit reached: " + e.what());
+      }
+    }
   }
 
   if (CurrentNode().empty()) {
-    return false;
+    throw new MetadataUpdater::ValidationError("Current node cannot be empty");
   }
 
   return true;
@@ -1233,8 +1271,9 @@ KubernetesUpdater::KubernetesUpdater(const Configuration& config,
         config.KubernetesUpdaterIntervalSeconds(),
         [=]() { return reader_.MetadataQuery(); }) { }
 
-bool KubernetesUpdater::ValidateConfiguration() const {
-  if (!PollingMetadataUpdater::ValidateConfiguration()) {
+bool KubernetesUpdater::ValidateConfiguration() const throw(ValidationError) {
+  if (!PollingMetadataUpdater::ValidateConfiguration() &&
+      !config().KubernetesUseWatch()) {
     return false;
   }
 

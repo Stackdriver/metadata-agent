@@ -36,6 +36,9 @@ namespace google {
 
 namespace {
 
+constexpr const int kDockerValidationRetryLimit = 10;
+constexpr const int kDockerValidationRetryDelaySeconds = 1;
+
 #if 0
 constexpr const char kDockerEndpointHost[] = "unix://%2Fvar%2Frun%2Fdocker.sock/";
 constexpr const char kDockerApiVersion[] = "1.23";
@@ -45,24 +48,42 @@ constexpr const char kDockerContainerResourcePrefix[] = "container";
 
 }
 
+// A subclass of QueryException to represent non-retriable errors.
+class DockerReader::NonRetriableError : public DockerReader::QueryException {
+ public:
+  NonRetriableError(const std::string& what) : QueryException(what) {}
+};
+
 DockerReader::DockerReader(const Configuration& config)
     : config_(config), environment_(config) {}
 
-bool DockerReader::ValidateConfiguration() const {
-  try {
-    const std::string container_filter(
-        config_.DockerContainerFilter().empty()
-        ? "" : "&" + config_.DockerContainerFilter());
+bool DockerReader::ValidateConfiguration() const
+    throw(MetadataUpdater::ValidationError) {
+  for (int i = 0; true; ++i) {
+    try {
+      const std::string container_filter(
+          config_.DockerContainerFilter().empty()
+          ? "" : "&" + config_.DockerContainerFilter());
 
-    // A limit may exist in the container_filter, however, the docker API only
-    // uses the first limit provided in the query params.
-    (void) QueryDocker(std::string(kDockerEndpointPath) + 
-                       "/json?all=true&limit=1" + container_filter);
+      // A limit may exist in the container_filter, however, the docker API only
+      // uses the first limit provided in the query params.
+      (void) QueryDocker(std::string(kDockerEndpointPath) +
+                         "/json?all=true&limit=1" + container_filter);
 
-    return true;
-  } catch (const QueryException& e) {
-    // Already logged.
-    return false;
+      return true;
+    } catch (const NonRetriableError& e) {
+      throw MetadataUpdater::ValidationError(
+          "Docker query validation failed: " + e.what());
+    } catch (const QueryException& e) {
+      // Already logged.
+      if (i < kDockerValidationRetryLimit) {
+        std::this_thread::sleep_for(
+          time::seconds(kDockerValidationRetryDelaySeconds));
+      } else {
+        throw MetadataUpdater::ValidationError(
+            "Docker query retry limit reached: " + e.what());
+      }
+    }
   }
 }
 
@@ -190,7 +211,12 @@ json::value DockerReader::QueryDocker(const std::string& path) const
   }
   try {
     http::local_client::response response = client.get(request);
-    if (status(response) >= 300) {
+    if (status(response) >= 400 && status(response) <= 403) {
+      throw NonRetriableError(
+          format::Substitute("Server responded with '{{message}}' ({{code}})",
+                             {{"message", status_message(response)},
+                              {"code", format::str(status(response))}}));
+    } else if (status(response) >= 300) {
       throw boost::system::system_error(
           boost::system::errc::make_error_code(boost::system::errc::not_connected),
           format::Substitute("Server responded with '{{message}}' ({{code}})",
@@ -207,7 +233,7 @@ json::value DockerReader::QueryDocker(const std::string& path) const
   }
 }
 
-bool DockerUpdater::ValidateConfiguration() const {
+bool DockerUpdater::ValidateConfiguration() const throw(ValidationError) {
   if (!PollingMetadataUpdater::ValidateConfiguration()) {
     return false;
   }

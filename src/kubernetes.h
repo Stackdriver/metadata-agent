@@ -45,7 +45,7 @@ class KubernetesReader {
 
   // Validates the relevant configuration and returns true if it's correct.
   // Returns a bool that represents if it's configured properly.
-  bool ValidateConfiguration() const;
+  bool ValidateConfiguration() const throw(MetadataUpdater::ValidationError);
 
   // Node watcher.
   void WatchNodes(const std::string& node_name,
@@ -75,6 +75,7 @@ class KubernetesReader {
    private:
     std::string explanation_;
   };
+  class NonRetriableError;
 
   // Issues a Kubernetes master API query at a given path and
   // returns a parsed JSON response. The path has to start with "/".
@@ -226,7 +227,7 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   }
 
  protected:
-  bool ValidateConfiguration() const;
+  bool ValidateConfiguration() const throw(ValidationError);
   void StartUpdater();
 
  private:

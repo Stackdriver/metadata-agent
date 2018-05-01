@@ -36,19 +36,20 @@ class UpdaterTest : public ::testing::Test {
 
 namespace {
 
-TEST_F(UpdaterTest, OneMinutePollingIntervalIsValid) {
+TEST_F(UpdaterTest, OneMinutePollingIntervalEnablesUpdate) {
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
   EXPECT_TRUE(ValidateConfiguration(&updater));
 }
 
-TEST_F(UpdaterTest, ZeroSecondPollingIntervalIsValid) {
+TEST_F(UpdaterTest, ZeroSecondPollingIntervalDisablesUpdate) {
   PollingMetadataUpdater updater(config, &store, "Test", 0, nullptr);
-  EXPECT_TRUE(ValidateConfiguration(&updater));
+  EXPECT_FALSE(ValidateConfiguration(&updater));
 }
 
 TEST_F(UpdaterTest, NegativePollingIntervalIsInvalid) {
   PollingMetadataUpdater updater(config, &store, "BadUpdater", -1, nullptr);
-  EXPECT_FALSE(ValidateConfiguration(&updater));
+  EXPECT_THROW(
+      ValidateConfiguration(&updater), MetadataUpdater::ValidationError);
 }
 
 TEST_F(UpdaterTest, UpdateMetadataCallback) {

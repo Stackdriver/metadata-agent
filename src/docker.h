@@ -37,7 +37,7 @@ class DockerReader {
 
   // Validates the relevant configuration and returns true if it's correct.
   // Returns a bool that represents if it's configured properly.
-  bool ValidateConfiguration() const;
+  bool ValidateConfiguration() const throw(MetadataUpdater::ValidationError);
 
  private:
   // A representation of all query-related errors.
@@ -48,6 +48,7 @@ class DockerReader {
    private:
     std::string explanation_;
   };
+  class NonRetriableError;
 
   // Issues a Docker API query at a given path and returns a parsed
   // JSON response. The path has to start with "/".
@@ -72,7 +73,7 @@ class DockerUpdater : public PollingMetadataUpdater {
           [=]() { return reader_.MetadataQuery(); }) { }
 
  protected:
-  bool ValidateConfiguration() const;
+  bool ValidateConfiguration() const throw(ValidationError);
 
  private:
   DockerReader reader_;

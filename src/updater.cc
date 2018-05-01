@@ -19,6 +19,7 @@
 #include <chrono>
 
 #include "configuration.h"
+#include "format.h"
 #include "logging.h"
 
 namespace google {
@@ -29,7 +30,7 @@ MetadataUpdater::MetadataUpdater(const Configuration& config,
 
 MetadataUpdater::~MetadataUpdater() {}
 
-void MetadataUpdater::start() {
+void MetadataUpdater::start() throw(ValidationError) {
   if (!ValidateConfiguration()) {
     LOG(ERROR) << "Failed to validate configuration for " << name_;
     return;
@@ -58,8 +59,14 @@ PollingMetadataUpdater::~PollingMetadataUpdater() {
   }
 }
 
-bool PollingMetadataUpdater::ValidateConfiguration() const {
-  return period_ >= time::seconds::zero();
+bool PollingMetadataUpdater::ValidateConfiguration() const
+    throw(ValidationError) {
+  if (period_ < time::seconds::zero()) {
+    throw ValidationError(
+        format::Substitute("Polling period {{period}}s cannot be negative",
+                           {{"period", format::str(period_.count())}}));
+  }
+  return period_ > time::seconds::zero();
 }
 
 void PollingMetadataUpdater::StartUpdater() {
@@ -67,9 +74,7 @@ void PollingMetadataUpdater::StartUpdater() {
   if (config().VerboseLogging()) {
     LOG(INFO) << "Timer locked";
   }
-  if (period_ > time::seconds::zero()) {
-    reporter_thread_ = std::thread([=]() { PollForMetadata(); });
-  }
+  reporter_thread_ = std::thread([=]() { PollForMetadata(); });
 }
 
 void PollingMetadataUpdater::StopUpdater() {
