@@ -29,6 +29,7 @@
 #include "resource.h"
 #include "store.h"
 #include "time.h"
+#include "util.h"
 
 namespace http = boost::network::http;
 
@@ -59,31 +60,28 @@ DockerReader::DockerReader(const Configuration& config)
 
 bool DockerReader::ValidateConfiguration() const
     throw(MetadataUpdater::ValidationError) {
-  for (int i = 0; true; ++i) {
-    try {
-      const std::string container_filter(
-          config_.DockerContainerFilter().empty()
-          ? "" : "&" + config_.DockerContainerFilter());
+  const std::string container_filter(
+      config_.DockerContainerFilter().empty()
+      ? "" : "&" + config_.DockerContainerFilter());
 
-      // A limit may exist in the container_filter, however, the docker API only
-      // uses the first limit provided in the query params.
-      (void) QueryDocker(std::string(kDockerEndpointPath) +
-                         "/json?all=true&limit=1" + container_filter);
-
-      return true;
-    } catch (const NonRetriableError& e) {
-      throw MetadataUpdater::ValidationError(
-          "Docker query validation failed: " + e.what());
-    } catch (const QueryException& e) {
-      // Already logged.
-      if (i < kDockerValidationRetryLimit) {
-        std::this_thread::sleep_for(
-          time::seconds(kDockerValidationRetryDelaySeconds));
-      } else {
-        throw MetadataUpdater::ValidationError(
-            "Docker query retry limit reached: " + e.what());
-      }
-    }
+  try {
+    util::Retry<NonRetriableError, QueryException>(
+        kDockerValidationRetryLimit,
+        time::seconds(kDockerValidationRetryDelaySeconds),
+        [this, &container_filter]() {
+          // A limit may exist in the container_filter, however, the docker API only
+          // uses the first limit provided in the query params.
+          (void) QueryDocker(std::string(kDockerEndpointPath) +
+                             "/json?all=true&limit=1" + container_filter);
+        });
+    return true;
+  } catch (const NonRetriableError& e) {
+    throw MetadataUpdater::ValidationError(
+        "Docker query validation failed: " + e.what());
+  } catch (const QueryException& e) {
+    // Already logged.
+    throw MetadataUpdater::ValidationError(
+        "Docker query retry limit reached: " + e.what());
   }
 }
 

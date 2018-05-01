@@ -36,6 +36,7 @@
 #include "resource.h"
 #include "store.h"
 #include "time.h"
+#include "util.h"
 
 namespace http = boost::network::http;
 
@@ -1073,45 +1074,42 @@ void KubernetesReader::UpdateServiceToPodsCache(
 
 bool KubernetesReader::ValidateConfiguration() const
     throw(MetadataUpdater::ValidationError) {
-  for (int i = 0; true; ++i) {
-    try {
-      (void) QueryMaster(std::string(kKubernetesEndpointPath) + "/nodes?limit=1");
-    } catch (const NonRetriableError& e) {
-      throw MetadataUpdater::ValidationError(
-          "Node query validation failed: " + e.what());
-    } catch (const QueryException& e) {
-      // Already logged.
-      if (i < kKubernetesValidationRetryLimit) {
-        std::this_thread::sleep_for(
-          time::seconds(kKubernetesValidationRetryDelaySeconds));
-      } else {
-        throw MetadataUpdater::ValidationError(
-            "Node query retry limit reached: " + e.what());
-      }
-    }
+  try {
+    util::Retry<NonRetriableError, QueryException>(
+        kKubernetesValidationRetryLimit,
+        time::seconds(kKubernetesValidationRetryDelaySeconds),
+        [this]() {
+          (void) QueryMaster(std::string(kKubernetesEndpointPath)
+                             + "/nodes?limit=1");
+        });
+  } catch (const NonRetriableError& e) {
+    throw MetadataUpdater::ValidationError(
+        "Node query validation failed: " + e.what());
+  } catch (const QueryException& e) {
+    // Already logged.
+    throw MetadataUpdater::ValidationError(
+        "Node query retry limit reached: " + e.what());
   }
 
-  for (int i = 0; true; ++i) {
-    try {
-      const std::string pod_label_selector(
-          config_.KubernetesPodLabelSelector().empty()
-          ? "" : "&" + config_.KubernetesPodLabelSelector());
+  const std::string pod_label_selector(
+      config_.KubernetesPodLabelSelector().empty()
+      ? "" : "&" + config_.KubernetesPodLabelSelector());
 
-      (void) QueryMaster(std::string(kKubernetesEndpointPath)
-                         + "/pods?limit=1" + pod_label_selector);
-    } catch (const NonRetriableError& e) {
-      throw MetadataUpdater::ValidationError(
-          "Pod query validation failed: " + e.what());
-    } catch (const QueryException& e) {
-      // Already logged.
-      if (i < kKubernetesValidationRetryLimit) {
-        std::this_thread::sleep_for(
-            time::seconds(kKubernetesValidationRetryDelaySeconds));
-      } else {
-        throw MetadataUpdater::ValidationError(
-            "Pod query retry limit reached: " + e.what());
-      }
-    }
+  try {
+    util::Retry<NonRetriableError, QueryException>(
+      kKubernetesValidationRetryLimit,
+      time::seconds(kKubernetesValidationRetryDelaySeconds),
+      [this, &pod_label_selector]() {
+        (void) QueryMaster(std::string(kKubernetesEndpointPath)
+                           + "/pods?limit=1" + pod_label_selector);
+      });
+  } catch (const NonRetriableError& e) {
+    throw MetadataUpdater::ValidationError(
+        "Pod query validation failed: " + e.what());
+  } catch (const QueryException& e) {
+    // Already logged.
+    throw MetadataUpdater::ValidationError(
+        "Pod query retry limit reached: " + e.what());
   }
 
   if (CurrentNode().empty()) {
