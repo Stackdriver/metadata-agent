@@ -84,10 +84,12 @@ class MetadataUpdater {
   // Validates the relevant configuration.
   // If the configuration is invalid, throws a ConfigurationValidationError,
   // which is generally expected to pass through and terminate the program.
-  // Returns whether the updater logic should be started based on the current
+  virtual void ValidateConfiguration() const
+      throw(ConfigurationValidationError) {}
+
+  // Decides whether the updater logic should be started based on the current
   // configuration.
-  virtual bool ValidateConfiguration() const
-      throw(ConfigurationValidationError) {
+  virtual bool ShouldStartUpdater() const {
     return true;
   }
 
@@ -133,7 +135,8 @@ class PollingMetadataUpdater : public MetadataUpdater {
  protected:
   friend class UpdaterTest;
 
-  bool ValidateConfiguration() const throw(ConfigurationValidationError);
+  void ValidateConfiguration() const throw(ConfigurationValidationError);
+  bool ShouldStartUpdater() const;
   void StartUpdater();
   void StopUpdater();
 

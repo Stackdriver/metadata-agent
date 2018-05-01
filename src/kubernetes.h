@@ -43,9 +43,8 @@ class KubernetesReader {
   // A Kubernetes metadata query function.
   std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
-  // Validates the relevant configuration and returns true if it's correct.
-  // Returns a bool that represents if it's configured properly.
-  bool ValidateConfiguration() const
+  // Validates the relevant configuration and throws if it's incorrect.
+  void ValidateConfiguration() const
       throw(MetadataUpdater::ConfigurationValidationError);
 
   // Node watcher.
@@ -228,7 +227,9 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   }
 
  protected:
-  bool ValidateConfiguration() const throw(ConfigurationValidationError);
+  void ValidateConfiguration() const throw(ConfigurationValidationError);
+  bool ShouldStartUpdater() const;
+
   void StartUpdater();
 
  private:

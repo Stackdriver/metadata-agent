@@ -31,12 +31,13 @@ MetadataUpdater::MetadataUpdater(const Configuration& config,
 MetadataUpdater::~MetadataUpdater() {}
 
 void MetadataUpdater::start() throw(ConfigurationValidationError) {
-  if (!ValidateConfiguration()) {
-    LOG(ERROR) << "Failed to validate configuration for " << name_;
-    return;
-  }
+  ValidateConfiguration();
 
-  StartUpdater();
+  if (ShouldStartUpdater()) {
+    StartUpdater();
+  } else {
+    LOG(INFO) << "Not starting " << name_;
+  }
 }
 
 void MetadataUpdater::stop() {
@@ -59,13 +60,16 @@ PollingMetadataUpdater::~PollingMetadataUpdater() {
   }
 }
 
-bool PollingMetadataUpdater::ValidateConfiguration() const
+void PollingMetadataUpdater::ValidateConfiguration() const
     throw(ConfigurationValidationError) {
   if (period_ < time::seconds::zero()) {
     throw ConfigurationValidationError(
         format::Substitute("Polling period {{period}}s cannot be negative",
                            {{"period", format::str(period_.count())}}));
   }
+}
+
+bool PollingMetadataUpdater::ShouldStartUpdater() const {
   return period_ > time::seconds::zero();
 }
 

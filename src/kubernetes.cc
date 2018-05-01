@@ -1072,7 +1072,7 @@ void KubernetesReader::UpdateServiceToPodsCache(
   }
 }
 
-bool KubernetesReader::ValidateConfiguration() const
+void KubernetesReader::ValidateConfiguration() const
     throw(MetadataUpdater::ConfigurationValidationError) {
   try {
     util::Retry<NonRetriableError, QueryException>(
@@ -1116,8 +1116,6 @@ bool KubernetesReader::ValidateConfiguration() const
     throw new MetadataUpdater::ConfigurationValidationError(
         "Current node cannot be empty");
   }
-
-  return true;
 }
 
 void KubernetesReader::PodCallback(
@@ -1270,14 +1268,16 @@ KubernetesUpdater::KubernetesUpdater(const Configuration& config,
         config.KubernetesUpdaterIntervalSeconds(),
         [=]() { return reader_.MetadataQuery(); }) { }
 
-bool KubernetesUpdater::ValidateConfiguration() const
+void KubernetesUpdater::ValidateConfiguration() const
     throw(ConfigurationValidationError) {
-  if (!PollingMetadataUpdater::ValidateConfiguration() &&
-      !config().KubernetesUseWatch()) {
-    return false;
-  }
+  PollingMetadataUpdater::ValidateConfiguration();
+  reader_.ValidateConfiguration();
+}
 
-  return reader_.ValidateConfiguration();
+bool KubernetesUpdater::ShouldStartUpdater() const {
+  return
+      PollingMetadataUpdater::ShouldStartUpdater() ||
+      config().KubernetesUseWatch();
 }
 
 void KubernetesUpdater::StartUpdater() {

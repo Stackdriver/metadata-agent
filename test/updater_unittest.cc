@@ -14,8 +14,12 @@ class UpdaterTest : public ::testing::Test {
   // query_metadata function not needed to test callbacks.
   UpdaterTest() : config(), store(config) {}
 
-  static bool ValidateConfiguration(MetadataUpdater* updater) {
-    return updater->ValidateConfiguration();
+  static void ValidateConfiguration(MetadataUpdater* updater) {
+    updater->ValidateConfiguration();
+  }
+
+  static bool ShouldStartUpdater(MetadataUpdater* updater) {
+    return updater->ShouldStartUpdater();
   }
 
   static void UpdateMetadataCallback(
@@ -36,21 +40,31 @@ class UpdaterTest : public ::testing::Test {
 
 namespace {
 
-TEST_F(UpdaterTest, OneMinutePollingIntervalEnablesUpdate) {
+TEST_F(UpdaterTest, ValidateConfiguration_OneMinutePollingIntervalIsValid) {
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
-  EXPECT_TRUE(ValidateConfiguration(&updater));
+  EXPECT_NO_THROW(ValidateConfiguration(&updater));
 }
 
-TEST_F(UpdaterTest, ZeroSecondPollingIntervalDisablesUpdate) {
+TEST_F(UpdaterTest, ValidateConfiguration_ZeroSecondPollingIntervalIsValid) {
   PollingMetadataUpdater updater(config, &store, "Test", 0, nullptr);
-  EXPECT_FALSE(ValidateConfiguration(&updater));
+  EXPECT_NO_THROW(ValidateConfiguration(&updater));
 }
 
-TEST_F(UpdaterTest, NegativePollingIntervalIsInvalid) {
+TEST_F(UpdaterTest, ValidateConfiguration_NegativePollingIntervalIsInvalid) {
   PollingMetadataUpdater updater(config, &store, "BadUpdater", -1, nullptr);
   EXPECT_THROW(
       ValidateConfiguration(&updater),
       MetadataUpdater::ConfigurationValidationError);
+}
+
+TEST_F(UpdaterTest, ShouldStart_OneMinutePollingIntervalEnablesUpdate) {
+  PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
+  EXPECT_TRUE(ShouldStartUpdater(&updater));
+}
+
+TEST_F(UpdaterTest, ShouldStart_ZeroSecondPollingIntervalDisablesUpdate) {
+  PollingMetadataUpdater updater(config, &store, "Test", 0, nullptr);
+  EXPECT_FALSE(ShouldStartUpdater(&updater));
 }
 
 TEST_F(UpdaterTest, UpdateMetadataCallback) {
