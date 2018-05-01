@@ -80,7 +80,7 @@ void DockerReader::ValidateConfiguration() const
   } catch (const QueryException& e) {
     // Already logged.
     throw MetadataUpdater::ConfigurationValidationError(
-        "Docker query retry limit reached: " + e.what());
+        "Docker query validation retry limit reached: " + e.what());
   }
 }
 

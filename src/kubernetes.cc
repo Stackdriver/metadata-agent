@@ -1088,7 +1088,7 @@ void KubernetesReader::ValidateConfiguration() const
   } catch (const QueryException& e) {
     // Already logged.
     throw MetadataUpdater::ConfigurationValidationError(
-        "Node query retry limit reached: " + e.what());
+        "Node query validation retry limit reached: " + e.what());
   }
 
   const std::string pod_label_selector(
@@ -1109,7 +1109,7 @@ void KubernetesReader::ValidateConfiguration() const
   } catch (const QueryException& e) {
     // Already logged.
     throw MetadataUpdater::ConfigurationValidationError(
-        "Pod query retry limit reached: " + e.what());
+        "Pod query validation retry limit reached: " + e.what());
   }
 
   if (CurrentNode().empty()) {
