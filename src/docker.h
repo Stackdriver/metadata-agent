@@ -35,8 +35,8 @@ class DockerReader {
   // A Docker metadata query function.
   std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
-  // Validates the relevant configuration and throws if it's incorrect.
-  void ValidateConfiguration() const
+  // Validates the relevant dynamic configuration and throws if it's incorrect.
+  void ValidateDynamicConfiguration() const
       throw(MetadataUpdater::ConfigurationValidationError);
 
  private:
@@ -73,7 +73,7 @@ class DockerUpdater : public PollingMetadataUpdater {
           [=]() { return reader_.MetadataQuery(); }) { }
 
  protected:
-  void ValidateConfiguration() const throw(ConfigurationValidationError);
+  void ValidateDynamicConfiguration() const throw(ConfigurationValidationError);
 
  private:
   DockerReader reader_;

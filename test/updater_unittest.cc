@@ -14,12 +14,16 @@ class UpdaterTest : public ::testing::Test {
   // query_metadata function not needed to test callbacks.
   UpdaterTest() : config(), store(config) {}
 
-  static void ValidateConfiguration(MetadataUpdater* updater) {
-    updater->ValidateConfiguration();
+  static void ValidateStaticConfiguration(MetadataUpdater* updater) {
+    updater->ValidateStaticConfiguration();
   }
 
   static bool ShouldStartUpdater(MetadataUpdater* updater) {
     return updater->ShouldStartUpdater();
+  }
+
+  static void ValidateDynamicConfiguration(MetadataUpdater* updater) {
+    updater->ValidateDynamicConfiguration();
   }
 
   static void UpdateMetadataCallback(
@@ -40,32 +44,143 @@ class UpdaterTest : public ::testing::Test {
 
 namespace {
 
-TEST_F(UpdaterTest, ValidateConfiguration_OneMinutePollingIntervalIsValid) {
+class ValidateStaticConfigurationTest : public UpdaterTest {};
+
+TEST_F(ValidateStaticConfigurationTest, OneMinutePollingIntervalIsValid) {
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
-  EXPECT_NO_THROW(ValidateConfiguration(&updater));
+  EXPECT_NO_THROW(ValidateStaticConfiguration(&updater));
 }
 
-TEST_F(UpdaterTest, ValidateConfiguration_ZeroSecondPollingIntervalIsValid) {
+TEST_F(ValidateStaticConfigurationTest, ZeroSecondPollingIntervalIsValid) {
   PollingMetadataUpdater updater(config, &store, "Test", 0, nullptr);
-  EXPECT_NO_THROW(ValidateConfiguration(&updater));
+  EXPECT_NO_THROW(ValidateStaticConfiguration(&updater));
 }
 
-TEST_F(UpdaterTest, ValidateConfiguration_NegativePollingIntervalIsInvalid) {
+TEST_F(ValidateStaticConfigurationTest, NegativePollingIntervalIsInvalid) {
   PollingMetadataUpdater updater(config, &store, "BadUpdater", -1, nullptr);
   EXPECT_THROW(
-      ValidateConfiguration(&updater),
+      ValidateStaticConfiguration(&updater),
       MetadataUpdater::ConfigurationValidationError);
 }
 
-TEST_F(UpdaterTest, ShouldStart_OneMinutePollingIntervalEnablesUpdate) {
+class ShouldStartUpdaterTest : public UpdaterTest {};
+
+TEST_F(ShouldStartUpdaterTest, OneMinutePollingIntervalEnablesUpdate) {
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
   EXPECT_TRUE(ShouldStartUpdater(&updater));
 }
 
-TEST_F(UpdaterTest, ShouldStart_ZeroSecondPollingIntervalDisablesUpdate) {
+TEST_F(ShouldStartUpdaterTest, ZeroSecondPollingIntervalDisablesUpdate) {
   PollingMetadataUpdater updater(config, &store, "Test", 0, nullptr);
   EXPECT_FALSE(ShouldStartUpdater(&updater));
 }
+
+class ValidationOrderingTest : public UpdaterTest {};
+
+class MockMetadataUpdater : public MetadataUpdater {
+ public:
+  MockMetadataUpdater(const Configuration& config, bool fail_static, bool should_start, bool fail_dynamic)
+      : MetadataUpdater(config, nullptr, "MOCK"),
+        fail_static_validation(fail_static),
+        should_start_updater(should_start),
+        fail_dynamic_validation(fail_dynamic) {}
+
+  const std::vector<std::string>& call_sequence() { return call_sequence_; }
+
+ protected:
+  void ValidateStaticConfiguration() const
+      throw(ConfigurationValidationError) {
+    call_sequence_.push_back("ValidateStaticConfiguration");
+    if (fail_static_validation) {
+      throw ConfigurationValidationError("ValidateStaticConfiguration");
+    }
+  }
+  bool ShouldStartUpdater() const {
+    call_sequence_.push_back("ShouldStartUpdater");
+    return should_start_updater;
+  }
+  void ValidateDynamicConfiguration() const
+      throw(ConfigurationValidationError) {
+    call_sequence_.push_back("ValidateDynamicConfiguration");
+    if (fail_dynamic_validation) {
+      throw ConfigurationValidationError("ValidateDynamicConfiguration");
+    }
+  }
+  void StartUpdater() {
+    call_sequence_.push_back("StartUpdater");
+  }
+  void StopUpdater() {}
+
+  mutable std::vector<std::string> call_sequence_;
+
+ private:
+  bool fail_static_validation;
+  bool should_start_updater;
+  bool fail_dynamic_validation;
+};
+
+TEST_F(ValidationOrderingTest, FailedStaticCheckStopsOtherChecks) {
+  MockMetadataUpdater updater(
+      config,
+      /*fail_static=*/true,
+      /*should_start=*/true,
+      /*fail_dynamic=*/true);
+  EXPECT_THROW(updater.start(), MetadataUpdater::ConfigurationValidationError);
+  EXPECT_EQ(
+      std::vector<std::string>({
+          "ValidateStaticConfiguration",
+      }),
+      updater.call_sequence());
+}
+
+TEST_F(ValidationOrderingTest, FalseShouldStartUpdaterStopsDynamicChecks) {
+  MockMetadataUpdater updater(
+      config,
+      /*fail_static=*/false,
+      /*should_start=*/false,
+      /*fail_dynamic=*/false);
+  EXPECT_NO_THROW(updater.start());
+  EXPECT_EQ(
+      std::vector<std::string>({
+          "ValidateStaticConfiguration",
+          "ShouldStartUpdater",
+      }),
+      updater.call_sequence());
+}
+
+TEST_F(ValidationOrderingTest, FailedDynamicCheckStopsStartUpdater) {
+  MockMetadataUpdater updater(
+      config,
+      /*fail_static=*/false,
+      /*should_start=*/true,
+      /*fail_dynamic=*/true);
+  EXPECT_THROW(updater.start(), MetadataUpdater::ConfigurationValidationError);
+  EXPECT_EQ(
+      std::vector<std::string>({
+          "ValidateStaticConfiguration",
+          "ShouldStartUpdater",
+          "ValidateDynamicConfiguration",
+      }),
+      updater.call_sequence());
+}
+
+TEST_F(ValidationOrderingTest, AllChecksPassedInvokesStartUpdater) {
+  MockMetadataUpdater updater(
+      config,
+      /*fail_static=*/false,
+      /*should_start=*/true,
+      /*fail_dynamic=*/false);
+  EXPECT_NO_THROW(updater.start());
+  EXPECT_EQ(
+      std::vector<std::string>({
+          "ValidateStaticConfiguration",
+          "ShouldStartUpdater",
+          "ValidateDynamicConfiguration",
+          "StartUpdater",
+      }),
+      updater.call_sequence());
+}
+
 
 TEST_F(UpdaterTest, UpdateMetadataCallback) {
   MetadataStore::Metadata m(
