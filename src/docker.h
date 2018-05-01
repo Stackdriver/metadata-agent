@@ -37,7 +37,8 @@ class DockerReader {
 
   // Validates the relevant configuration and returns true if it's correct.
   // Returns a bool that represents if it's configured properly.
-  bool ValidateConfiguration() const throw(MetadataUpdater::ValidationError);
+  bool ValidateConfiguration() const
+      throw(MetadataUpdater::ConfigurationValidationError);
 
  private:
   // A representation of all query-related errors.
@@ -73,7 +74,7 @@ class DockerUpdater : public PollingMetadataUpdater {
           [=]() { return reader_.MetadataQuery(); }) { }
 
  protected:
-  bool ValidateConfiguration() const throw(ValidationError);
+  bool ValidateConfiguration() const throw(ConfigurationValidationError);
 
  private:
   DockerReader reader_;

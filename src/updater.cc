@@ -30,7 +30,7 @@ MetadataUpdater::MetadataUpdater(const Configuration& config,
 
 MetadataUpdater::~MetadataUpdater() {}
 
-void MetadataUpdater::start() throw(ValidationError) {
+void MetadataUpdater::start() throw(ConfigurationValidationError) {
   if (!ValidateConfiguration()) {
     LOG(ERROR) << "Failed to validate configuration for " << name_;
     return;
@@ -60,9 +60,9 @@ PollingMetadataUpdater::~PollingMetadataUpdater() {
 }
 
 bool PollingMetadataUpdater::ValidateConfiguration() const
-    throw(ValidationError) {
+    throw(ConfigurationValidationError) {
   if (period_ < time::seconds::zero()) {
-    throw ValidationError(
+    throw ConfigurationValidationError(
         format::Substitute("Polling period {{period}}s cannot be negative",
                            {{"period", format::str(period_.count())}}));
   }

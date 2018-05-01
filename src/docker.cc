@@ -59,7 +59,7 @@ DockerReader::DockerReader(const Configuration& config)
     : config_(config), environment_(config) {}
 
 bool DockerReader::ValidateConfiguration() const
-    throw(MetadataUpdater::ValidationError) {
+    throw(MetadataUpdater::ConfigurationValidationError) {
   const std::string container_filter(
       config_.DockerContainerFilter().empty()
       ? "" : "&" + config_.DockerContainerFilter());
@@ -76,11 +76,11 @@ bool DockerReader::ValidateConfiguration() const
         });
     return true;
   } catch (const NonRetriableError& e) {
-    throw MetadataUpdater::ValidationError(
+    throw MetadataUpdater::ConfigurationValidationError(
         "Docker query validation failed: " + e.what());
   } catch (const QueryException& e) {
     // Already logged.
-    throw MetadataUpdater::ValidationError(
+    throw MetadataUpdater::ConfigurationValidationError(
         "Docker query retry limit reached: " + e.what());
   }
 }
@@ -231,7 +231,8 @@ json::value DockerReader::QueryDocker(const std::string& path) const
   }
 }
 
-bool DockerUpdater::ValidateConfiguration() const throw(ValidationError) {
+bool DockerUpdater::ValidateConfiguration() const
+    throw(ConfigurationValidationError) {
   if (!PollingMetadataUpdater::ValidateConfiguration()) {
     return false;
   }

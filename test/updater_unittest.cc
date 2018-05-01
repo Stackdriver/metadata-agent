@@ -49,7 +49,8 @@ TEST_F(UpdaterTest, ZeroSecondPollingIntervalDisablesUpdate) {
 TEST_F(UpdaterTest, NegativePollingIntervalIsInvalid) {
   PollingMetadataUpdater updater(config, &store, "BadUpdater", -1, nullptr);
   EXPECT_THROW(
-      ValidateConfiguration(&updater), MetadataUpdater::ValidationError);
+      ValidateConfiguration(&updater),
+      MetadataUpdater::ConfigurationValidationError);
 }
 
 TEST_F(UpdaterTest, UpdateMetadataCallback) {

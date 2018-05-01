@@ -45,7 +45,8 @@ class KubernetesReader {
 
   // Validates the relevant configuration and returns true if it's correct.
   // Returns a bool that represents if it's configured properly.
-  bool ValidateConfiguration() const throw(MetadataUpdater::ValidationError);
+  bool ValidateConfiguration() const
+      throw(MetadataUpdater::ConfigurationValidationError);
 
   // Node watcher.
   void WatchNodes(const std::string& node_name,
@@ -227,7 +228,7 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   }
 
  protected:
-  bool ValidateConfiguration() const throw(ValidationError);
+  bool ValidateConfiguration() const throw(ConfigurationValidationError);
   void StartUpdater();
 
  private:

@@ -1073,7 +1073,7 @@ void KubernetesReader::UpdateServiceToPodsCache(
 }
 
 bool KubernetesReader::ValidateConfiguration() const
-    throw(MetadataUpdater::ValidationError) {
+    throw(MetadataUpdater::ConfigurationValidationError) {
   try {
     util::Retry<NonRetriableError, QueryException>(
         kKubernetesValidationRetryLimit,
@@ -1083,11 +1083,11 @@ bool KubernetesReader::ValidateConfiguration() const
                              + "/nodes?limit=1");
         });
   } catch (const NonRetriableError& e) {
-    throw MetadataUpdater::ValidationError(
+    throw MetadataUpdater::ConfigurationValidationError(
         "Node query validation failed: " + e.what());
   } catch (const QueryException& e) {
     // Already logged.
-    throw MetadataUpdater::ValidationError(
+    throw MetadataUpdater::ConfigurationValidationError(
         "Node query retry limit reached: " + e.what());
   }
 
@@ -1104,16 +1104,17 @@ bool KubernetesReader::ValidateConfiguration() const
                            + "/pods?limit=1" + pod_label_selector);
       });
   } catch (const NonRetriableError& e) {
-    throw MetadataUpdater::ValidationError(
+    throw MetadataUpdater::ConfigurationValidationError(
         "Pod query validation failed: " + e.what());
   } catch (const QueryException& e) {
     // Already logged.
-    throw MetadataUpdater::ValidationError(
+    throw MetadataUpdater::ConfigurationValidationError(
         "Pod query retry limit reached: " + e.what());
   }
 
   if (CurrentNode().empty()) {
-    throw new MetadataUpdater::ValidationError("Current node cannot be empty");
+    throw new MetadataUpdater::ConfigurationValidationError(
+        "Current node cannot be empty");
   }
 
   return true;
@@ -1269,7 +1270,8 @@ KubernetesUpdater::KubernetesUpdater(const Configuration& config,
         config.KubernetesUpdaterIntervalSeconds(),
         [=]() { return reader_.MetadataQuery(); }) { }
 
-bool KubernetesUpdater::ValidateConfiguration() const throw(ValidationError) {
+bool KubernetesUpdater::ValidateConfiguration() const
+    throw(ConfigurationValidationError) {
   if (!PollingMetadataUpdater::ValidateConfiguration() &&
       !config().KubernetesUseWatch()) {
     return false;
