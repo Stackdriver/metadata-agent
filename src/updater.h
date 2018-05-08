@@ -116,6 +116,10 @@ class MetadataUpdater {
     store_->UpdateMetadata(result.resource_, std::move(result.metadata_));
   }
 
+  const std::string& name() const {
+    return name_;
+  }
+
   const Configuration& config() const {
     return config_;
   }

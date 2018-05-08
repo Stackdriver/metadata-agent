@@ -1321,6 +1321,22 @@ void KubernetesUpdater::StartUpdater() {
   }
 }
 
+void KubernetesUpdater::StopUpdater() {
+  // TODO: How do we interrupt a watch thread?
+  if (config().KubernetesUseWatch()) {
+    node_watch_thread_.join();
+    pod_watch_thread_.join();
+    if (config().KubernetesClusterLevelMetadata() &&
+        config().KubernetesServiceMetadata()) {
+      service_watch_thread_.join();
+      endpoints_watch_thread_.join();
+    }
+  } else {
+    // Only stop polling if watch is disabled.
+    PollingMetadataUpdater::StopUpdater();
+  }
+}
+
 void KubernetesUpdater::MetadataCallback(
     std::vector<MetadataUpdater::ResourceMetadata>&& result_vector) {
   for (MetadataUpdater::ResourceMetadata& result : result_vector) {

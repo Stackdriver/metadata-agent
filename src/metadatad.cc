@@ -17,6 +17,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <initializer_list>
+#include <iostream>
 
 #include "agent.h"
 #include "configuration.h"
@@ -40,10 +41,14 @@ const CleanupState* cleanup_state;
 }  // google
 
 extern "C" [[noreturn]] void handle_sigterm(int signum) {
-  google::cleanup_state->server->stop();
+  std::cerr << "Caught SIGTERM; shutting down" << std::endl;
+  std::cerr << "Stopping updaters" << std::endl;
   for (google::MetadataUpdater* updater : google::cleanup_state->updaters) {
     updater->stop();
   }
+  std::cerr << "Stopping server" << std::endl;
+  google::cleanup_state->server->stop();
+  std::cerr << "Exiting" << std::endl;
   std::exit(128 + signum);
 }
 

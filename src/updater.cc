@@ -77,7 +77,7 @@ bool PollingMetadataUpdater::ShouldStartUpdater() const {
 void PollingMetadataUpdater::StartUpdater() {
   timer_.lock();
   if (config().VerboseLogging()) {
-    LOG(INFO) << "Timer locked";
+    LOG(INFO) << "Locked timer for " << name();
   }
   reporter_thread_ = std::thread([=]() { PollForMetadata(); });
 }
@@ -85,7 +85,7 @@ void PollingMetadataUpdater::StartUpdater() {
 void PollingMetadataUpdater::StopUpdater() {
   timer_.unlock();
   if (config().VerboseLogging()) {
-    LOG(INFO) << "Timer unlocked";
+    LOG(INFO) << "Unlocked timer for " << name();
   }
 }
 
@@ -99,7 +99,7 @@ void PollingMetadataUpdater::PollForMetadata() {
     }
     // An unlocked timer means we should stop updating.
     if (config().VerboseLogging()) {
-      LOG(INFO) << "Trying to unlock the timer";
+      LOG(INFO) << "Trying to unlock the timer for " << name();
     }
     auto start = std::chrono::high_resolution_clock::now();
     auto wakeup = start + period_;
@@ -113,7 +113,7 @@ void PollingMetadataUpdater::PollForMetadata() {
       if (config().VerboseLogging()) {
         LOG(INFO) << " Timer unlock timed out after "
                   << std::chrono::duration_cast<time::seconds>(now - start).count()
-                  << "s (good)";
+                  << "s (good) for " << name();
       }
       start = now;
       wakeup = start + period_;
@@ -121,7 +121,7 @@ void PollingMetadataUpdater::PollForMetadata() {
     }
   } while (!done);
   if (config().VerboseLogging()) {
-    LOG(INFO) << "Timer unlocked (stop polling)";
+    LOG(INFO) << "Timer unlocked (stop polling) for " << name();
   }
 }
 
