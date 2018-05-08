@@ -14,11 +14,38 @@
  * limitations under the License.
  **/
 
+#include <csignal>
+#include <cstdlib>
+#include <initializer_list>
+
 #include "agent.h"
 #include "configuration.h"
 #include "docker.h"
 #include "instance.h"
 #include "kubernetes.h"
+
+namespace google {
+namespace {
+
+struct CleanupState {
+  CleanupState(
+      std::initializer_list<MetadataUpdater*> updaters_, MetadataAgent* server_)
+      : updaters(updaters_), server(server_) {}
+  std::vector<MetadataUpdater*> updaters;
+  MetadataAgent* server;
+};
+const CleanupState* cleanup_state;
+
+}  // namespace
+}  // google
+
+extern "C" [[noreturn]] void handle_sigterm(int signum) {
+  google::cleanup_state->server->stop();
+  for (google::MetadataUpdater* updater : google::cleanup_state->updaters) {
+    updater->stop();
+  }
+  std::exit(128 + signum);
+}
 
 int main(int ac, char** av) {
   google::Configuration config;
@@ -32,6 +59,11 @@ int main(int ac, char** av) {
   google::InstanceUpdater instance_updater(config, server.mutable_store());
   google::DockerUpdater docker_updater(config, server.mutable_store());
   google::KubernetesUpdater kubernetes_updater(config, server.health_checker(), server.mutable_store());
+
+  google::cleanup_state = new google::CleanupState(
+      {&instance_updater, &docker_updater, &kubernetes_updater},
+      &server);
+  std::signal(SIGTERM, handle_sigterm);
 
   instance_updater.start();
   docker_updater.start();

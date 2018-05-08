@@ -41,6 +41,9 @@ class MetadataAgent {
   // Starts serving.
   void start();
 
+  // Stops serving.
+  void stop();
+
   const Configuration& config() const {
     return config_;
   }

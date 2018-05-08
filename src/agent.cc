@@ -36,4 +36,9 @@ void MetadataAgent::start() {
       config_, &store_, config_.MetadataReporterIntervalSeconds()));
 }
 
+void MetadataAgent::stop() {
+  metadata_api_server_.reset();
+  reporter_.reset();
+}
+
 }
