@@ -90,6 +90,7 @@ MetadataApiServer::MetadataApiServer(const Configuration& config,
 
 MetadataApiServer::~MetadataApiServer() {
   server_.stop();
+  LOG(INFO) << "API server stopped";
   for (auto& thread : server_pool_) {
     thread.join();
   }

@@ -42,12 +42,12 @@ const CleanupState* cleanup_state;
 
 extern "C" [[noreturn]] void handle_sigterm(int signum) {
   std::cerr << "Caught SIGTERM; shutting down" << std::endl;
+  std::cerr << "Stopping server" << std::endl;
+  google::cleanup_state->server->stop();
   std::cerr << "Stopping updaters" << std::endl;
   for (google::MetadataUpdater* updater : google::cleanup_state->updaters) {
     updater->stop();
   }
-  std::cerr << "Stopping server" << std::endl;
-  google::cleanup_state->server->stop();
   std::cerr << "Exiting" << std::endl;
   std::exit(128 + signum);
 }
@@ -59,6 +59,8 @@ int main(int ac, char** av) {
     return parse_result < 0 ? 0 : parse_result;
   }
 
+  std::mutex server_wait_mutex;
+  server_wait_mutex.lock();
   google::MetadataAgent server(config);
 
   google::InstanceUpdater instance_updater(config, server.mutable_store());
@@ -75,4 +77,6 @@ int main(int ac, char** av) {
   kubernetes_updater.start();
 
   server.start();
+  // Wait forever for the server to shut down.
+  std::lock_guard<std::mutex> await_server_shutdown(server_wait_mutex);
 }
