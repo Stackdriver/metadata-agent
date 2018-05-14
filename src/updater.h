@@ -104,6 +104,7 @@ class MetadataUpdater {
   virtual void StartUpdater() = 0;
 
   // Internal method for stopping the updater's logic.
+  // This method should not perform any blocking operations (e.g., wait).
   virtual void StopUpdater() = 0;
 
   // Updates the resource map in the store.
