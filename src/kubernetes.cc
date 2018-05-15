@@ -1321,29 +1321,12 @@ void KubernetesUpdater::StartUpdater() {
   }
 }
 
-void KubernetesUpdater::StopUpdater() {
-  // TODO: How do we interrupt a watch thread?
+void KubernetesUpdater::NotifyStopUpdater() {
   if (config().KubernetesUseWatch()) {
-#if 0
-    if (node_watch_thread_.joinable()) {
-      node_watch_thread_.join();
-    }
-    if (pod_watch_thread_.joinable()) {
-      pod_watch_thread_.join();
-    }
-    if (config().KubernetesClusterLevelMetadata() &&
-        config().KubernetesServiceMetadata()) {
-      if (service_watch_thread_.joinable()) {
-        service_watch_thread_.join();
-      }
-      if (endpoints_watch_thread_.joinable()) {
-        endpoints_watch_thread_.join();
-      }
-    }
-#endif
+    // TODO: How do we interrupt a watch thread?
   } else {
     // Only stop polling if watch is disabled.
-    PollingMetadataUpdater::StopUpdater();
+    PollingMetadataUpdater::NotifyStopUpdater();
   }
 }
 

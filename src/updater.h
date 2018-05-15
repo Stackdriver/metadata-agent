@@ -70,10 +70,10 @@ class MetadataUpdater {
   virtual ~MetadataUpdater();
 
   // Starts updating.
-  void start() throw(ConfigurationValidationError);
+  void Start() throw(ConfigurationValidationError);
 
-  // Stops updating.
-  void stop();
+  // Notifies the updater to stop updating.
+  void NotifyStop();
 
   using UpdateCallback =
       std::function<void(std::vector<MetadataUpdater::ResourceMetadata>&&)>;
@@ -103,9 +103,9 @@ class MetadataUpdater {
   // Internal method for starting the updater's logic.
   virtual void StartUpdater() = 0;
 
-  // Internal method for stopping the updater's logic.
+  // Internal method for notifying the updater's to stop its logic.
   // This method should not perform any blocking operations (e.g., wait).
-  virtual void StopUpdater() = 0;
+  virtual void NotifyStopUpdater() = 0;
 
   // Updates the resource map in the store.
   void UpdateResourceCallback(const ResourceMetadata& result) {
@@ -151,7 +151,7 @@ class PollingMetadataUpdater : public MetadataUpdater {
   using MetadataUpdater::ValidateDynamicConfiguration;
   bool ShouldStartUpdater() const;
   void StartUpdater();
-  void StopUpdater();
+  void NotifyStopUpdater();
 
  private:
   friend class InstanceTest;

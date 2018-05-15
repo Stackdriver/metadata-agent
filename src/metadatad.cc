@@ -34,12 +34,12 @@ class CleanupState {
       std::initializer_list<MetadataUpdater*> updaters, MetadataAgent* server)
       : updaters_(updaters), server_(server) { server_wait_mutex_.lock(); }
 
-  void StopAll() const {
+  void StartShutdown() const {
     std::cerr << "Stopping server" << std::endl;
-    server_->stop();
+    server_->Stop();
     std::cerr << "Stopping updaters" << std::endl;
     for (MetadataUpdater* updater : updaters_) {
-      updater->stop();
+      updater->NotifyStop();
     }
     server_wait_mutex_.unlock();
   }
@@ -60,7 +60,7 @@ const CleanupState* cleanup_state;
 
 extern "C" [[noreturn]] void handle_sigterm(int signum) {
   std::cerr << "Caught SIGTERM; shutting down" << std::endl;
-  google::cleanup_state->StopAll();
+  google::cleanup_state->StartShutdown();
   std::cerr << "Exiting" << std::endl;
   std::exit(128 + signum);
 }
@@ -83,11 +83,11 @@ int main(int ac, char** av) {
       &server);
   std::signal(SIGTERM, handle_sigterm);
 
-  instance_updater.start();
-  docker_updater.start();
-  kubernetes_updater.start();
+  instance_updater.Start();
+  docker_updater.Start();
+  kubernetes_updater.Start();
 
-  server.start();
+  server.Start();
 
   // Wait for the server to shut down.
   google::cleanup_state->Wait();

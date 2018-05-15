@@ -109,7 +109,7 @@ class MockMetadataUpdater : public MetadataUpdater {
   void StartUpdater() {
     call_sequence_.push_back("StartUpdater");
   }
-  void StopUpdater() {}
+  void NotifyStopUpdater() {}
 
   mutable std::vector<std::string> call_sequence_;
 
@@ -125,7 +125,7 @@ TEST_F(ValidationOrderingTest, FailedStaticCheckStopsOtherChecks) {
       /*fail_static=*/true,
       /*should_start=*/true,
       /*fail_dynamic=*/true);
-  EXPECT_THROW(updater.start(), MetadataUpdater::ConfigurationValidationError);
+  EXPECT_THROW(updater.Start(), MetadataUpdater::ConfigurationValidationError);
   EXPECT_EQ(
       std::vector<std::string>({
           "ValidateStaticConfiguration",
@@ -139,7 +139,7 @@ TEST_F(ValidationOrderingTest, FalseShouldStartUpdaterStopsDynamicChecks) {
       /*fail_static=*/false,
       /*should_start=*/false,
       /*fail_dynamic=*/false);
-  EXPECT_NO_THROW(updater.start());
+  EXPECT_NO_THROW(updater.Start());
   EXPECT_EQ(
       std::vector<std::string>({
           "ValidateStaticConfiguration",
@@ -154,7 +154,7 @@ TEST_F(ValidationOrderingTest, FailedDynamicCheckStopsStartUpdater) {
       /*fail_static=*/false,
       /*should_start=*/true,
       /*fail_dynamic=*/true);
-  EXPECT_THROW(updater.start(), MetadataUpdater::ConfigurationValidationError);
+  EXPECT_THROW(updater.Start(), MetadataUpdater::ConfigurationValidationError);
   EXPECT_EQ(
       std::vector<std::string>({
           "ValidateStaticConfiguration",
@@ -170,7 +170,7 @@ TEST_F(ValidationOrderingTest, AllChecksPassedInvokesStartUpdater) {
       /*fail_static=*/false,
       /*should_start=*/true,
       /*fail_dynamic=*/false);
-  EXPECT_NO_THROW(updater.start());
+  EXPECT_NO_THROW(updater.Start());
   EXPECT_EQ(
       std::vector<std::string>({
           "ValidateStaticConfiguration",

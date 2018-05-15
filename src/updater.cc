@@ -30,7 +30,7 @@ MetadataUpdater::MetadataUpdater(const Configuration& config,
 
 MetadataUpdater::~MetadataUpdater() {}
 
-void MetadataUpdater::start() throw(ConfigurationValidationError) {
+void MetadataUpdater::Start() throw(ConfigurationValidationError) {
   ValidateStaticConfiguration();
 
   if (ShouldStartUpdater()) {
@@ -41,8 +41,8 @@ void MetadataUpdater::start() throw(ConfigurationValidationError) {
   }
 }
 
-void MetadataUpdater::stop() {
-  StopUpdater();
+void MetadataUpdater::NotifyStop() {
+  NotifyStopUpdater();
 }
 
 PollingMetadataUpdater::PollingMetadataUpdater(
@@ -82,7 +82,7 @@ void PollingMetadataUpdater::StartUpdater() {
   reporter_thread_ = std::thread([=]() { PollForMetadata(); });
 }
 
-void PollingMetadataUpdater::StopUpdater() {
+void PollingMetadataUpdater::NotifyStopUpdater() {
   timer_.unlock();
   if (config().VerboseLogging()) {
     LOG(INFO) << "Unlocked timer for " << name();
