@@ -37,8 +37,8 @@ void MetadataAgent::Start() {
 }
 
 void MetadataAgent::Stop() {
-  metadata_api_server_.reset();
-  reporter_.reset();
+  metadata_api_server_->Stop();
+  // TODO: Notify the metadata reporter as well.
 }
 
 }

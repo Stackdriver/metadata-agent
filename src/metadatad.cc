@@ -24,6 +24,7 @@
 #include "docker.h"
 #include "instance.h"
 #include "kubernetes.h"
+#include "time.h"
 
 namespace google {
 namespace {
@@ -42,6 +43,8 @@ class CleanupState {
       updater->NotifyStop();
     }
     server_wait_mutex_.unlock();
+    // Give the notifications some time to propagate.
+    std::this_thread::sleep_for(time::seconds(0.1));
   }
 
   void Wait() const {
