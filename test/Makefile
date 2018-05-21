@@ -35,9 +35,9 @@ LDLIBS=\
 
 UNAME_S=$(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-  CPPFLAGS+= -I/usr/local/include
+  CPPFLAGS+= -I/usr/local/include -I/usr/local/opt/openssl/include
   CXXFLAGS+= -Wno-deprecated-declarations -Wno-c++14-extensions
-  LDFLAGS+= -L/usr/local/lib
+  LDFLAGS+= -L/usr/local/lib -L/usr/local/opt/openssl/lib
 endif
 
 # Where to find code under test.

@@ -31,9 +31,9 @@ SED_EXTRA=-e 's/-Wall/-Wall -Wno-deprecated/'
 
 UNAME_S=$(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-  CPPFLAGS+= -I/usr/local/include
+  CPPFLAGS+= -I/usr/local/include -I/usr/local/opt/openssl/include
   CXXFLAGS+= -Wno-deprecated-declarations -Wno-c++14-extensions
-  LDFLAGS+= -L/usr/local/lib
+  LDFLAGS+= -L/usr/local/lib -L/usr/local/opt/openssl/lib
   SED_I+= ''
   SED_EXTRA+= -e \
       's/-Wall/-Wall -Wno-deprecated-declarations -Wno-unused-local-typedef/'

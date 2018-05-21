@@ -78,7 +78,11 @@ This is the Stackdriver metadata agent.
 
 1. Install runtime dependencies:
 
-       $ brew install boost -c++11 && \
+   *Note: this currently does not work with boost@1.67, which is the latest
+   available from Homebrew as of 2018/05/17*.
+
+       $ brew install openssl
+       $ brew install boost\@1.60 -c++11 && \
          (cd /usr/local/lib && ln -s libboost_thread-mt.a libboost_thread.a && \
           ln -s libboost_thread-mt.dylib libboost_thread.dylib)
        $ brew install yajl
