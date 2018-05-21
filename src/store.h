@@ -74,9 +74,9 @@ class MetadataStore {
 
   MetadataStore(const Configuration& config);
 
-  // Returns a copy of the mapping from a monitored resource to the metadata
+  // Returns a copy of the mapping from a full resource name to the metadata
   // associated with that resource.
-  std::map<MonitoredResource, Metadata> GetMetadataMap() const;
+  std::map<std::string, Metadata> GetMetadataMap() const;
 
   // Looks up the local resource map entry for a given resource id.
   // Throws an exception if the resource is not found.
@@ -91,8 +91,7 @@ class MetadataStore {
 
   // Updates metadata for a given resource.
   // Adds a metadata mapping from the `resource` to the metadata `entry`.
-  void UpdateMetadata(const MonitoredResource& resource,
-                      Metadata&& entry);
+  void UpdateMetadata(const std::string& full_resource_name, Metadata&& entry);
 
  private:
   friend class MetadataReporter;
@@ -108,8 +107,8 @@ class MetadataStore {
   std::map<std::string, MonitoredResource> resource_map_;
   // A lock that guards access to the metadata map.
   mutable std::mutex metadata_mu_;
-  // A map from MonitoredResource to (JSON) resource metadata.
-  std::map<MonitoredResource, Metadata> metadata_map_;
+  // A map from Full Resource Name to (JSON) resource metadata.
+  std::map<std::string, Metadata> metadata_map_;
 };
 
 }
