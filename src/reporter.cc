@@ -112,7 +112,7 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 }
 
 void MetadataReporter::SendMetadata(
-    std::map<MonitoredResource, MetadataStore::Metadata>&& metadata)
+    std::map<std::string, MetadataStore::Metadata>&& metadata)
     throw (boost::system::system_error) {
   if (metadata.empty()) {
     if (config_.VerboseLogging()) {
@@ -144,14 +144,14 @@ void MetadataReporter::SendMetadata(
 
   std::vector<json::value> entries;
   for (auto& entry : metadata) {
-    const MonitoredResource& resource = entry.first;
+    const std::string& full_resource_name = entry.first;
     MetadataStore::Metadata& metadata = entry.second;
     if (metadata.ignore) {
       continue;
     }
     json::value metadata_entry =
         json::object({  // MonitoredResourceMetadata
-          {"resource", resource.ToJSON()},
+          {"name", json::string(full_resource_name)},
           {"rawContentVersion", json::string(metadata.version)},
           {"rawContent", std::move(metadata.metadata)},
           {"state", json::string(metadata.is_deleted ? "DELETED" : "ACTIVE")},
