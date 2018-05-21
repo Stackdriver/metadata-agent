@@ -78,7 +78,7 @@ This is the Stackdriver metadata agent.
 
 1. Install runtime dependencies:
 
-   *Note: this currently does not works with boost@1.67, which is the latest
+   *Note: this currently does not work with boost@1.67, which is the latest
    available from Homebrew as of 2018/05/17*.
 
        $ brew install openssl
