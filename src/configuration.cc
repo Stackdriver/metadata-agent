@@ -136,9 +136,10 @@ int Configuration::ParseArguments(int ac, char** av) {
            "Enable verbose logging")
       ("option,o",
             boost::program_options::value<std::vector<std::string>>()
-                ->multitoken()->zero_tokens()->composing(),
+                ->composing(),
             "Explicit configuration option, e.g. "
-            "-o CredentialsFile=/tmp/token.json")
+            "-o CredentialsFile=/tmp/token.json "
+            "(can be specified multiple times)")
       ;
   boost::program_options::options_description hidden_desc;
   hidden_desc.add_options()
@@ -174,7 +175,7 @@ int Configuration::ParseArguments(int ac, char** av) {
       std::stringstream option_stream;
       const std::vector<std::string> options =
           flags["option"].as<std::vector<std::string>>();
-      for (const std::string& option: options) {
+      for (const std::string& option : options) {
         std::size_t separator_pos = option.find("=");
         if (separator_pos == std::string::npos) {
           std::cerr << "Invalid option " << option;
@@ -278,10 +279,10 @@ void Configuration::ParseConfiguration(std::istream& input) {
       config["KubernetesUseWatch"].as<bool>(kubernetes_use_watch_);
   kubernetes_cluster_level_metadata_ =
       config["KubernetesClusterLevelMetadata"].as<bool>(
-          kKubernetesDefaultClusterLevelMetadata);
+          kubernetes_cluster_level_metadata_);
   kubernetes_service_metadata_ =
       config["KubernetesServiceMetadata"].as<bool>(
-          kKubernetesDefaultServiceMetadata);
+          kubernetes_service_metadata_);
   instance_id_ =
       config["InstanceId"].as<std::string>(instance_id_);
   instance_zone_ =

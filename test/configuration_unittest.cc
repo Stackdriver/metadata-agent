@@ -87,4 +87,35 @@ TEST(ConfigurationTest, BlankLine) {
   EXPECT_EQ(true, config.MetadataReporterPurgeDeleted());
 }
 
+class ConfigurationArgumentParserTest : public ::testing::Test {
+ protected:
+  static int ParseArguments(Configuration* config, int ac, char** av) {
+    return config->ParseArguments(ac, av);
+  }
+};
+
+TEST_F(ConfigurationArgumentParserTest, CommandLineOverride) {
+  Configuration config(std::istringstream(
+      "ProjectId: TestProjectId\n"
+      "MetadataApiNumThreads: 13\n"
+  ));
+  // First, a sanity check.
+  EXPECT_EQ("TestProjectId", config.ProjectId());
+  EXPECT_EQ(13, config.MetadataApiNumThreads());
+  EXPECT_EQ(false, config.MetadataReporterPurgeDeleted());
+
+  char* arguments[] = {
+    "/path/to/metadatad",
+    "-o",
+    "ProjectId=NewProjectId",
+    "-o",
+    "MetadataReporterPurgeDeleted=true",
+  };
+  ParseArguments(&config, sizeof(arguments) / sizeof(char*), arguments);
+
+  EXPECT_EQ("NewProjectId", config.ProjectId());
+  EXPECT_EQ(13, config.MetadataApiNumThreads());
+  EXPECT_EQ(true, config.MetadataReporterPurgeDeleted());
+}
+
 }  // namespace google

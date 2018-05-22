@@ -164,6 +164,7 @@ class Configuration {
   }
 
  private:
+  friend class ConfigurationArgumentParserTest;
   friend int ::main(int, char**);  // Calls ParseArguments.
 
   void ParseConfigFile(const std::string& filename);
