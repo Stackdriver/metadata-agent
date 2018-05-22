@@ -21,7 +21,6 @@
 
 #include "agent.h"
 #include "configuration.h"
-#include "docker.h"
 #include "instance.h"
 #include "kubernetes.h"
 #include "time.h"
@@ -78,16 +77,14 @@ int main(int ac, char** av) {
   google::MetadataAgent server(config);
 
   google::InstanceUpdater instance_updater(config, server.mutable_store());
-  google::DockerUpdater docker_updater(config, server.mutable_store());
   google::KubernetesUpdater kubernetes_updater(config, server.health_checker(), server.mutable_store());
 
   google::cleanup_state = new google::CleanupState(
-      {&instance_updater, &docker_updater, &kubernetes_updater},
+      {&instance_updater, &kubernetes_updater},
       &server);
   std::signal(SIGTERM, handle_sigterm);
 
   instance_updater.Start();
-  docker_updater.Start();
   kubernetes_updater.Start();
 
   server.Start();
