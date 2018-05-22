@@ -11,7 +11,7 @@ RUN apt-get update \
     && apt-get install -f -y \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /stackdriver-metadata.deb
-ADD entrypoint.sh /entrypoint.sh
+COPY entrypoint.sh /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/opt/stackdriver/metadata/sbin/metadatad"]
