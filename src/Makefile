@@ -170,7 +170,7 @@ $(CPP_NETLIB_DIR)/Makefile: init-submodules
 	cd $(CPP_NETLIB_DIR) && \
 	$(SED_I) -e 's/unit_test_framework //' $(SED_EXTRA) CMakeLists.txt && \
 	$(CMAKE) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
-	    -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
+	    -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) \
 	    -DCPP-NETLIB_BUILD_TESTS=OFF -DCPP-NETLIB_BUILD_EXAMPLES=OFF \
 	    -DUri_BUILD_TESTS=OFF -DUri_BUILD_DOCS=OFF
 
@@ -184,7 +184,7 @@ build-cpp-netlib: $(CPP_NETLIB_DIR)/Makefile
 $(YAML_CPP_DIR)/Makefile: init-submodules
 	cd $(YAML_CPP_DIR) && \
 	$(CMAKE) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
-	    -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
+	    -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) \
 	    -DYAML_CPP_BUILD_TOOLS=OFF
 
 $(YAML_CPP_LIBS): build-yaml-cpp
