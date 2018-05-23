@@ -70,9 +70,6 @@ json::value ReadCredentials(
   return std::move(creds_json);
 }
 
-constexpr const char kGceMetadataServerAddress[] =
-    "http://metadata.google.internal./computeMetadata/v1/";
-
 constexpr const char kGceInstanceResourceType[] = "gce_instance";
 
 }
@@ -83,7 +80,7 @@ Environment::Environment(const Configuration& config)
 std::string Environment::GetMetadataString(const std::string& path) const {
   http::client::options options;
   http::client client(options.timeout(2));
-  http::client::request request(kGceMetadataServerAddress + path);
+  http::client::request request(config_.GceMetadataServerAddress() + path);
   request << boost::network::header("Metadata-Flavor", "Google");
   try {
     http::client::response response = client.get(request);
@@ -98,7 +95,7 @@ std::string Environment::GetMetadataString(const std::string& path) const {
     }
   } catch (const boost::system::system_error& e) {
     LOG(ERROR) << "Exception: " << e.what()
-               << ": '" << kGceMetadataServerAddress << path << "'";
+               << ": '" << config_.GceMetadataServerAddress() << path << "'";
     return "";
   }
 }

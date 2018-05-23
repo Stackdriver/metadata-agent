@@ -39,6 +39,8 @@ constexpr const char kConfigFileFlag[] = "config-file";
 
 constexpr const char kDefaultProjectId[] = "";
 constexpr const char kDefaultCredentialsFile[] = "";
+constexpr const char kGceMetadataServerAddress[] =
+    "http://metadata.google.internal./computeMetadata/v1/";
 constexpr const int kMetadataApiDefaultNumThreads = 3;
 constexpr const int kMetadataApiDefaultPort = 8000;
 constexpr const char kMetadataApiDefaultResourceTypeSeparator[] = ".";
@@ -82,6 +84,7 @@ Configuration::Configuration()
     : project_id_(kDefaultProjectId),
       credentials_file_(kDefaultCredentialsFile),
       verbose_logging_(false),
+      gce_metadata_server_address_(kGceMetadataServerAddress),
       metadata_api_num_threads_(kMetadataApiDefaultNumThreads),
       metadata_api_port_(kMetadataApiDefaultPort),
       metadata_api_resource_type_separator_(
@@ -215,6 +218,9 @@ void Configuration::ParseConfiguration(std::istream& input) {
       config["ProjectId"].as<std::string>(project_id_);
   credentials_file_ =
       config["CredentialsFile"].as<std::string>(credentials_file_);
+  gce_metadata_server_address_ =
+      config["GceMetadataServerAddress"].as<std::string>(
+          gce_metadata_server_address_);
   metadata_api_num_threads_ =
       config["MetadataApiNumThreads"].as<int>(metadata_api_num_threads_);
   metadata_api_port_ =
