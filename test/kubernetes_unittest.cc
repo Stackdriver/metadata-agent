@@ -2,8 +2,11 @@
 #include "../src/resource.h"
 #include "../src/kubernetes.h"
 #include "../src/updater.h"
+#include "fake_http_server.h"
 #include "gtest/gtest.h"
 #include "temp_file.h"
+
+#include <boost/network/protocol/http/server.hpp>
 
 namespace google {
 
@@ -742,6 +745,140 @@ TEST_F(KubernetesTest, KubernetesNamespace) {
   // Check that the value is cached.
   namespace_file.SetContents("updated-namespace");
   EXPECT_EQ("the-namespace", KubernetesNamespace(reader));
+}
+
+// Repeatedly calls f(), and returns true if f() returns true within 3
+// seconds.
+bool Poll(std::function<bool()> f) {
+  for (int j = 0; j < 30; j++) {
+    if (f()) {
+      return true;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  return false;
+}
+
+TEST_F(KubernetesTest, KubernetesUpdater) {
+  // Create a fake server representing the Kubernetes master.
+  testing::FakeServer server;
+  server.SetResponse("/api/v1/nodes?limit=1", "{}");
+  server.SetResponse("/api/v1/pods?limit=1", "{}");
+  server.AllowStream(
+      "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true");
+  server.AllowStream(
+      "/api/v1/watch/nodes/TestNodeName?watch=true");
+
+  // Start the updater with a config that points to the fake server.
+  Configuration config(std::istringstream(
+      "KubernetesEndpointHost: " + server.GetUrl() + "\n"
+      "KubernetesNodeName: TestNodeName\n"
+      "KubernetesUseWatch: true\n"
+  ));
+  MetadataStore store(config);
+  KubernetesUpdater updater(config, /*health_checker=*/nullptr, &store);
+  std::thread updater_thread([&updater] { updater.start(); });
+
+  // Wait for updater's watchers to connect to the server (hanging GETs).
+  server.WaitForOneStreamWatcher(
+      "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true");
+  server.WaitForOneStreamWatcher(
+      "/api/v1/watch/nodes/TestNodeName?watch=true");
+
+  // For nodes, send stream responses from the fake Kubernetes
+  // master and verify that the updater propagates them to the store.
+  for (int i = 0; i < 3; i++) {
+    // Create a timestamp to embed in response.  We will check that
+    // this value gets propagated to the store.
+    std::string timestamp =
+      std::string("2018-03-03T01:23:45.67890123") + std::to_string(i) + "Z";
+    json::value resp = json::object({
+      {"type", json::string("ADDED")},
+      {"object", json::object({
+        {"metadata", json::object({
+          {"name", json::string("TestNodeName")},
+          {"creationTimestamp", json::string(timestamp)},
+        })}
+      })}
+    });
+    // Send a response to the watcher.
+    server.SendStreamResponse(
+        "/api/v1/watch/nodes/TestNodeName?watch=true",
+        resp->ToString());
+    // Poll the store to see the updated timstamp.
+    EXPECT_TRUE(
+      Poll([&store, timestamp]() -> bool {
+        MonitoredResource resource("k8s_node",
+                                   {{"cluster_name", ""},
+                                    {"location", ""},
+                                    {"node_name", "TestNodeName"}});
+        if (store.GetMetadataMap().size() == 0) {
+          return false;
+        }
+        const auto meta = store.GetMetadataMap().find(resource);
+        if (meta == store.GetMetadataMap().end()) {
+          return false;
+        }
+        return time::rfc3339::ToString(meta->second.created_at) == timestamp;
+      }));
+  }
+
+  // For pods, do the same thing.
+  for (int i = 0; i < 3; i++) {
+    std::string timestamp =
+      std::string("2018-03-03T01:23:45.67890123") + std::to_string(i) + "Z";
+    json::value resp = json::object({
+      {"type", json::string("ADDED")},
+      {"object", json::object({
+        {"metadata", json::object({
+          {"name", json::string("TestPodName")},
+          {"namespace", json::string("TestNamespace")},
+          {"uid", json::string("TestPodUid")},
+          {"creationTimestamp", json::string(timestamp)},
+        })},
+        {"spec", json::object({
+          {"nodeName", json::string("TestSpecNodeName")},
+          {"containers", json::array({
+            json::object({{"name", json::string("TestContainerName0")}}),
+          })},
+        })},
+        {"status", json::object({
+          {"containerID", json::string("docker://TestContainerID")},
+          {"containerStatuses", json::array({
+            json::object({
+              {"name", json::string("TestContainerName0")},
+            }),
+          })},
+        })},
+      })}
+    });
+    // Send a response to the watcher.
+    server.SendStreamResponse(
+        "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true",
+        resp->ToString());
+    // Poll the store to see the updated timstamp.
+    EXPECT_TRUE(
+      Poll([&store, timestamp]() -> bool {
+        MonitoredResource resource("k8s_pod",
+                                   {{"cluster_name", ""},
+                                    {"location", ""},
+                                    {"namespace_name", "TestNamespace"},
+                                    {"pod_name", "TestPodName"}});
+        if (store.GetMetadataMap().size() == 0) {
+          return false;
+        }
+        const auto meta = store.GetMetadataMap().find(resource);
+        if (meta == store.GetMetadataMap().end()) {
+          return false;
+        }
+        return time::rfc3339::ToString(meta->second.created_at) == timestamp;
+      }));
+  }
+
+  // Terminate the hanging GETs on the server so that the updater will finish.
+  server.TerminateAllStreams();
+  updater.stop();
+  updater_thread.join();
 }
 
 }  // namespace google
