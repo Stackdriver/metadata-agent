@@ -66,7 +66,7 @@ class Configuration::OptionMap
  public:
   OptionMap(std::vector<std::pair<const char*, Option*>>&& v) {
     for (const auto& p : v) {
-      emplace(p.first, p.second);
+      emplace(p.first, std::unique_ptr<Option>(p.second));
     }
   }
 };

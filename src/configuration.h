@@ -16,6 +16,7 @@
 #ifndef AGENT_CONFIG_H_
 #define AGENT_CONFIG_H_
 
+#include <memory>
 #include <mutex>
 #include <string>
 
