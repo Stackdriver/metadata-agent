@@ -65,7 +65,7 @@ extern "C" [[noreturn]] void handle_sigterm(int signum) {
   std::cerr << "Caught SIGTERM; shutting down" << std::endl;
   google::cleanup_state->StartShutdown();
   std::cerr << "Exiting" << std::endl;
-  std::exit(128 + signum);
+  std::exit(0);  // SIGTERM means graceful shutdown, so report success.
 }
 
 int main(int ac, char** av) {
