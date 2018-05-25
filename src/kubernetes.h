@@ -231,6 +231,7 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   bool ShouldStartUpdater() const;
 
   void StartUpdater();
+  void NotifyStopUpdater();
 
  private:
   // Metadata watcher callback.

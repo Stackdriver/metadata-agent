@@ -14,11 +14,59 @@
  * limitations under the License.
  **/
 
+#include <csignal>
+#include <cstdlib>
+#include <initializer_list>
+#include <iostream>
+
 #include "agent.h"
 #include "configuration.h"
 #include "docker.h"
 #include "instance.h"
 #include "kubernetes.h"
+#include "time.h"
+
+namespace google {
+namespace {
+
+class CleanupState {
+ public:
+  CleanupState(
+      std::initializer_list<MetadataUpdater*> updaters, MetadataAgent* server)
+      : updaters_(updaters), server_(server) { server_wait_mutex_.lock(); }
+
+  void StartShutdown() const {
+    std::cerr << "Stopping server" << std::endl;
+    server_->Stop();
+    std::cerr << "Stopping updaters" << std::endl;
+    for (MetadataUpdater* updater : updaters_) {
+      updater->NotifyStop();
+    }
+    server_wait_mutex_.unlock();
+    // Give the notifications some time to propagate.
+    std::this_thread::sleep_for(time::seconds(0.1));
+  }
+
+  void Wait() const {
+    std::lock_guard<std::mutex> await_server_shutdown(server_wait_mutex_);
+  }
+
+ private:
+  mutable std::mutex server_wait_mutex_;
+  std::vector<MetadataUpdater*> updaters_;
+  MetadataAgent* server_;
+};
+const CleanupState* cleanup_state;
+
+}  // namespace
+}  // google
+
+extern "C" [[noreturn]] void handle_sigterm(int signum) {
+  std::cerr << "Caught SIGTERM; shutting down" << std::endl;
+  google::cleanup_state->StartShutdown();
+  std::cerr << "Exiting" << std::endl;
+  std::exit(0);  // SIGTERM means graceful shutdown, so report success.
+}
 
 int main(int ac, char** av) {
   google::Configuration config;
@@ -33,9 +81,17 @@ int main(int ac, char** av) {
   google::DockerUpdater docker_updater(config, server.mutable_store());
   google::KubernetesUpdater kubernetes_updater(config, server.health_checker(), server.mutable_store());
 
-  instance_updater.start();
-  docker_updater.start();
-  kubernetes_updater.start();
+  google::cleanup_state = new google::CleanupState(
+      {&instance_updater, &docker_updater, &kubernetes_updater},
+      &server);
+  std::signal(SIGTERM, handle_sigterm);
 
-  server.start();
+  instance_updater.Start();
+  docker_updater.Start();
+  kubernetes_updater.Start();
+
+  server.Start();
+
+  // Wait for the server to shut down.
+  google::cleanup_state->Wait();
 }

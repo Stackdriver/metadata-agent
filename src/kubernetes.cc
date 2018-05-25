@@ -1321,6 +1321,15 @@ void KubernetesUpdater::StartUpdater() {
   }
 }
 
+void KubernetesUpdater::NotifyStopUpdater() {
+  if (config().KubernetesUseWatch()) {
+    // TODO: How do we interrupt a watch thread?
+  } else {
+    // Only stop polling if watch is disabled.
+    PollingMetadataUpdater::NotifyStopUpdater();
+  }
+}
+
 void KubernetesUpdater::MetadataCallback(
     std::vector<MetadataUpdater::ResourceMetadata>&& result_vector) {
   for (MetadataUpdater::ResourceMetadata& result : result_vector) {

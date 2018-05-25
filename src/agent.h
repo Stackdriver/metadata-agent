@@ -39,7 +39,10 @@ class MetadataAgent {
   ~MetadataAgent();
 
   // Starts serving.
-  void start();
+  void Start();
+
+  // Stops serving.
+  void Stop();
 
   const Configuration& config() const {
     return config_;

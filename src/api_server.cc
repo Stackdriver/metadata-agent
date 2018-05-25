@@ -84,11 +84,17 @@ MetadataApiServer::MetadataApiServer(const Configuration& config,
       server_pool_()
 {
   for (int i : boost::irange(0, server_threads)) {
-    server_pool_.emplace_back(&HttpServer::run, &server_);
+    server_pool_.emplace_back([=]() { server_.run(); });
   }
 }
 
+void MetadataApiServer::Stop() {
+  server_.stop();
+  LOG(INFO) << "API server stopped";
+}
+
 MetadataApiServer::~MetadataApiServer() {
+  Stop();
   for (auto& thread : server_pool_) {
     thread.join();
   }

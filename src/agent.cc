@@ -28,12 +28,17 @@ MetadataAgent::MetadataAgent(const Configuration& config)
 
 MetadataAgent::~MetadataAgent() {}
 
-void MetadataAgent::start() {
+void MetadataAgent::Start() {
   metadata_api_server_.reset(new MetadataApiServer(
       config_, store_, config_.MetadataApiNumThreads(), "0.0.0.0",
       config_.MetadataApiPort()));
   reporter_.reset(new MetadataReporter(
       config_, &store_, config_.MetadataReporterIntervalSeconds()));
+}
+
+void MetadataAgent::Stop() {
+  metadata_api_server_->Stop();
+  // TODO: Notify the metadata reporter as well.
 }
 
 }

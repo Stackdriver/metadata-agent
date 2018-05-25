@@ -43,6 +43,9 @@ class MetadataApiServer {
                     int server_threads, const std::string& host, int port);
   ~MetadataApiServer();
 
+  // Stops the server and closes the listening socket.
+  void Stop();
+
  private:
   friend class ApiServerTest;
 
