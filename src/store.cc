@@ -49,6 +49,12 @@ void MetadataStore::UpdateResource(const std::vector<std::string>& resource_ids,
 
 void MetadataStore::UpdateMetadata(const std::string& full_resource_name,
                                    Metadata&& entry) {
+  if (full_resource_name.empty()) {
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "Dropping metadata entry with a blank full resource name";
+    }
+    return;
+  }
   std::lock_guard<std::mutex> lock(metadata_mu_);
   if (config_.VerboseLogging()) {
     LOG(INFO) << "Updating metadata map " << full_resource_name << "->{"

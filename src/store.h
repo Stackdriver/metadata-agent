@@ -100,7 +100,8 @@ class MetadataStore {
                       const MonitoredResource& resource);
 
   // Updates metadata for a given resource.
-  // Adds a metadata mapping from the `resource` to the metadata `entry`.
+  // Adds a metadata mapping from the `full_resource_name` to the metadata
+  // `entry`. If the `full_resource_name` is blank, the entry is dropped.
   void UpdateMetadata(const std::string& full_resource_name, Metadata&& entry);
 
  private:
