@@ -184,7 +184,10 @@ TEST_F(ValidationOrderingTest, AllChecksPassedInvokesStartUpdater) {
 
 TEST_F(UpdaterTest, UpdateMetadataCallback) {
   MetadataStore::Metadata m(
+      "test-type",
+      "test-location",
       "test-version",
+      "test-schema-name",
       false,
       std::chrono::system_clock::now(),
       std::chrono::system_clock::now(),
