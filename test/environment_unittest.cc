@@ -164,10 +164,10 @@ TEST_F(EnvironmentTest, GetMetadataStringWithFakeServer) {
 
   Configuration config;
   Environment environment(config);
-  SetGceMetadataServerAddress(&environment, "http://" + server.HostPort());
+  SetGceMetadataServerAddress(&environment, "http://" + server.HostPort() + "/");
 
-  EXPECT_EQ("hello", environment.GetMetadataString("/a/b/c"));
-  EXPECT_EQ("", environment.GetMetadataString("/unknown/path"));
+  EXPECT_EQ("hello", environment.GetMetadataString("a/b/c"));
+  EXPECT_EQ("", environment.GetMetadataString("unknown/path"));
 }
 
 }  // namespace google
