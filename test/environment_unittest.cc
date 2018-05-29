@@ -13,6 +13,11 @@ class EnvironmentTest : public ::testing::Test {
   static void ReadApplicationDefaultCredentials(const Environment& environment) {
     environment.ReadApplicationDefaultCredentials();
   }
+
+  static void SetGceMetadataServerAddress(Environment* environment,
+                                          const std::string& address) {
+    environment->SetGceMetadataServerAddress(address);
+  }
 };
 
 namespace {
@@ -45,32 +50,56 @@ class TemporaryFile {
   boost::filesystem::path path_;
 };
 
-namespace http = boost::network::http;
-
-struct FakeHandler;
-typedef http::server<FakeHandler> FakeServer;
-
-// Fake web server that maps paths to response strings.
-class FakeHandler {
-public:
-  FakeHandler(std::map<std::string, std::string> paths) : paths_(paths) {}
-  void operator() (FakeServer::request const &request,
-                   FakeServer::connection_ptr connection) {
-    auto it = paths_.find(request.destination);
-    if (it != paths_.end()) {
-      connection->set_status(FakeServer::connection::ok);
-      connection->set_headers(std::map<std::string, std::string>({
-          {"Content-Type", "text/plain"},
-      }));
-      connection->write(it->second);
-    } else {
-      // Note: We have to set headers; otherwise, an exception is thrown.
-      connection->set_status(FakeServer::connection::not_found);
-      connection->set_headers(std::map<std::string, std::string>({}));
-    }
+// Starts a server in a separate thread, allowing it to choose an
+// available port.
+class FakeServerThread {
+ public:
+  FakeServerThread()
+    : server_(Server::options(handler_).address("127.0.0.1").port("")) {
+    server_.listen();
+    thread_ = std::thread([this] { server_.run(); });
   }
-private:
-  std::map<std::string, std::string> paths_;
+
+  void SetResponse(const std::string& path, const std::string& response) {
+    handler_.path_responses[path] = response;
+  }
+
+  std::string HostPort() {
+    return server_.address() + ":" + server_.port();
+  }
+
+  ~FakeServerThread() {
+    server_.stop();
+    thread_.join();
+  }
+
+ private:
+  struct Handler;
+  typedef boost::network::http::server<Handler> Server;
+
+  // Handler that maps paths to response strings.
+  struct Handler {
+    void operator() (Server::request const &request,
+                     Server::connection_ptr connection) {
+      auto it = path_responses.find(request.destination);
+      if (it != path_responses.end()) {
+        connection->set_status(Server::connection::ok);
+        connection->set_headers(std::map<std::string, std::string>({
+            {"Content-Type", "text/plain"},
+        }));
+        connection->write(it->second);
+      } else {
+        // Note: We have to set headers; otherwise, an exception is thrown.
+        connection->set_status(Server::connection::not_found);
+        connection->set_headers(std::map<std::string, std::string>());
+      }
+    }
+    std::map<std::string, std::string> path_responses;
+  };
+
+  Handler handler_;
+  Server server_;
+  std::thread thread_;
 };
 
 }  // namespace
@@ -101,7 +130,6 @@ TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsSucceeds) {
   TemporaryFile credentials_file(
     std::string(test_info_->name()) + "_creds.json",
     "{\"client_email\":\"user@example.com\",\"private_key\":\"some_key\"}");
-  std::string cfg;
   Configuration config(std::istringstream(
       "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
   ));
@@ -131,44 +159,15 @@ TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsCaches) {
 }
 
 TEST_F(EnvironmentTest, GetMetadataStringWithFakeServer) {
-  // Start a server in a separate thread, and allow it to choose an
-  // available port.
-  FakeHandler handler(std::map<std::string, std::string>({{"/a/b/c", "hello"}}));
-  FakeServer::options options(handler);
-  FakeServer server(options.address("127.0.0.1").port(""));
-  server.listen();
-  std::thread t1([&server] { server.run(); });
+  FakeServerThread server;
+  server.SetResponse("/a/b/c", "hello");
 
-  // Set the config to use the local address and port.
-  TemporaryFile credentials_file(
-    std::string(test_info_->name()) + "_creds.json",
-    "{\"client_email\":\"user@example.com\",\"private_key\":\"some_key\"}");
-  std::string cfg;
-  Configuration config(std::istringstream(
-      "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
-      "GceMetadataServerAddress: 'http://127.0.0.1:" + server.port() + "'\n"
-  ));
+  Configuration config;
   Environment environment(config);
+  SetGceMetadataServerAddress(&environment, "http://" + server.HostPort());
 
   EXPECT_EQ("hello", environment.GetMetadataString("/a/b/c"));
   EXPECT_EQ("", environment.GetMetadataString("/unknown/path"));
-
-  server.stop();
-  t1.join();
-}
-
-TEST_F(EnvironmentTest, GetMetadataStringWithInvalidAddress) {
-  TemporaryFile credentials_file(
-    std::string(test_info_->name()) + "_creds.json",
-    "{\"client_email\":\"user@example.com\",\"private_key\":\"some_key\"}");
-  std::string cfg;
-  Configuration config(std::istringstream(
-      "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
-      "GceMetadataServerAddress: 'http://invalidaddress'\n"
-  ));
-  Environment environment(config);
-
-  EXPECT_EQ("", environment.GetMetadataString("/a/b/c"));
 }
 
 }  // namespace google

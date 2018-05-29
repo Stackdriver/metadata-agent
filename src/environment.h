@@ -48,7 +48,12 @@ class Environment {
 
   void ReadApplicationDefaultCredentials() const;
 
+  // Used to override server address in tests.
+  void SetGceMetadataServerAddress(const std::string& address);
+
   const Configuration& config_;
+
+  std::string gce_metadata_server_address_;
 
   // Cached data.
   mutable std::mutex mutex_;

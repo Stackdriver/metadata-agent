@@ -70,17 +70,22 @@ json::value ReadCredentials(
   return std::move(creds_json);
 }
 
+constexpr const char kGceMetadataServerAddress[] =
+    "http://metadata.google.internal./computeMetadata/v1/";
+
 constexpr const char kGceInstanceResourceType[] = "gce_instance";
 
 }
 
 Environment::Environment(const Configuration& config)
-    : config_(config), application_default_credentials_read_(false) {}
+    : config_(config),
+      gce_metadata_server_address_(kGceMetadataServerAddress),
+      application_default_credentials_read_(false) {}
 
 std::string Environment::GetMetadataString(const std::string& path) const {
   http::client::options options;
   http::client client(options.timeout(2));
-  http::client::request request(config_.GceMetadataServerAddress() + path);
+  http::client::request request(gce_metadata_server_address_ + path);
   request << boost::network::header("Metadata-Flavor", "Google");
   try {
     http::client::response response = client.get(request);
@@ -95,7 +100,7 @@ std::string Environment::GetMetadataString(const std::string& path) const {
     }
   } catch (const boost::system::system_error& e) {
     LOG(ERROR) << "Exception: " << e.what()
-               << ": '" << config_.GceMetadataServerAddress() << path << "'";
+               << ": '" << gce_metadata_server_address_ << path << "'";
     return "";
   }
 }
@@ -265,6 +270,10 @@ void Environment::ReadApplicationDefaultCredentials() const {
     LOG(INFO) << "No credentials found at " << e.filename();
   }
   application_default_credentials_read_ = true;
+}
+
+void Environment::SetGceMetadataServerAddress(const std::string& address) {
+  gce_metadata_server_address_ = address;
 }
 
 }  // google

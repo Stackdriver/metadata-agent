@@ -43,10 +43,6 @@ class Configuration {
     std::lock_guard<std::mutex> lock(mutex_);
     return verbose_logging_;
   }
-  const std::string& GceMetadataServerAddress() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return gce_metadata_server_address_;
-  }
   // Metadata API server configuration options.
   int MetadataApiNumThreads() const {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -184,7 +180,6 @@ class Configuration {
   std::string project_id_;
   std::string credentials_file_;
   bool verbose_logging_;
-  std::string gce_metadata_server_address_;
   int metadata_api_num_threads_;
   int metadata_api_port_;
   std::string metadata_api_resource_type_separator_;
