@@ -8,10 +8,10 @@ namespace testing {
 
 // Starts a server in a separate thread, allowing it to choose an
 // available port.
-class FakeServerThread {
+class FakeServer {
  public:
-  FakeServerThread();
-  ~FakeServerThread();
+  FakeServer();
+  ~FakeServer();
 
   std::string GetUrl();
   void SetResponse(const std::string& path, const std::string& response);

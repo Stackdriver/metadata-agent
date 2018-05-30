@@ -107,7 +107,7 @@ TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsCaches) {
 }
 
 TEST_F(EnvironmentTest, GetMetadataStringWithFakeServer) {
-  testing::FakeServerThread server;
+  testing::FakeServer server;
   server.SetResponse("/a/b/c", "hello");
 
   Configuration config;

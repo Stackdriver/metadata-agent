@@ -272,8 +272,4 @@ void Environment::ReadApplicationDefaultCredentials() const {
   application_default_credentials_read_ = true;
 }
 
-void Environment::SetMetadataServerUrlForTest(const std::string& url) {
-  metadata_server_url_ = url;
-}
-
 }  // google

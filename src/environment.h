@@ -48,7 +48,9 @@ class Environment {
 
   void ReadApplicationDefaultCredentials() const;
 
-  void SetMetadataServerUrlForTest(const std::string& url);
+  void SetMetadataServerUrlForTest(const std::string& url) {
+    metadata_server_url_ = url;
+  }
 
   const Configuration& config_;
 

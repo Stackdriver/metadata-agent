@@ -3,28 +3,28 @@
 namespace google {
 namespace testing {
 
-FakeServerThread::FakeServerThread()
+FakeServer::FakeServer()
     : server_(Server::options(handler_).address("127.0.0.1").port("")) {
   server_.listen();
   server_thread_ = std::thread([this] { server_.run(); });
 }
 
-FakeServerThread::~FakeServerThread() {
+FakeServer::~FakeServer() {
   server_.stop();
   server_thread_.join();
 }
 
-std::string FakeServerThread::GetUrl() {
+std::string FakeServer::GetUrl() {
   return std::string("http://") + server_.address() + ":" + server_.port() + "/";
 }
 
-void FakeServerThread::SetResponse(const std::string& path,
-                                   const std::string& response) {
+void FakeServer::SetResponse(const std::string& path,
+                             const std::string& response) {
   handler_.path_responses[path] = response;
 }
 
-void FakeServerThread::Handler::operator() (Server::request const &request,
-                                            Server::connection_ptr connection) {
+void FakeServer::Handler::operator() (Server::request const &request,
+                                      Server::connection_ptr connection) {
   auto it = path_responses.find(request.destination);
   if (it != path_responses.end()) {
     connection->set_status(Server::connection::ok);
