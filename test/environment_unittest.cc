@@ -106,7 +106,7 @@ TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsCaches) {
   EXPECT_EQ("some_key", environment.CredentialsPrivateKey());
 }
 
-TEST_F(EnvironmentTest, GetMetadataStringWithFakeServer) {
+TEST_F(EnvironmentTest, GetMetadataString) {
   testing::FakeServer server;
   server.SetResponse("/a/b/c", "hello");
 

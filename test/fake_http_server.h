@@ -22,8 +22,8 @@ class FakeServer {
 
   // Handler that maps paths to response strings.
   struct Handler {
-    void operator() (Server::request const &request,
-                     Server::connection_ptr connection);
+    void operator()(Server::request const &request,
+                    Server::connection_ptr connection);
     std::map<std::string, std::string> path_responses;
   };
 

@@ -3,6 +3,8 @@
 namespace google {
 namespace testing {
 
+// Note: An empty port selects a random available port (this behavior
+// is not documented).
 FakeServer::FakeServer()
     : server_(Server::options(handler_).address("127.0.0.1").port("")) {
   server_.listen();
@@ -15,7 +17,9 @@ FakeServer::~FakeServer() {
 }
 
 std::string FakeServer::GetUrl() {
-  return std::string("http://") + server_.address() + ":" + server_.port() + "/";
+  network::uri_builder builder;
+  builder.scheme("http").host(server_.address()).port(server_.port()).path("/");
+  return builder.uri().string();
 }
 
 void FakeServer::SetResponse(const std::string& path,
@@ -23,8 +27,8 @@ void FakeServer::SetResponse(const std::string& path,
   handler_.path_responses[path] = response;
 }
 
-void FakeServer::Handler::operator() (Server::request const &request,
-                                      Server::connection_ptr connection) {
+void FakeServer::Handler::operator()(Server::request const &request,
+                                     Server::connection_ptr connection) {
   auto it = path_responses.find(request.destination);
   if (it != path_responses.end()) {
     connection->set_status(Server::connection::ok);
