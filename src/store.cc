@@ -49,9 +49,10 @@ void MetadataStore::UpdateResource(const std::vector<std::string>& resource_ids,
 
 void MetadataStore::UpdateMetadata(const std::string& full_resource_name,
                                    Metadata&& entry) {
-  if (full_resource_name.empty()) {
+  if (full_resource_name.empty() || entry.ignore) {
     if (config_.VerboseLogging()) {
-      LOG(INFO) << "Dropping metadata entry with a blank full resource name";
+      LOG(INFO) << "Dropping metadata entry " << full_resource_name << "->{"
+                << "ignore: " << entry.ignore;
     }
     return;
   }
@@ -63,7 +64,8 @@ void MetadataStore::UpdateMetadata(const std::string& full_resource_name,
               << "version: " << entry.version << ", "
               << "schema name: " << entry.schema_name << ", "
               << "is_deleted: " << entry.is_deleted << ", "
-              << "created_at: " << time::rfc3339::ToString(entry.created_at) << ", "
+              << "created_at: " << time::rfc3339::ToString(entry.created_at)
+              << ", "
               << "collected_at: " << time::rfc3339::ToString(entry.collected_at)
               << ", "
               << "metadata: " << *entry.metadata << ", "
