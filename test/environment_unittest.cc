@@ -1,10 +1,10 @@
 #include "../src/environment.h"
+#include "fake_http_server.h"
 #include "gtest/gtest.h"
 
 #include <fstream>
 #include <sstream>
 #include <boost/filesystem.hpp>
-#include <boost/network/protocol/http/server.hpp>
 
 namespace google {
 
@@ -14,9 +14,9 @@ class EnvironmentTest : public ::testing::Test {
     environment.ReadApplicationDefaultCredentials();
   }
 
-  static void SetGceMetadataServerAddress(Environment* environment,
-                                          const std::string& address) {
-    environment->SetGceMetadataServerAddress(address);
+  static void SetMetadataServerUrlForTest(Environment* environment,
+                                          const std::string& url) {
+    environment->SetMetadataServerUrlForTest(url);
   }
 };
 
@@ -48,58 +48,6 @@ class TemporaryFile {
   const boost::filesystem::path& FullPath() const { return path_; }
  private:
   boost::filesystem::path path_;
-};
-
-// Starts a server in a separate thread, allowing it to choose an
-// available port.
-class FakeServerThread {
- public:
-  FakeServerThread()
-    : server_(Server::options(handler_).address("127.0.0.1").port("")) {
-    server_.listen();
-    thread_ = std::thread([this] { server_.run(); });
-  }
-
-  void SetResponse(const std::string& path, const std::string& response) {
-    handler_.path_responses[path] = response;
-  }
-
-  std::string HostPort() {
-    return server_.address() + ":" + server_.port();
-  }
-
-  ~FakeServerThread() {
-    server_.stop();
-    thread_.join();
-  }
-
- private:
-  struct Handler;
-  typedef boost::network::http::server<Handler> Server;
-
-  // Handler that maps paths to response strings.
-  struct Handler {
-    void operator() (Server::request const &request,
-                     Server::connection_ptr connection) {
-      auto it = path_responses.find(request.destination);
-      if (it != path_responses.end()) {
-        connection->set_status(Server::connection::ok);
-        connection->set_headers(std::map<std::string, std::string>({
-            {"Content-Type", "text/plain"},
-        }));
-        connection->write(it->second);
-      } else {
-        // Note: We have to set headers; otherwise, an exception is thrown.
-        connection->set_status(Server::connection::not_found);
-        connection->set_headers(std::map<std::string, std::string>());
-      }
-    }
-    std::map<std::string, std::string> path_responses;
-  };
-
-  Handler handler_;
-  Server server_;
-  std::thread thread_;
 };
 
 }  // namespace
@@ -159,12 +107,12 @@ TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsCaches) {
 }
 
 TEST_F(EnvironmentTest, GetMetadataStringWithFakeServer) {
-  FakeServerThread server;
+  testing::FakeServerThread server;
   server.SetResponse("/a/b/c", "hello");
 
   Configuration config;
   Environment environment(config);
-  SetGceMetadataServerAddress(&environment, "http://" + server.HostPort() + "/");
+  SetMetadataServerUrlForTest(&environment, server.GetUrl());
 
   EXPECT_EQ("hello", environment.GetMetadataString("a/b/c"));
   EXPECT_EQ("", environment.GetMetadataString("unknown/path"));
