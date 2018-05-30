@@ -29,6 +29,11 @@ namespace http = boost::network::http;
 
 namespace google {
 
+constexpr const char kMultipartBoundary[] = "publishMultipartPost";
+constexpr const char kBatchEndpoint[] = "/batch";
+constexpr const char kMetadataIngestionPublishEndpoint[] =
+    "/v1beta3/projects/{{project_id}}/resourceMetadata:publish";
+
 MetadataReporter::MetadataReporter(const Configuration& config,
                                    MetadataStore* store, double period_s)
     : store_(store),
@@ -71,41 +76,61 @@ void MetadataReporter::ReportMetadata() {
 namespace {
 
 void SendMetadataRequest(std::vector<json::value>&& entries,
-                         const std::string& endpoint,
+                         const std::string& host,
+                         const std::string& publish_endpoint,
                          const std::string& auth_header,
                          const std::string& user_agent,
                          bool verbose_logging)
     throw (boost::system::system_error) {
 
-  // TODO: Convert this into a batch request.
-  for (json::value& update_metadata_request : entries) {
-    if (verbose_logging) {
-      LOG(INFO) << "About to send request: POST " << endpoint
-                << " User-Agent: " << user_agent
-                << " " << *update_metadata_request;
-    }
-    http::client client;
-    http::client::request request(endpoint);
-    std::string request_body = update_metadata_request->ToString();
-    request << boost::network::header("User-Agent", user_agent);
-    request << boost::network::header("Content-Length",
-                                      std::to_string(request_body.size()));
-    request << boost::network::header("Content-Type", "application/json");
-    request << boost::network::header("Authorization", auth_header);
-    request << boost::network::body(request_body);
-    http::client::response response = client.post(request);
-    if (status(response) >= 300) {
-      throw boost::system::system_error(
-          boost::system::errc::make_error_code(boost::system::errc::not_connected),
-          format::Substitute("Server responded with '{{message}}' ({{code}})",
-                             {{"message", status_message(response)},
-                              {"code", format::str(status(response))}}));
-    }
-    if (verbose_logging) {
-      LOG(INFO) << "Server responded with " << body(response);
-    }
+  const std::string batch_uri = host + kBatchEndpoint;
+  const std::string content_type =
+      std::string("multipart/mixed; boundary=") + kMultipartBoundary;
+  http::client client;
+  http::client::request request(batch_uri);
+  request << boost::network::header("User-Agent", user_agent);
+  request << boost::network::header("Content-Type", content_type);
+  request << boost::network::header("Authorization", auth_header);
+  std::ostringstream out;
+  out << std::endl << "--" << kMultipartBoundary << std::endl;
+
+  for (json::value& entry : entries) {
+    const json::Object* single_request = entry->As<json::Object>();
+    std::string request_body = single_request->ToString();
+    out << "Content-Type: application/http" << std::endl;
+    out << "Content-Transfer-Encoding: binary" << std::endl;
+    out << "Content-ID: " << single_request->Get<json::String>("name")
+        << std::endl;
+    out << std::endl;
+    out << "POST " << publish_endpoint << std::endl;
+    out << "Content-Type: application/json; charset=UTF-8" << std::endl;
+    out << "Content-Length: " << std::to_string(request_body.size())
+        << std::endl;
+    out << std::endl << request_body << std::endl;
+    out << "--" << kMultipartBoundary << std::endl;
+  }
+  std::string multipart_body = out.str();
+  request << boost::network::header(
+      "Content-Length", std::to_string(multipart_body.size()));
+  request << boost::network::body(multipart_body);
+
+  if (verbose_logging) {
+    LOG(INFO) << "About to send request: POST " << batch_uri
+              << " User-Agent: " << user_agent
+              << std::endl << body(request);
   }
 
+  http::client::response response = client.post(request);
+  if (status(response) >= 300) {
+    throw boost::system::system_error(
+        boost::system::errc::make_error_code(boost::system::errc::not_connected),
+        format::Substitute("Server responded with '{{message}}' ({{code}})",
+                           {{"message", status_message(response)},
+                            {"code", format::str(status(response))}}));
+  }
+  if (verbose_logging) {
+    LOG(INFO) << "Server responded with " << body(response);
+  }
   // TODO: process response.
 }
 
@@ -125,10 +150,11 @@ void MetadataReporter::SendMetadata(
     LOG(INFO) << "Sending request to the server";
   }
   const std::string project_id = environment_.NumericProjectId();
+  const std::string host = config_.MetadataIngestionHost();
   // The endpoint template is expected to be of the form
-  // "https://stackdriver.googleapis.com/.../projects/{{project_id}}/...".
+  // "/v1beta3/.../projects/{{project_id}}/...".
   const std::string endpoint =
-      format::Substitute(config_.MetadataIngestionEndpointFormat(),
+      format::Substitute(kMetadataIngestionPublishEndpoint,
                          {{"project_id", project_id}});
   const std::string auth_header = auth_.GetAuthHeaderValue();
   const std::string user_agent = config_.MetadataReporterUserAgent();
@@ -146,9 +172,6 @@ void MetadataReporter::SendMetadata(
   for (auto& entry : metadata) {
     const std::string& full_resource_name = entry.first;
     MetadataStore::Metadata& metadata = entry.second;
-    if (metadata.ignore) {
-      continue;
-    }
     json::value metadata_entry =
         json::object({
           {"name", json::string(full_resource_name)},
@@ -179,8 +202,8 @@ void MetadataReporter::SendMetadata(
       continue;
     }
     if (entries.size() == limit_count || total_size + size > limit_bytes) {
-      SendMetadataRequest(std::move(entries), endpoint, auth_header, user_agent,
-                          config_.VerboseLogging());
+      SendMetadataRequest(std::move(entries), host, endpoint, auth_header,
+                          user_agent, config_.VerboseLogging());
       entries.clear();
       total_size = empty_size;
     }
@@ -188,8 +211,8 @@ void MetadataReporter::SendMetadata(
     total_size += size;
   }
   if (!entries.empty()) {
-    SendMetadataRequest(std::move(entries), endpoint, auth_header, user_agent,
-                        config_.VerboseLogging());
+    SendMetadataRequest(std::move(entries), host, endpoint, auth_header,
+                        user_agent, config_.VerboseLogging());
   }
 }
 

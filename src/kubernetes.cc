@@ -50,7 +50,6 @@ constexpr const int kKubernetesValidationRetryDelaySeconds = 1;
 #if 0
 constexpr const char kKubernetesEndpointHost[] = "https://kubernetes.default.svc";
 #endif
-constexpr const char kKubernetesApiVersion[] = "1.6";
 constexpr const char kKubernetesEndpointPath[] = "/api/v1";
 
 constexpr const char kGkeContainerResourcePrefix[] = "gke_container";
