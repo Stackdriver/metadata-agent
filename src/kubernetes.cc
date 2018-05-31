@@ -666,10 +666,12 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
   try {
     http::client::response response = client.get(request);
     if (status(response) >= 400 && status(response) <= 403) {
-      throw NonRetriableError(
+      const std::string what =
           format::Substitute("Server responded with '{{message}}' ({{code}})",
                              {{"message", status_message(response)},
-                              {"code", format::str(status(response))}}));
+                              {"code", format::str(status(response))}});
+      LOG(ERROR) << "Failed to query " << endpoint << ": " << what;
+      throw NonRetriableError(what);
     } else if (status(response) >= 300) {
       throw boost::system::system_error(
           boost::system::errc::make_error_code(boost::system::errc::not_connected),
