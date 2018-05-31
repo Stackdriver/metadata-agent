@@ -163,36 +163,46 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
     const throw(json::Exception) {
   const json::Object* metadata = pod->Get<json::Object>("metadata");
   const std::string namespace_name = metadata->Get<json::String>("namespace");
-  const std::string pod_id = metadata->Get<json::String>("uid");
-
-  const json::value top_level = FindTopLevelController(
-      namespace_name, pod->Clone());
-  const json::Object* top_level_controller = top_level->As<json::Object>();
-  const json::Object* top_level_metadata =
-      top_level_controller->Get<json::Object>("metadata");
-  const std::string top_level_name =
-      top_level_metadata->Get<json::String>("name");
-  if (!top_level_controller->Has("kind") &&
-      top_level_metadata->Get<json::String>("uid") != pod_id) {
-    LOG(ERROR) << "Internal error; top-level controller without 'kind' "
-               << *top_level_controller
-               << " not the same as pod " << *pod;
-  }
-  const std::string top_level_kind =
-      top_level_controller->Has("kind")
-          ? top_level_controller->Get<json::String>("kind")
-          : "Pod";
 
   json::value instance_resource =
       InstanceReader::InstanceResource(environment_).ToJSON();
 
   std::unique_ptr<json::Object> raw_associations(new json::Object({
     {"infrastructureResource", std::move(instance_resource)},
-    {"controllers", json::object({
-      {"topLevelControllerType", json::string(top_level_kind)},
-      {"topLevelControllerName", json::string(top_level_name)},
-    })},
   }));
+
+  try {
+    const json::value top_level = FindTopLevelController(
+        namespace_name, pod->Clone());
+    const json::Object* top_level_controller = top_level->As<json::Object>();
+    const json::Object* top_level_metadata =
+        top_level_controller->Get<json::Object>("metadata");
+    const std::string top_level_name =
+        top_level_metadata->Get<json::String>("name");
+    const std::string pod_id = metadata->Get<json::String>("uid");
+    if (!top_level_controller->Has("kind") &&
+        top_level_metadata->Get<json::String>("uid") != pod_id) {
+      LOG(ERROR) << "Internal error; top-level controller without 'kind' "
+                 << *top_level_controller
+                 << " not the same as pod " << *pod;
+    }
+    const std::string top_level_kind =
+        top_level_controller->Has("kind")
+            ? top_level_controller->Get<json::String>("kind")
+            : "Pod";
+
+    raw_associations->emplace(std::make_pair(
+      "controllers",
+      json::object({
+        {"topLevelControllerType", json::string(top_level_kind)},
+        {"topLevelControllerName", json::string(top_level_name)},
+      })
+    ));
+  } catch (const QueryException& e) {
+    LOG(ERROR) << "Error while finding top-level controller for "
+               << namespace_name << "." << metadata->Get<json::String>("name")
+               << ": " << e.what();
+  }
 
   const json::Object* spec = pod->Get<json::Object>("spec");
   if (spec->Has("nodeName")) {
