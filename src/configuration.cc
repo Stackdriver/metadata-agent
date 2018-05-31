@@ -188,7 +188,7 @@ int Configuration::ParseArguments(int ac, char** av) {
       }
 
 #ifdef VERBOSE
-      LOG(DEBUG) << "Options:\n" << option_stream.str();
+      std::cout << "Options:\n" << option_stream.str() << std::endl;
 #endif
       ParseConfiguration(option_stream);
     }
