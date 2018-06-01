@@ -73,7 +73,13 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
       "//container.googleapis.com/projects/TestProjectId/locations/"
       "TestClusterLocation/clusters/TestClusterName/k8s/nodes/testname",
       m.full_resource_name());
+  EXPECT_EQ("io.k8s.Node", m.metadata().type);
+  EXPECT_EQ("TestZone", m.metadata().location);
   EXPECT_EQ("NodeVersion", m.metadata().version);
+  EXPECT_EQ(
+      "//container.googleapis.com/resourceTypes/io.k8s.Node/versions/"
+      "NodeVersion",
+      m.metadata().schema_name);
   EXPECT_FALSE(m.metadata().is_deleted);
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
             m.metadata().created_at);
@@ -116,13 +122,54 @@ TEST_F(KubernetesTest, GetPodMetadata) {
       "TestClusterLocation/clusters/TestClusterName/k8s/namespaces/"
       "TestNamespace/pods/TestName",
       m.full_resource_name());
+  EXPECT_EQ("io.k8s.Pod", m.metadata().type);
+  EXPECT_EQ("TestZone", m.metadata().location);
   EXPECT_EQ("PodVersion", m.metadata().version);
+  EXPECT_EQ(
+      "//container.googleapis.com/resourceTypes/io.k8s.Pod/versions/PodVersion",
+      m.metadata().schema_name);
   EXPECT_FALSE(m.metadata().is_deleted);
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
             m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   EXPECT_FALSE(m.metadata().ignore);
   EXPECT_EQ(pod->ToString(), m.metadata().metadata->ToString());
+}
+
+TEST_F(KubernetesTest, GetPodMetadataUnscheduled) {
+  Configuration config(std::stringstream(
+    "ProjectId: TestProjectId\n"
+    "KubernetesClusterName: TestClusterName\n"
+    "KubernetesClusterLocation: TestClusterLocation\n"
+    "KubernetesClusterLevelMetadata: true\n"
+  ));
+  Environment environment(config);
+  KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
+
+  json::value pod = json::object({
+    {"apiVersion", json::string("PodVersion")},
+    {"metadata", json::object({
+      {"namespace", json::string("TestNamespace")},
+      {"name", json::string("TestName")},
+      {"uid", json::string("TestUid")},
+      {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
+    })},
+  });
+  const auto m = GetPodMetadata(reader, pod->As<json::Object>(),
+                                Timestamp(), false);
+
+  EXPECT_EQ(MonitoredResource("k8s_pod", {
+    {"cluster_name", "TestClusterName"},
+    {"pod_name", "TestName"},
+    {"location", "TestClusterLocation"},
+    {"namespace_name", "TestNamespace"},
+  }), m.resource());
+  EXPECT_EQ(
+      "//container.googleapis.com/projects/TestProjectId/locations/"
+      "TestClusterLocation/clusters/TestClusterName/k8s/namespaces/"
+      "TestNamespace/pods/TestName",
+      m.full_resource_name());
+  EXPECT_EQ("TestClusterLocation", m.metadata().location);
 }
 
 TEST_F(KubernetesTest, GetLegacyResource) {

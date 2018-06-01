@@ -160,7 +160,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
     const json::Object* pod, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
   const std::string cluster_name = environment_.KubernetesClusterName();
-  const std::string location = environment_.KubernetesClusterLocation();
+  const std::string cluster_location = environment_.KubernetesClusterLocation();
 
   const json::Object* metadata = pod->Get<json::Object>("metadata");
   const std::string namespace_name = metadata->Get<json::String>("namespace");
@@ -179,7 +179,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
     {"cluster_name", cluster_name},
     {"namespace_name", namespace_name},
     {"pod_name", pod_name},
-    {"location", location},
+    {"location", cluster_location},
   });
 
   if (config_.VerboseLogging()) {
@@ -196,11 +196,13 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
       ClusterFullName() + "/k8s/namespaces/" + namespace_name + "/pods/" +
       pod_name;
   const std::string zone = environment_.InstanceZone();
+  const std::string pod_location(
+      config_.KubernetesClusterLevelMetadata() ? cluster_location : zone);
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_pod_id, k8s_pod_name},
       k8s_pod, pod_full_name,
 #ifdef ENABLE_KUBERNETES_METADATA
-      MetadataStore::Metadata(pod_type, zone, pod_version, pod_schema,
+      MetadataStore::Metadata(pod_type, pod_location, pod_version, pod_schema,
                               is_deleted, created_at, collected_at,
                               pod->Clone())
 #else
