@@ -129,7 +129,16 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
                             {"code", format::str(status(response))}}));
   }
   if (verbose_logging) {
-    LOG(INFO) << "Server responded with " << body(response);
+    LOG(INFO) << format::Substitute(
+        "Server responded with '{{message}}' ({{code}})",
+        {{"message", status_message(response)},
+         {"code", format::str(status(response))}});
+    LOG(INFO) << "Headers:";
+    http::client::response::headers_container_type head =  (headers(response));
+    for (auto it = head.begin(); it != head.end(); ++it) {
+        LOG(INFO) << it->first << ":" << it->second;
+    }
+    LOG(INFO) << "Body:" << std::endl << body(response);
   }
   // TODO: process response.
 }
