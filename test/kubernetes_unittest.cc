@@ -1240,6 +1240,11 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
 
   // Start the updater with a config that points to the fake server.
   Configuration config(std::istringstream(
+      "InstanceId: TestID\n"
+      "InstanceResourceType: gce_instance\n"
+      "InstanceZone: TestZone\n"
+      "KubernetesClusterLocation: TestClusterLocation\n"
+      "KubernetesClusterName: TestClusterName\n"
       "KubernetesEndpointHost: " + server.GetUrl() + "\n"
       "KubernetesNodeName: TestNodeName\n"
       "KubernetesUseWatch: true\n"
@@ -1278,8 +1283,8 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
     EXPECT_TRUE(
       Poll([&store, timestamp]() -> bool {
         MonitoredResource resource("k8s_node",
-                                   {{"cluster_name", ""},
-                                    {"location", ""},
+                                   {{"cluster_name", "TestClusterName"},
+                                    {"location", "TestClusterLocation"},
                                     {"node_name", "TestNodeName"}});
         if (store.GetMetadataMap().size() == 0) {
           return false;
@@ -1329,8 +1334,8 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
     EXPECT_TRUE(
       Poll([&store, timestamp]() -> bool {
         MonitoredResource resource("k8s_pod",
-                                   {{"cluster_name", ""},
-                                    {"location", ""},
+                                   {{"cluster_name", "TestClusterName"},
+                                    {"location", "TestClusterLocation"},
                                     {"namespace_name", "TestNamespace"},
                                     {"pod_name", "TestPodName"}});
         if (store.GetMetadataMap().size() == 0) {
