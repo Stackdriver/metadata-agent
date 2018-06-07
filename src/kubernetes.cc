@@ -122,17 +122,17 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     {"location", location},
   });
 
-  json::value instance_resource =
-      InstanceReader::InstanceResource(environment_).ToJSON();
+  json::value associations = json::object({
+    {"version", json::string(config_.MetadataIngestionRawContentVersion())},
+    {"raw", json::object({
+      {"infrastructureResource",
+       InstanceReader::InstanceResource(environment_).ToJSON()},
+    })},
+  });
 
   json::value node_raw_metadata = json::object({
     {"blobs", json::object({
-      {"association", json::object({
-        {"version", json::string(config_.MetadataIngestionRawContentVersion())},
-        {"raw", json::object({
-          {"infrastructureResource", std::move(instance_resource)},
-        })},
-      })},
+      {"association", std::move(associations)},
       {"api", json::object({
         {"version", json::string(kKubernetesApiVersion)},
         {"raw", node->Clone()},
@@ -167,10 +167,7 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
   json::value instance_resource =
       InstanceReader::InstanceResource(environment_).ToJSON();
 
-  std::unique_ptr<json::Object> raw_associations(new json::Object({
-    {"infrastructureResource", std::move(instance_resource)},
-  }));
-
+  json::value controllers;
   try {
     const json::value top_level = FindTopLevelController(
         namespace_name, pod->Clone());
@@ -191,31 +188,36 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
             ? top_level_controller->Get<json::String>("kind")
             : "Pod";
 
-    raw_associations->emplace(std::make_pair(
-      "controllers",
-      json::object({
-        {"topLevelControllerType", json::string(top_level_kind)},
-        {"topLevelControllerName", json::string(top_level_name)},
-      })
-    ));
+    controllers = json::object({
+      {"topLevelControllerType", json::string(top_level_kind)},
+      {"topLevelControllerName", json::string(top_level_name)},
+    });
   } catch (const QueryException& e) {
     LOG(ERROR) << "Error while finding top-level controller for "
                << namespace_name << "." << metadata->Get<json::String>("name")
                << ": " << e.what();
   }
 
+  json::value node_name;
   const json::Object* spec = pod->Get<json::Object>("spec");
   if (spec->Has("nodeName")) {
     // Pods that have been scheduled will have a nodeName.
-    raw_associations->emplace(std::make_pair(
-      "nodeName",
-      json::string(spec->Get<json::String>("nodeName"))
-    ));
+    node_name = json::string(spec->Get<json::String>("nodeName"));
+  }
+
+  json::value raw_associations = json::object({
+    {"infrastructureResource", std::move(instance_resource)},
+    {"controllers", std::move(controllers)},
+    {"nodeName", json::string(spec->Get<json::String>("nodeName"))},
+  });
+
+  if (raw_associations->As<json::Object>()->empty()) {
+    return json::value();
   }
 
   return json::object({
     {"version", json::string(config_.MetadataIngestionRawContentVersion())},
-    {"raw", json::value(std::move(raw_associations))},
+    {"raw", std::move(raw_associations)},
   });
 }
 
@@ -303,33 +305,31 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
     {"location", location},
   });
 
-  std::unique_ptr<json::Object> blobs(new json::Object({
-    {"association", std::move(associations)},
-    {"spec", json::object({
-      {"version", json::string(kKubernetesApiVersion)},
-      {"raw", container_spec->Clone()},
-    })},
-  }));
+  json::value raw_status;
   if (container_status) {
-    blobs->emplace(std::make_pair(
-      "status",
-      json::object({
-        {"version", json::string(kKubernetesApiVersion)},
-        {"raw", container_status->Clone()},
-      })
-    ));
+    raw_status = json::object({
+      {"version", json::string(kKubernetesApiVersion)},
+      {"raw", container_status->Clone()},
+    });
   }
+
+  json::value raw_labels;
   if (labels) {
-    blobs->emplace(std::make_pair(
-      "labels",
-      json::object({
-        {"version", json::string(kKubernetesApiVersion)},
-        {"raw", labels->Clone()},
-      })
-    ));
+    raw_labels = json::object({
+      {"version", json::string(kKubernetesApiVersion)},
+      {"raw", labels->Clone()},
+    });
   }
   json::value container_raw_metadata = json::object({
-    {"blobs", json::value(std::move(blobs))},
+    {"blobs", json::object({
+      {"association", std::move(associations)},
+      {"spec", json::object({
+        {"version", json::string(kKubernetesApiVersion)},
+        {"raw", container_spec->Clone()},
+      })},
+      {"status", std::move(raw_status)},
+      {"labels", std::move(raw_labels)},
+    })},
   });
   if (config_.VerboseLogging()) {
     LOG(INFO) << "Raw container metadata: " << *container_raw_metadata;
