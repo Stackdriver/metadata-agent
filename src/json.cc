@@ -162,14 +162,18 @@ Array::Array(const Array& other) {
 
 Array::Array(std::vector<std::unique_ptr<Value>>&& elements) {
   for (auto& e : elements) {
-    emplace_back(std::move(e));
+    if (e != nullptr) {
+      emplace_back(std::move(e));
+    }
   }
 }
 
 Array::Array(
     std::initializer_list<rref_capture<std::unique_ptr<Value>>> elements) {
   for (auto& e : elements) {
-    emplace_back(std::move(e));
+    if (((std::unique_ptr<Value>&&) e) != nullptr) {
+      emplace_back(std::move(e));
+    }
   }
 }
 
@@ -193,7 +197,9 @@ Object::Object(const Object& other) {
 
 Object::Object(std::map<std::string, std::unique_ptr<Value>>&& fields) {
   for (auto& kv : fields) {
-    emplace(kv.first, std::move(kv.second));
+    if (kv.second != nullptr) {
+      emplace(kv.first, std::move(kv.second));
+    }
   }
 }
 
@@ -201,7 +207,9 @@ Object::Object(
     std::initializer_list<std::pair<std::string,
                           rref_capture<std::unique_ptr<Value>>>> fields) {
   for (auto& kv : fields) {
-    emplace(kv.first, std::move(kv.second));
+    if (((std::unique_ptr<Value>&&) kv.second) != nullptr) {
+      emplace(kv.first, std::move(kv.second));
+    }
   }
 }
 
