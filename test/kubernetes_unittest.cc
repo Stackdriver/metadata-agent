@@ -817,11 +817,12 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
                                    {{"cluster_name", "TestClusterName"},
                                     {"location", "TestClusterLocation"},
                                     {"node_name", "TestNodeName"}});
-        if (store.GetMetadataMap().size() == 0) {
+        auto metadata_map = store.GetMetadataMap();
+        if (metadata_map.size() == 0) {
           return false;
         }
-        const auto meta = store.GetMetadataMap().find(resource);
-        if (meta == store.GetMetadataMap().end()) {
+        const auto meta = metadata_map.find(resource);
+        if (meta == metadata_map.end()) {
           return false;
         }
         return time::rfc3339::ToString(meta->second.created_at) == timestamp;
@@ -869,11 +870,12 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
                                     {"location", "TestClusterLocation"},
                                     {"namespace_name", "TestNamespace"},
                                     {"pod_name", "TestPodName"}});
-        if (store.GetMetadataMap().size() == 0) {
+        auto metadata_map = store.GetMetadataMap();
+        if (metadata_map.size() == 0) {
           return false;
         }
-        const auto meta = store.GetMetadataMap().find(resource);
-        if (meta == store.GetMetadataMap().end()) {
+        const auto meta = metadata_map.find(resource);
+        if (meta == metadata_map.end()) {
           return false;
         }
         return time::rfc3339::ToString(meta->second.created_at) == timestamp;
