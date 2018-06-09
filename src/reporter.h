@@ -49,6 +49,10 @@ class MetadataReporter {
       std::map<std::string, MetadataStore::Metadata>&& metadata)
       throw (boost::system::system_error);
 
+  // Compute the fully qualified name of a GCP location.
+  const std::string FullyQualifiedResourceLocation(const std::string location)
+      const;
+
   const Configuration& config_;
   MetadataStore* store_;
   Environment environment_;

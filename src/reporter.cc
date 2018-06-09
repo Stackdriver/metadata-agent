@@ -16,6 +16,7 @@
 
 #include "reporter.h"
 
+#include <boost/algorithm/string/split.hpp>
 #define BOOST_NETWORK_ENABLE_HTTPS
 #include <boost/network/protocol/http/client.hpp>
 
@@ -33,6 +34,11 @@ constexpr const char kMultipartBoundary[] = "publishMultipartPost";
 constexpr const char kBatchEndpoint[] = "/batch";
 constexpr const char kMetadataIngestionPublishEndpoint[] =
     "/v1beta3/projects/{{project_id}}/resourceMetadata:publish";
+
+constexpr const char kRegionalLocationFormat[] =
+    "//cloud.google.com/locations/regions/{{region}}";
+constexpr const char kZonalLocationFormat[] =
+    "//cloud.google.com/locations/regions/{{region}}/zones/{{zone}}";
 
 MetadataReporter::MetadataReporter(const Configuration& config,
                                    MetadataStore* store, double period_s)
@@ -179,6 +185,26 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 
 }
 
+const std::string MetadataReporter::FullyQualifiedResourceLocation(
+    const std::string location) const {
+
+  int num_dashes = std::count(location.begin(), location.end(), '-');
+  if (num_dashes == 2) {
+    // location is a zone.
+    std::vector<std::string> dash_split;
+    boost::algorithm::split(
+        dash_split, location, boost::algorithm::is_any_of("-"));
+    const std::string region = dash_split[0] + "-" + dash_split[1];
+    return format::Substitute(std::string(kZonalLocationFormat),
+                              {{"region", region}, {"zone", location}});
+
+  } else {
+    // location is a region.
+    return format::Substitute(std::string(kRegionalLocationFormat),
+                              {{"region", location}});
+  }
+}
+
 void MetadataReporter::SendMetadata(
     std::map<std::string, MetadataStore::Metadata>&& metadata)
     throw (boost::system::system_error) {
@@ -215,11 +241,13 @@ void MetadataReporter::SendMetadata(
   for (auto& entry : metadata) {
     const std::string& full_resource_name = entry.first;
     MetadataStore::Metadata& metadata = entry.second;
+    const std::string resource_location =
+        FullyQualifiedResourceLocation(metadata.location);
     json::value metadata_entry =
         json::object({
           {"name", json::string(full_resource_name)},
           {"type", json::string(metadata.type)},
-          {"location", json::string(metadata.location)},
+          {"location", json::string(resource_location)},
           {"state", json::string(metadata.is_deleted ? "DELETED" : "EXISTS")},
           {"createTime", json::string(
               time::rfc3339::ToString(metadata.created_at))},
