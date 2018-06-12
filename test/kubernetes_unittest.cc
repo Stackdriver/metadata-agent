@@ -747,11 +747,16 @@ TEST_F(KubernetesTest, KubernetesNamespace) {
   EXPECT_EQ("the-namespace", KubernetesNamespace(reader));
 }
 
-// Repeatedly calls f(), and returns true if f() returns true within 3
-// seconds.
-bool Poll(std::function<bool()> f) {
-  for (int j = 0; j < 30; j++) {
-    if (f()) {
+// Polls store until collected_at for resource is newer than
+// last_timestamp.  Returns false if newer timestamp not found after 3
+// seconds (polling every 100 millis).
+bool WaitForNewerCollectionTimestamp(const MetadataStore& store,
+                                     const MonitoredResource& resource,
+                                     Timestamp last_timestamp) {
+  for (int i = 0; i < 30; i++){
+    const auto metadata_map = store.GetMetadataMap();
+    const auto m = metadata_map.find(resource);
+    if (m != metadata_map.end() && m->second.collected_at > last_timestamp) {
       return true;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -792,17 +797,14 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
 
   // For nodes, send stream responses from the fake Kubernetes
   // master and verify that the updater propagates them to the store.
+  Timestamp last_nodes_timestamp = time_point();
   for (int i = 0; i < 3; i++) {
-    // Create a timestamp to embed in response.  We will check that
-    // this value gets propagated to the store.
-    std::string timestamp =
-      std::string("2018-03-03T01:23:45.67890123") + std::to_string(i) + "Z";
     json::value resp = json::object({
       {"type", json::string("ADDED")},
       {"object", json::object({
         {"metadata", json::object({
           {"name", json::string("TestNodeName")},
-          {"creationTimestamp", json::string(timestamp)},
+          {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
         })}
       })}
     });
@@ -810,29 +812,23 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
     server.SendStreamResponse(
         "/api/v1/watch/nodes/TestNodeName?watch=true",
         resp->ToString());
-    // Poll the store to see the updated timstamp.
+    // Wait until watcher has processed response (by polling the store).
+    MonitoredResource resource("k8s_node",
+                               {{"cluster_name", "TestClusterName"},
+                                {"location", "TestClusterLocation"},
+                                {"node_name", "TestNodeName"}});
     EXPECT_TRUE(
-      Poll([&store, timestamp]() -> bool {
-        MonitoredResource resource("k8s_node",
-                                   {{"cluster_name", "TestClusterName"},
-                                    {"location", "TestClusterLocation"},
-                                    {"node_name", "TestNodeName"}});
-        auto metadata_map = store.GetMetadataMap();
-        if (metadata_map.size() == 0) {
-          return false;
-        }
-        const auto meta = metadata_map.find(resource);
-        if (meta == metadata_map.end()) {
-          return false;
-        }
-        return time::rfc3339::ToString(meta->second.created_at) == timestamp;
-      }));
+        WaitForNewerCollectionTimestamp(store, resource, last_nodes_timestamp));
+
+    const auto metadata_map = store.GetMetadataMap();
+    const auto& metadata = metadata_map.at(resource);
+    // TODO: Insert tests of metadata values.
+    last_nodes_timestamp = metadata.collected_at;
   }
 
   // For pods, do the same thing.
+  Timestamp last_pods_timestamp = time_point();
   for (int i = 0; i < 3; i++) {
-    std::string timestamp =
-      std::string("2018-03-03T01:23:45.67890123") + std::to_string(i) + "Z";
     json::value resp = json::object({
       {"type", json::string("ADDED")},
       {"object", json::object({
@@ -840,7 +836,7 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
           {"name", json::string("TestPodName")},
           {"namespace", json::string("TestNamespace")},
           {"uid", json::string("TestPodUid")},
-          {"creationTimestamp", json::string(timestamp)},
+          {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
         })},
         {"spec", json::object({
           {"nodeName", json::string("TestSpecNodeName")},
@@ -862,24 +858,19 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
     server.SendStreamResponse(
         "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true",
         resp->ToString());
-    // Poll the store to see the updated timstamp.
+    // Wait until watcher has processed response (by polling the store).
+    MonitoredResource resource("k8s_pod",
+                               {{"cluster_name", "TestClusterName"},
+                                {"location", "TestClusterLocation"},
+                                {"namespace_name", "TestNamespace"},
+                                {"pod_name", "TestPodName"}});
     EXPECT_TRUE(
-      Poll([&store, timestamp]() -> bool {
-        MonitoredResource resource("k8s_pod",
-                                   {{"cluster_name", "TestClusterName"},
-                                    {"location", "TestClusterLocation"},
-                                    {"namespace_name", "TestNamespace"},
-                                    {"pod_name", "TestPodName"}});
-        auto metadata_map = store.GetMetadataMap();
-        if (metadata_map.size() == 0) {
-          return false;
-        }
-        const auto meta = metadata_map.find(resource);
-        if (meta == metadata_map.end()) {
-          return false;
-        }
-        return time::rfc3339::ToString(meta->second.created_at) == timestamp;
-      }));
+        WaitForNewerCollectionTimestamp(store, resource, last_nodes_timestamp));
+
+    const auto metadata_map = store.GetMetadataMap();
+    const auto& metadata = metadata_map.at(resource);
+    // TODO: Insert tests of metadata values.
+    last_pods_timestamp = metadata.collected_at;
   }
 
   // Terminate the hanging GETs on the server so that the updater will finish.

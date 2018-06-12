@@ -10,7 +10,7 @@ FakeServer::FakeServer()
     // Note: An empty port selects a random available port (this behavior
     // is not documented).
     : server_(Server::options(handler_)
-                .thread_pool(std::make_shared<boost::network::utils::thread_pool>(4))
+                .thread_pool(std::make_shared<boost::network::utils::thread_pool>(5))
                 .address("127.0.0.1")
                 .port("")) {
   server_.listen();
