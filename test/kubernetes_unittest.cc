@@ -797,7 +797,7 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
 
   // For nodes, send stream responses from the fake Kubernetes
   // master and verify that the updater propagates them to the store.
-  Timestamp last_nodes_timestamp = time_point();
+  Timestamp last_nodes_timestamp = std::chrono::system_clock::now();
   for (int i = 0; i < 3; i++) {
     json::value resp = json::object({
       {"type", json::string("ADDED")},
@@ -827,7 +827,7 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
   }
 
   // For pods, do the same thing.
-  Timestamp last_pods_timestamp = time_point();
+  Timestamp last_pods_timestamp = std::chrono::system_clock::now();
   for (int i = 0; i < 3; i++) {
     json::value resp = json::object({
       {"type", json::string("ADDED")},
