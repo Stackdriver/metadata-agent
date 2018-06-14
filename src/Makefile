@@ -72,7 +72,7 @@ YAML_CPP_LIBS=\
 LIBS=$(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 
 sbindir=/opt/stackdriver/metadata/sbin
-initddir=/etc/rc.d/init.d
+initddir=/etc/init.d
 INSTALL=/usr/bin/install
 INSTALL_PROGRAM=$(INSTALL)
 INSTALL_DATA=$(INSTALL) -m 644
