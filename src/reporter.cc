@@ -31,7 +31,7 @@ namespace http = boost::network::http;
 namespace google {
 
 constexpr const char kMultipartBoundary[] = "publishMultipartPost";
-constexpr const char kBatchEndpoint[] = "/batch";
+constexpr const char kBatchEndpoint[] = "/batch/resourceMetadatadata";
 constexpr const char kMetadataIngestionPublishEndpoint[] =
     "/v1beta3/projects/{{project_id}}/resourceMetadata:publish";
 
@@ -118,13 +118,16 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
       out << "--" << kMultipartBoundary << std::endl;
     }
     std::string multipart_body = out.str();
+    const int total_length = multipart_body.size();
     request << boost::network::header(
-        "Content-Length", std::to_string(multipart_body.size()));
+        "Content-Length", std::to_string(total_length));
     request << boost::network::body(multipart_body);
 
     if (verbose_logging) {
       LOG(INFO) << "About to send request: POST " << batch_uri
                 << " User-Agent: " << user_agent
+                << " Content-Type: " << content_type
+                << " Context-Length: " << total_length
                 << std::endl << body(request);
     }
 
