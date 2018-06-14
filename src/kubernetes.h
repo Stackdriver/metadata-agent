@@ -55,6 +55,10 @@ class KubernetesReader {
   void WatchPods(const std::string& node_name,
                  MetadataUpdater::UpdateCallback callback) const;
 
+  // Generic Kubernetes resource watcher.
+  void WatchResources(const std::string& api_path, const std::string& name,
+                      MetadataUpdater::UpdateCallback callback) const;
+
   // Gets the name of the node the agent is running on.
   // Returns an empty string if unable to find the current node.
   const std::string& CurrentNode() const;
@@ -70,6 +74,9 @@ class KubernetesReader {
     std::string explanation_;
   };
   class NonRetriableError;
+
+  // Computes the full resource name given the self link.
+  const std::string FullResourceName(const std::string& self_link) const;
 
   // Issues a Kubernetes master API query at a given path and
   // returns a parsed JSON response. The path has to start with "/".
@@ -100,6 +107,15 @@ class KubernetesReader {
       MetadataUpdater::UpdateCallback callback, const json::Object* pod,
       Timestamp collected_at, bool is_deleted) const throw(json::Exception);
 
+  // Kubernetes resource watch callback.
+  void ResourceCallback(
+      MetadataUpdater::UpdateCallback callback, const json::Object* resource,
+      Timestamp collected_at, bool is_deleted) const throw(json::Exception);
+
+  // Given a generic kubernetes object, return the associated metadata.
+  MetadataUpdater::ResourceMetadata GetResourceMetadata(
+      const json::Object* resource, Timestamp collected_at, bool is_deleted)
+      const throw(json::Exception);
   // Given a node object, return the associated metadata.
   MetadataUpdater::ResourceMetadata GetNodeMetadata(
       const json::Object* node, Timestamp collected_at, bool is_deleted) const
@@ -163,6 +179,12 @@ class KubernetesUpdater : public PollingMetadataUpdater {
     if (pod_watch_thread_.joinable()) {
       pod_watch_thread_.join();
     }
+    if (service_watch_thread_.joinable()) {
+      service_watch_thread_.join();
+    }
+    if (endpoints_watch_thread_.joinable()) {
+      endpoints_watch_thread_.join();
+    }
   }
 
  protected:
@@ -180,6 +202,8 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   HealthChecker* health_checker_;
   std::thread node_watch_thread_;
   std::thread pod_watch_thread_;
+  std::thread service_watch_thread_;
+  std::thread endpoints_watch_thread_;
 };
 
 }

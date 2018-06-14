@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <boost/algorithm/string/join.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/network/protocol/http/client.hpp>
 #include <boost/range/iterator_range.hpp>
@@ -105,6 +106,86 @@ class KubernetesReader::NonRetriableError
  public:
   NonRetriableError(const std::string& what) : QueryException(what) {}
 };
+
+const std::pair<std::string, std::string> TypeAndVersion(
+    const std::string api_version, const std::string kind) {
+  const int group_name_len = api_version.find('/');
+  if (group_name_len == std::string::npos) {
+    return std::make_pair("io.k8s." + kind, api_version);
+  } else {
+    std::vector<std::string> slash_split;
+    boost::algorithm::split(
+        slash_split, api_version, boost::algorithm::is_any_of("/"));
+    const std::string group_name = slash_split[0];
+    const std::string version = slash_split[1];
+    return std::make_pair("io.k8s." + group_name + "." + kind, version);
+  }
+}
+
+const std::string KubernetesReader::FullResourceName(
+    const std::string& self_link) const {
+  std::vector<std::string> slash_split;
+  boost::algorithm::split(
+      slash_split, self_link, boost::algorithm::is_any_of("/"));
+
+  std::vector<std::string> link_components;
+  if(slash_split[1] == "api") {
+    // Core resources, start with "/api/<version>/..."
+    link_components.assign(slash_split.begin() + 3, slash_split.end());
+  } else {
+    // Non-core resources, start with "/apis/<group-name>/<version>/..."
+    const std::string group_name = slash_split[2];
+    link_components.push_back(group_name);
+    link_components.insert(link_components.end(),
+                           slash_split.begin() + 4, slash_split.end());
+
+  }
+  const std::string relative_link =
+      boost::algorithm::join(link_components, "/");
+  const std::string cluster_full_name = ClusterFullName();
+  return cluster_full_name + "/k8s/" + relative_link;
+}
+
+MetadataUpdater::ResourceMetadata KubernetesReader::GetResourceMetadata(
+    const json::Object* resource, Timestamp collected_at, bool is_deleted) const
+    throw(json::Exception) {
+  const std::string cluster_location = environment_.KubernetesClusterLocation();
+
+  const std::string kind = resource->Get<json::String>("kind");
+  const std::string api_version = resource->Get<json::String>("apiVersion");
+  const json::Object* metadata = resource->Get<json::Object>("metadata");
+  const std::string self_link = metadata->Get<json::String>("selfLink");
+  const std::pair<std::string, std::string> type_and_version =
+      TypeAndVersion(api_version, kind);
+  const std::string type = type_and_version.first;
+  const std::string version = type_and_version.second;
+
+  const std::string schema =
+      format::Substitute(std::string(kKubernetesSchemaNameFormat),
+                         {{"type", type}, {"version", version}});
+  const std::string created_str =
+      metadata->Get<json::String>("creationTimestamp");
+  Timestamp created_at = time::rfc3339::FromString(created_str);
+  const std::string resource_full_name = FullResourceName(self_link);
+
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Raw resource metadata for full name: " << resource_full_name
+              << ": " << *resource;
+  }
+
+  const MonitoredResource dummy_mr("", {});
+  return MetadataUpdater::ResourceMetadata(
+      std::vector<std::string>{}, dummy_mr,
+      resource_full_name,
+#ifdef ENABLE_KUBERNETES_METADATA
+      MetadataStore::Metadata(type, cluster_location, version,
+                              schema, is_deleted, created_at, collected_at,
+                              resource->Clone())
+#else
+      MetadataStore::Metadata::IGNORED()
+#endif
+  );
+}
 
 KubernetesReader::KubernetesReader(const Configuration& config,
                                    HealthChecker* health_checker)
@@ -793,6 +874,41 @@ void KubernetesReader::ValidateDynamicConfiguration() const
   }
 }
 
+void KubernetesReader::ResourceCallback(
+    MetadataUpdater::UpdateCallback callback,
+    const json::Object* resource, Timestamp collected_at, bool is_deleted) const
+    throw(json::Exception) {
+  std::vector<MetadataUpdater::ResourceMetadata> result_vector;
+  result_vector.emplace_back(
+      GetResourceMetadata(resource, collected_at, is_deleted));
+  callback(std::move(result_vector));
+}
+
+void KubernetesReader::WatchResources(
+    const std::string& api_path, const std::string& name,
+    MetadataUpdater::UpdateCallback callback) const {
+  LOG(INFO) << "Watch thread (" << name << ") started";
+
+  try {
+    // TODO: There seems to be a Kubernetes API bug with watch=true.
+    WatchMaster(
+        name, api_path,
+        [=](const json::Object* resource, Timestamp collected_at,
+            bool is_deleted) {
+          ResourceCallback(callback, resource, collected_at, is_deleted);
+        });
+  } catch (const json::Exception& e) {
+    LOG(ERROR) << e.what();
+    LOG(ERROR) << "No more " << name << " metadata will be collected";
+  } catch (const KubernetesReader::QueryException& e) {
+    LOG(ERROR) << "No more " << name << " metadata will be collected";
+  }
+  if (health_checker_) {
+    health_checker_->SetUnhealthy("kubernetes_node_thread");
+  }
+  LOG(INFO) << "Watch thread (" << name << ") exiting";
+}
+
 void KubernetesReader::PodCallback(
     MetadataUpdater::UpdateCallback callback,
     const json::Object* pod, Timestamp collected_at, bool is_deleted) const
@@ -913,6 +1029,12 @@ void KubernetesUpdater::StartUpdater() {
     });
     pod_watch_thread_ = std::thread([=]() {
       reader_.WatchPods(watched_node, cb);
+    });
+    service_watch_thread_ = std::thread([=]() {
+      reader_.WatchResources("/api/v1/services", "Service", cb);
+    });
+    endpoints_watch_thread_ = std::thread([=]() {
+      reader_.WatchResources("/api/v1/endpoints", "Endpoints", cb);
     });
   } else {
     // Only try to poll if watch is disabled.
