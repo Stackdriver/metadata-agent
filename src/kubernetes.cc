@@ -114,7 +114,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     const json::Object* node, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
   const std::string cluster_name = environment_.KubernetesClusterName();
-  const std::string location = environment_.KubernetesClusterLocation();
+  const std::string cluster_location = environment_.KubernetesClusterLocation();
 
   const json::Object* metadata = node->Get<json::Object>("metadata");
   const std::string node_name = metadata->Get<json::String>("name");
@@ -130,7 +130,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
   const MonitoredResource k8s_node("k8s_node", {
     {"cluster_name", cluster_name},
     {"node_name", node_name},
-    {"location", location},
+    {"location", cluster_location},
   });
 
   if (config_.VerboseLogging()) {
@@ -142,13 +142,12 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
       config_.MetadataApiResourceTypeSeparator());
   const std::string node_full_name =
       ClusterFullName() + "/k8s/nodes/" + node_name;
-  const std::string zone = environment_.InstanceZone();
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_node_name},
       k8s_node, node_full_name,
 #ifdef ENABLE_KUBERNETES_METADATA
-      MetadataStore::Metadata(node_type, zone, node_version, node_schema,
-                              is_deleted, created_at, collected_at,
+      MetadataStore::Metadata(node_type, cluster_location, node_version,
+                              node_schema, is_deleted, created_at, collected_at,
                               node->Clone())
 #else
       MetadataStore::Metadata::IGNORED()
@@ -195,15 +194,12 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
   const std::string pod_full_name =
       ClusterFullName() + "/k8s/namespaces/" + namespace_name + "/pods/" +
       pod_name;
-  const std::string zone = environment_.InstanceZone();
-  const std::string pod_location(
-      config_.KubernetesClusterLevelMetadata() ? cluster_location : zone);
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_pod_id, k8s_pod_name},
       k8s_pod, pod_full_name,
 #ifdef ENABLE_KUBERNETES_METADATA
-      MetadataStore::Metadata(pod_type, pod_location, pod_version, pod_schema,
-                              is_deleted, created_at, collected_at,
+      MetadataStore::Metadata(pod_type, cluster_location, pod_version,
+                              pod_schema, is_deleted, created_at, collected_at,
                               pod->Clone())
 #else
       MetadataStore::Metadata::IGNORED()

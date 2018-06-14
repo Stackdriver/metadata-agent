@@ -74,7 +74,7 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
       "TestClusterLocation/clusters/TestClusterName/k8s/nodes/testname",
       m.full_resource_name());
   EXPECT_EQ("io.k8s.Node", m.metadata().type);
-  EXPECT_EQ("TestZone", m.metadata().location);
+  EXPECT_EQ("TestClusterLocation", m.metadata().location);
   EXPECT_EQ("NodeVersion", m.metadata().version);
   EXPECT_EQ(
       "//container.googleapis.com/resourceTypes/io.k8s.Node/versions/"
@@ -123,7 +123,7 @@ TEST_F(KubernetesTest, GetPodMetadata) {
       "TestNamespace/pods/TestName",
       m.full_resource_name());
   EXPECT_EQ("io.k8s.Pod", m.metadata().type);
-  EXPECT_EQ("TestZone", m.metadata().location);
+  EXPECT_EQ("TestClusterLocation", m.metadata().location);
   EXPECT_EQ("PodVersion", m.metadata().version);
   EXPECT_EQ(
       "//container.googleapis.com/resourceTypes/io.k8s.Pod/versions/PodVersion",
