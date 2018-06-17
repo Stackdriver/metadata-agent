@@ -1030,12 +1030,15 @@ void KubernetesUpdater::StartUpdater() {
     pod_watch_thread_ = std::thread([=]() {
       reader_.WatchPods(watched_node, cb);
     });
-    service_watch_thread_ = std::thread([=]() {
-      reader_.WatchResources("/api/v1/services", "Service", cb);
-    });
-    endpoints_watch_thread_ = std::thread([=]() {
-      reader_.WatchResources("/api/v1/endpoints", "Endpoints", cb);
-    });
+    if (config().KubernetesClusterLevelMetadata() &&
+        config().KubernetesServiceMetadata()) {
+      service_watch_thread_ = std::thread([=]() {
+        reader_.WatchResources("/api/v1/services", "Service", cb);
+      });
+      endpoints_watch_thread_ = std::thread([=]() {
+        reader_.WatchResources("/api/v1/endpoints", "Endpoints", cb);
+      });
+    }
   } else {
     // Only try to poll if watch is disabled.
     PollingMetadataUpdater::StartUpdater();
