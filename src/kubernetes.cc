@@ -163,9 +163,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetResourceMetadata(
   const std::string schema =
       format::Substitute(std::string(kKubernetesSchemaNameFormat),
                          {{"type", type}, {"version", version}});
-  const std::string created_str =
-      metadata->Get<json::String>("creationTimestamp");
-  Timestamp created_at = time::rfc3339::FromString(created_str);
   const std::string resource_full_name = FullResourceName(self_link);
 
   if (config_.VerboseLogging()) {
@@ -179,7 +176,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetResourceMetadata(
       resource_full_name,
 #ifdef ENABLE_KUBERNETES_METADATA
       MetadataStore::Metadata(type, cluster_location, version,
-                              schema, is_deleted, created_at, collected_at,
+                              schema, is_deleted, collected_at,
                               resource->Clone())
 #else
       MetadataStore::Metadata::IGNORED()
@@ -204,9 +201,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
   const std::string node_schema =
       format::Substitute(std::string(kKubernetesSchemaNameFormat),
                          {{"type", node_type}, {"version", node_version}});
-  const std::string created_str =
-      metadata->Get<json::String>("creationTimestamp");
-  Timestamp created_at = time::rfc3339::FromString(created_str);
 
   const MonitoredResource k8s_node("k8s_node", {
     {"cluster_name", cluster_name},
@@ -228,7 +222,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
       k8s_node, node_full_name,
 #ifdef ENABLE_KUBERNETES_METADATA
       MetadataStore::Metadata(node_type, cluster_location, node_version,
-                              node_schema, is_deleted, created_at, collected_at,
+                              node_schema, is_deleted, collected_at,
                               node->Clone())
 #else
       MetadataStore::Metadata::IGNORED()
@@ -251,9 +245,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
   const std::string pod_schema =
       format::Substitute(std::string(kKubernetesSchemaNameFormat),
                          {{"type", pod_type}, {"version", pod_version}});
-  const std::string created_str =
-      metadata->Get<json::String>("creationTimestamp");
-  Timestamp created_at = time::rfc3339::FromString(created_str);
 
   const MonitoredResource k8s_pod("k8s_pod", {
     {"cluster_name", cluster_name},
@@ -280,7 +271,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
       k8s_pod, pod_full_name,
 #ifdef ENABLE_KUBERNETES_METADATA
       MetadataStore::Metadata(pod_type, cluster_location, pod_version,
-                              pod_schema, is_deleted, created_at, collected_at,
+                              pod_schema, is_deleted, collected_at,
                               pod->Clone())
 #else
       MetadataStore::Metadata::IGNORED()

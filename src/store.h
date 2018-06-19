@@ -42,24 +42,23 @@ class MetadataStore {
              const std::string& version_,
              const std::string& schema_name_,
              bool is_deleted_,
-             const Timestamp& created_at_,
              const Timestamp& collected_at_,
              json::value metadata_)
         : type(type_), location(location_), version(version_),
         schema_name(schema_name_), is_deleted(is_deleted_),
-        created_at(created_at_), collected_at(collected_at_),
+        collected_at(collected_at_),
         metadata(std::move(metadata_)), ignore(false) {}
     Metadata(Metadata&& other)
         : type(other.type), location(other.location), version(other.version),
         schema_name(other.schema_name), is_deleted(other.is_deleted),
-        created_at(other.created_at), collected_at(other.collected_at),
+        collected_at(other.collected_at),
         metadata(std::move(other.metadata)), ignore(other.ignore) {}
 
     Metadata Clone() const {
       if (ignore) {
         return IGNORED();
       }
-      return {type, location, version, schema_name, is_deleted, created_at,
+      return {type, location, version, schema_name, is_deleted,
               collected_at, metadata->Clone()};
     }
 
@@ -70,7 +69,6 @@ class MetadataStore {
     const std::string version;
     const std::string schema_name;
     const bool is_deleted;
-    const Timestamp created_at;
     const Timestamp collected_at;
     json::value metadata;
     const bool ignore;
@@ -78,7 +76,7 @@ class MetadataStore {
    private:
     Metadata()
         : type(), location(), version(), schema_name(), is_deleted(false),
-          created_at(), collected_at(), metadata(json::object({})),
+          collected_at(), metadata(json::object({})),
           ignore(true) {}
   };
 
