@@ -81,8 +81,6 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
       "NodeVersion",
       m.metadata().schema_name);
   EXPECT_FALSE(m.metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   EXPECT_EQ(node->ToString(), m.metadata().metadata->ToString());
 }
@@ -129,8 +127,6 @@ TEST_F(KubernetesTest, GetPodMetadata) {
       "//container.googleapis.com/resourceTypes/io.k8s.Pod/versions/PodVersion",
       m.metadata().schema_name);
   EXPECT_FALSE(m.metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   EXPECT_FALSE(m.metadata().ignore);
   EXPECT_EQ(pod->ToString(), m.metadata().metadata->ToString());
@@ -334,8 +330,6 @@ TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
   EXPECT_FALSE(m[2].metadata().ignore);
   EXPECT_EQ("PodVersion", m[2].metadata().version);
   EXPECT_FALSE(m[2].metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m[2].metadata().created_at);
   EXPECT_EQ(Timestamp(), m[2].metadata().collected_at);
   EXPECT_EQ(pod->ToString(),
             m[2].metadata().metadata->ToString());

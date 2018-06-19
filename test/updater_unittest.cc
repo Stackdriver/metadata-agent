@@ -190,7 +190,6 @@ TEST_F(UpdaterTest, UpdateMetadataCallback) {
       "test-schema-name",
       false,
       std::chrono::system_clock::now(),
-      std::chrono::system_clock::now(),
       json::object({{"f", json::string("test")}}));
   MonitoredResource resource("test_resource", {});
   const std::string frn = "/test";

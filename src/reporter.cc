@@ -252,8 +252,6 @@ void MetadataReporter::SendMetadata(
           {"type", json::string(metadata.type)},
           {"location", json::string(resource_location)},
           {"state", json::string(metadata.is_deleted ? "DELETED" : "EXISTS")},
-          {"createTime", json::string(
-              time::rfc3339::ToString(metadata.created_at))},
           {"eventTime", json::string(
               time::rfc3339::ToString(metadata.collected_at))},
           {"views",
