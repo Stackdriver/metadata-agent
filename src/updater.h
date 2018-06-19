@@ -22,6 +22,7 @@
 #include <thread>
 #include <vector>
 
+#include "format.h"
 #include "resource.h"
 #include "store.h"
 #include "time.h"
@@ -131,6 +132,7 @@ class MetadataUpdater {
 };
 
 // A class for all periodic updates of the metadata mapping.
+template<typename Clock = std::chrono::high_resolution_clock>
 class PollingMetadataUpdater : public MetadataUpdater {
  public:
   PollingMetadataUpdater(
@@ -166,6 +168,93 @@ class PollingMetadataUpdater : public MetadataUpdater {
   // The thread that polls for new metadata.
   std::thread reporter_thread_;
 };
+
+template<typename Clock>
+PollingMetadataUpdater<Clock>::PollingMetadataUpdater(
+    const Configuration& config, MetadataStore* store,
+    const std::string& name, double period_s,
+    std::function<std::vector<MetadataUpdater::ResourceMetadata>()> query_metadata)
+    : MetadataUpdater(config, store, name),
+      period_(period_s),
+      query_metadata_(query_metadata),
+      timer_(),
+      reporter_thread_() {}
+
+template<typename Clock>
+PollingMetadataUpdater<Clock>::~PollingMetadataUpdater() {
+  if (reporter_thread_.joinable()) {
+    reporter_thread_.join();
+  }
+}
+
+template<typename Clock>
+void PollingMetadataUpdater<Clock>::ValidateStaticConfiguration() const
+    throw(ConfigurationValidationError) {
+  if (period_ < time::seconds::zero()) {
+    throw ConfigurationValidationError(
+        format::Substitute("Polling period {{period}}s cannot be negative",
+                           {{"period", format::str(period_.count())}}));
+  }
+}
+
+template<typename Clock>
+bool PollingMetadataUpdater<Clock>::ShouldStartUpdater() const {
+  return period_ > time::seconds::zero();
+}
+
+template<typename Clock>
+void PollingMetadataUpdater<Clock>::StartUpdater() {
+  timer_.lock();
+  if (config().VerboseLogging()) {
+    LOG(INFO) << "Timer locked";
+  }
+  reporter_thread_ = std::thread([=]() { PollForMetadata(); });
+}
+
+template<typename Clock>
+void PollingMetadataUpdater<Clock>::StopUpdater() {
+  timer_.unlock();
+  if (config().VerboseLogging()) {
+    LOG(INFO) << "Timer unlocked";
+  }
+}
+
+template<typename Clock>
+void PollingMetadataUpdater<Clock>::PollForMetadata() {
+  bool done = false;
+  do {
+    std::vector<ResourceMetadata> result_vector = query_metadata_();
+    for (ResourceMetadata& result : result_vector) {
+      UpdateResourceCallback(result);
+      UpdateMetadataCallback(std::move(result));
+    }
+    // An unlocked timer means we should stop updating.
+    if (config().VerboseLogging()) {
+      LOG(INFO) << "Trying to unlock the timer";
+    }
+    auto start = Clock::now();
+    auto wakeup = start + period_;
+    done = true;
+    while (done && !timer_.try_lock_until(wakeup)) {
+      auto now = Clock::now();
+      // Detect spurious wakeups.
+      if (now < wakeup) {
+        continue;
+      }
+      if (config().VerboseLogging()) {
+        LOG(INFO) << " Timer unlock timed out after "
+                  << std::chrono::duration_cast<time::seconds>(now - start).count()
+                  << "s (good)";
+      }
+      start = now;
+      wakeup = start + period_;
+      done = false;
+    }
+  } while (!done);
+  if (config().VerboseLogging()) {
+    LOG(INFO) << "Timer unlocked (stop polling)";
+  }
+}
 
 }
 

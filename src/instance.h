@@ -44,10 +44,10 @@ class InstanceReader {
   Environment environment_;
 };
 
-class InstanceUpdater : public PollingMetadataUpdater {
+class InstanceUpdater : public PollingMetadataUpdater<> {
  public:
   InstanceUpdater(const Configuration& config, MetadataStore* store)
-      : reader_(config), PollingMetadataUpdater(
+      : reader_(config), PollingMetadataUpdater<>(
           config, store, "InstanceUpdater",
           config.InstanceUpdaterIntervalSeconds(),
           [=]() { return reader_.MetadataQuery(); }) { }

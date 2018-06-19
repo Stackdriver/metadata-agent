@@ -1263,7 +1263,7 @@ void KubernetesReader::WatchEndpoints(
 KubernetesUpdater::KubernetesUpdater(const Configuration& config,
                                      HealthChecker* health_checker,
                                      MetadataStore* store)
-    : reader_(config, health_checker), PollingMetadataUpdater(
+    : reader_(config, health_checker), PollingMetadataUpdater<>(
         config, store, "KubernetesUpdater",
         config.KubernetesUpdaterIntervalSeconds(),
         [=]() { return reader_.MetadataQuery(); }) { }

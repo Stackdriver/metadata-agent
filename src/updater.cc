@@ -19,7 +19,6 @@
 #include <chrono>
 
 #include "configuration.h"
-#include "format.h"
 #include "logging.h"
 
 namespace google {
@@ -43,86 +42,6 @@ void MetadataUpdater::start() throw(ConfigurationValidationError) {
 
 void MetadataUpdater::stop() {
   StopUpdater();
-}
-
-PollingMetadataUpdater::PollingMetadataUpdater(
-    const Configuration& config, MetadataStore* store,
-    const std::string& name, double period_s,
-    std::function<std::vector<ResourceMetadata>()> query_metadata)
-    : MetadataUpdater(config, store, name),
-      period_(period_s),
-      query_metadata_(query_metadata),
-      timer_(),
-      reporter_thread_() {}
-
-PollingMetadataUpdater::~PollingMetadataUpdater() {
-  if (reporter_thread_.joinable()) {
-    reporter_thread_.join();
-  }
-}
-
-void PollingMetadataUpdater::ValidateStaticConfiguration() const
-    throw(ConfigurationValidationError) {
-  if (period_ < time::seconds::zero()) {
-    throw ConfigurationValidationError(
-        format::Substitute("Polling period {{period}}s cannot be negative",
-                           {{"period", format::str(period_.count())}}));
-  }
-}
-
-bool PollingMetadataUpdater::ShouldStartUpdater() const {
-  return period_ > time::seconds::zero();
-}
-
-void PollingMetadataUpdater::StartUpdater() {
-  timer_.lock();
-  if (config().VerboseLogging()) {
-    LOG(INFO) << "Timer locked";
-  }
-  reporter_thread_ = std::thread([=]() { PollForMetadata(); });
-}
-
-void PollingMetadataUpdater::StopUpdater() {
-  timer_.unlock();
-  if (config().VerboseLogging()) {
-    LOG(INFO) << "Timer unlocked";
-  }
-}
-
-void PollingMetadataUpdater::PollForMetadata() {
-  bool done = false;
-  do {
-    std::vector<ResourceMetadata> result_vector = query_metadata_();
-    for (ResourceMetadata& result : result_vector) {
-      UpdateResourceCallback(result);
-      UpdateMetadataCallback(std::move(result));
-    }
-    // An unlocked timer means we should stop updating.
-    if (config().VerboseLogging()) {
-      LOG(INFO) << "Trying to unlock the timer";
-    }
-    auto start = std::chrono::high_resolution_clock::now();
-    auto wakeup = start + period_;
-    done = true;
-    while (done && !timer_.try_lock_until(wakeup)) {
-      auto now = std::chrono::high_resolution_clock::now();
-      // Detect spurious wakeups.
-      if (now < wakeup) {
-        continue;
-      }
-      if (config().VerboseLogging()) {
-        LOG(INFO) << " Timer unlock timed out after "
-                  << std::chrono::duration_cast<time::seconds>(now - start).count()
-                  << "s (good)";
-      }
-      start = now;
-      wakeup = start + period_;
-      done = false;
-    }
-  } while (!done);
-  if (config().VerboseLogging()) {
-    LOG(INFO) << "Timer unlocked (stop polling)";
-  }
 }
 
 }

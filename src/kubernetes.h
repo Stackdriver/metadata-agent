@@ -207,7 +207,7 @@ class KubernetesReader {
   Environment environment_;
 };
 
-class KubernetesUpdater : public PollingMetadataUpdater {
+class KubernetesUpdater : public PollingMetadataUpdater<> {
  public:
   KubernetesUpdater(const Configuration& config, HealthChecker* health_checker,
                     MetadataStore* store);
@@ -234,7 +234,7 @@ class KubernetesUpdater : public PollingMetadataUpdater {
 
  private:
   // Metadata watcher callback.
-  void MetadataCallback(std::vector<ResourceMetadata>&& result_vector);
+  void MetadataCallback(std::vector<MetadataUpdater::ResourceMetadata>&& result_vector);
 
   KubernetesReader reader_;
   HealthChecker* health_checker_;

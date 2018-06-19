@@ -64,10 +64,10 @@ class DockerReader {
   Environment environment_;
 };
 
-class DockerUpdater : public PollingMetadataUpdater {
+class DockerUpdater : public PollingMetadataUpdater<> {
  public:
   DockerUpdater(const Configuration& config, MetadataStore* store)
-      : reader_(config), PollingMetadataUpdater(
+      : reader_(config), PollingMetadataUpdater<>(
           config, store, "DockerUpdater",
           config.DockerUpdaterIntervalSeconds(),
           [=]() { return reader_.MetadataQuery(); }) { }
