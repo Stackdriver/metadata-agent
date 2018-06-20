@@ -31,7 +31,7 @@ namespace http = boost::network::http;
 namespace google {
 
 constexpr const char kMultipartBoundary[] = "publishMultipartPost";
-constexpr const char kBatchEndpoint[] = "/batch/resourceMetadatadata";
+constexpr const char kBatchEndpoint[] = "/batch/resourceMetadata";
 constexpr const char kMetadataIngestionPublishEndpoint[] =
     "/v1beta3/projects/{{project_id}}/resourceMetadata:publish";
 
@@ -90,7 +90,7 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
                          bool use_batch)
     throw (boost::system::system_error) {
 
-  if (use_batch) {
+  if (use_batch and (entries.size() > 1)) {
     const std::string batch_uri = host + kBatchEndpoint;
     const std::string content_type =
         std::string("multipart/mixed; boundary=") + kMultipartBoundary;
@@ -99,12 +99,14 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
     request << boost::network::header("User-Agent", user_agent);
     request << boost::network::header("Content-Type", content_type);
     request << boost::network::header("Authorization", auth_header);
+    request << boost::network::header("Expect", "100-continue");
     std::ostringstream out;
-    out << std::endl << "--" << kMultipartBoundary << std::endl;
+    out << std::endl;
 
     for (json::value& entry : entries) {
       const json::Object* single_request = entry->As<json::Object>();
       std::string request_body = single_request->ToString();
+      out << "--" << kMultipartBoundary << std::endl;
       out << "Content-Type: application/http" << std::endl;
       out << "Content-Transfer-Encoding: binary" << std::endl;
       out << "Content-ID: " << single_request->Get<json::String>("name")
@@ -115,20 +117,26 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
       out << "Content-Length: " << std::to_string(request_body.size())
           << std::endl;
       out << std::endl << request_body << std::endl;
-      out << "--" << kMultipartBoundary << std::endl;
     }
+    out << "--" << kMultipartBoundary << "--" << std::endl;
     std::string multipart_body = out.str();
     const int total_length = multipart_body.size();
-    request << boost::network::header(
-        "Content-Length", std::to_string(total_length));
+
+    request << boost::network::header("Content-Length",
+                                      std::to_string(total_length));
     request << boost::network::body(multipart_body);
 
     if (verbose_logging) {
-      LOG(INFO) << "About to send request: POST " << batch_uri
-                << " User-Agent: " << user_agent
-                << " Content-Type: " << content_type
-                << " Context-Length: " << total_length
-                << std::endl << body(request);
+      LOG(INFO) << "About to send request: POST " << batch_uri;
+      LOG(INFO) << "Headers:";
+      http::client::request::headers_container_type head = (headers(request));
+      for (auto it = head.begin(); it != head.end(); ++it) {
+        if (it->first == "Authorization") {
+          continue;
+        }
+        LOG(INFO) << it->first << ": " << it->second;
+      }
+      LOG(INFO) << "Body:" << std::endl << body(request);
     }
 
     http::client::response response = client.post(request);
@@ -148,7 +156,7 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
       LOG(INFO) << "Headers:";
       http::client::response::headers_container_type head = (headers(response));
       for (auto it = head.begin(); it != head.end(); ++it) {
-          LOG(INFO) << it->first << ":" << it->second;
+        LOG(INFO) << it->first << ": " << it->second;
       }
       LOG(INFO) << "Body:" << std::endl << body(response);
     }
