@@ -2,6 +2,7 @@
 #include "../src/resource.h"
 #include "../src/store.h"
 #include "../src/updater.h"
+#include "fake_clock.h"
 #include "gtest/gtest.h"
 
 #include <string>
@@ -41,38 +42,6 @@ class UpdaterTest : public ::testing::Test {
   Configuration config;
   MetadataStore store;
 };
-
-class FakeClock {
- public:
-  // Requirements for Clock, see http://en.cppreference.com/w/cpp/named_req/Clock
-  typedef uint64_t rep;
-  typedef std::ratio<1l, 1000000000l> period;
-  typedef std::chrono::duration<rep, period> duration;
-  typedef std::chrono::time_point<FakeClock> time_point;
-  static const bool is_steady;
-  static time_point now() noexcept;
-
-  static void Advance(duration d) noexcept;
-
- private:
-  FakeClock() = delete;
-  ~FakeClock() = delete;
-  FakeClock(FakeClock const&) = delete;
-
-  static time_point now_;
-};
-
-FakeClock::time_point FakeClock::now_;
-
-const bool FakeClock::is_steady = false;
-
-FakeClock::time_point FakeClock::now() noexcept {
-  return now_;
-}
-
-void FakeClock::Advance(duration d) noexcept {
-  now_ += d;
-}
 
 namespace {
 
@@ -265,7 +234,7 @@ TEST_F(UpdaterTest, PollingMetadataUpdater) {
   //
   // Each callback will return a new resource "test_resource_<i>".
   int i = 0;
-  PollingMetadataUpdater<FakeClock> updater(
+  PollingMetadataUpdater<testing::FakeClock> updater(
     config, &store, "Test", 1,
     [&i]() {
       std::vector<MetadataUpdater::ResourceMetadata> result;
@@ -280,12 +249,12 @@ TEST_F(UpdaterTest, PollingMetadataUpdater) {
   // Wait for update, verify store, and advance fake clock.
   EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_0", {})));
   EXPECT_EQ(1, store.GetMetadataMap().size());
-  FakeClock::Advance(std::chrono::seconds(1));
+  testing::FakeClock::Advance(std::chrono::seconds(1));
 
   // Repeat.
   EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_1", {})));
   EXPECT_EQ(2, store.GetMetadataMap().size());
-  FakeClock::Advance(std::chrono::seconds(1));
+  testing::FakeClock::Advance(std::chrono::seconds(1));
 
   // Repeat.
   EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_2", {})));
