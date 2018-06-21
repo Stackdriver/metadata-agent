@@ -140,6 +140,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_node_name},
       k8s_node,
+      /*full_resource_name=*/"",
 #ifdef ENABLE_KUBERNETES_METADATA
       MetadataStore::Metadata(config_.MetadataIngestionRawContentVersion(),
                               is_deleted, created_at, collected_at,
@@ -192,6 +193,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_pod_id, k8s_pod_name},
       k8s_pod,
+      /*full_resource_name=*/"",
 #ifdef ENABLE_KUBERNETES_METADATA
       MetadataStore::Metadata(config_.MetadataIngestionRawContentVersion(),
                               is_deleted, created_at, collected_at,
@@ -261,6 +263,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
   return MetadataUpdater::ResourceMetadata(
       std::move(local_resource_ids),
       k8s_container,
+      /*full_resource_name=*/"",
       MetadataStore::Metadata::IGNORED()
   );
 }
@@ -295,6 +298,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetLegacyResource(
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{gke_container_pod_id, gke_container_name},
       gke_container,
+      /*full_resource_name=*/"",
       MetadataStore::Metadata::IGNORED());
 }
 
