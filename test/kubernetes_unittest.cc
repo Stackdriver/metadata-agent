@@ -69,10 +69,8 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
     {"node_name", "testname"},
     {"location", "TestClusterLocation"},
   }), m.resource());
-  EXPECT_EQ("TestVersion", m.metadata().version);
+  EXPECT_EQ("", m.metadata().version);
   EXPECT_FALSE(m.metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   json::value expected_metadata = json::object({
     {"blobs", json::object({
@@ -114,10 +112,8 @@ TEST_F(KubernetesTest, GetPodMetadata) {
     {"location", "TestClusterLocation"},
     {"namespace_name", "TestNamespace"},
   }), m.resource());
-  EXPECT_EQ("TestVersion", m.metadata().version);
+  EXPECT_EQ("", m.metadata().version);
   EXPECT_FALSE(m.metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   EXPECT_FALSE(m.metadata().ignore);
   json::value expected_metadata = json::object({
@@ -292,10 +288,8 @@ TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
       {"pod_name", "TestPodName"},
   }), m[2].resource());
   EXPECT_FALSE(m[2].metadata().ignore);
-  EXPECT_EQ("TestVersion", m[2].metadata().version);
+  EXPECT_EQ("", m[2].metadata().version);
   EXPECT_FALSE(m[2].metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m[2].metadata().created_at);
   EXPECT_EQ(Timestamp(), m[2].metadata().collected_at);
   json::value pod_metadata = json::object({
     {"blobs", json::object({

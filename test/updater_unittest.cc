@@ -184,9 +184,11 @@ TEST_F(ValidationOrderingTest, AllChecksPassedInvokesStartUpdater) {
 
 TEST_F(UpdaterTest, UpdateMetadataCallback) {
   MetadataStore::Metadata m(
+      "test-type",
+      "test-location",
       "test-version",
+      "test-schema-name",
       false,
-      std::chrono::system_clock::now(),
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("test")}}));
   MonitoredResource resource("test_resource", {});
@@ -198,7 +200,10 @@ TEST_F(UpdaterTest, UpdateMetadataCallback) {
   UpdateMetadataCallback(&updater, std::move(metadata));
   const auto metadata_map = store.GetMetadataMap();
   EXPECT_EQ(1, metadata_map.size());
+  EXPECT_EQ("test-type", metadata_map.at(frn).type);
+  EXPECT_EQ("test-location", metadata_map.at(frn).location);
   EXPECT_EQ("test-version", metadata_map.at(frn).version);
+  EXPECT_EQ("test-schema-name", metadata_map.at(frn).schema_name);
   EXPECT_EQ("{\"f\":\"test\"}", metadata_map.at(frn).metadata->ToString());
 }
 

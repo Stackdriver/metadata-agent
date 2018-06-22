@@ -37,39 +37,47 @@ using Timestamp = time_point;
 class MetadataStore {
  public:
   struct Metadata {
-    Metadata(const std::string& version_,
+    Metadata(const std::string& type_,
+             const std::string& location_,
+             const std::string& version_,
+             const std::string& schema_name_,
              bool is_deleted_,
-             const Timestamp& created_at_,
              const Timestamp& collected_at_,
              json::value metadata_)
-        : version(version_), is_deleted(is_deleted_), created_at(created_at_),
-          collected_at(collected_at_), metadata(std::move(metadata_)),
-          ignore(false) {}
+        : type(type_), location(location_), version(version_),
+        schema_name(schema_name_), is_deleted(is_deleted_),
+        collected_at(collected_at_),
+        metadata(std::move(metadata_)), ignore(false) {}
     Metadata(Metadata&& other)
-        : version(other.version), is_deleted(other.is_deleted),
-          created_at(other.created_at), collected_at(other.collected_at),
-          metadata(std::move(other.metadata)), ignore(other.ignore) {}
+        : type(other.type), location(other.location), version(other.version),
+        schema_name(other.schema_name), is_deleted(other.is_deleted),
+        collected_at(other.collected_at),
+        metadata(std::move(other.metadata)), ignore(other.ignore) {}
 
     Metadata Clone() const {
       if (ignore) {
         return IGNORED();
       }
-      return {version, is_deleted, created_at, collected_at, metadata->Clone()};
+      return {type, location, version, schema_name, is_deleted,
+              collected_at, metadata->Clone()};
     }
 
     static Metadata IGNORED();
 
+    const std::string type;
+    const std::string location;
     const std::string version;
+    const std::string schema_name;
     const bool is_deleted;
-    const Timestamp created_at;
     const Timestamp collected_at;
     json::value metadata;
     const bool ignore;
 
    private:
     Metadata()
-        : version(), is_deleted(false), created_at(), collected_at(),
-          metadata(json::object({})), ignore(true) {}
+        : type(), location(), version(), schema_name(), is_deleted(false),
+          collected_at(), metadata(json::object({})),
+          ignore(true) {}
   };
 
   MetadataStore(const Configuration& config);

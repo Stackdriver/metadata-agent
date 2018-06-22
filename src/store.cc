@@ -52,9 +52,11 @@ void MetadataStore::UpdateMetadata(const std::string& full_resource_name,
   std::lock_guard<std::mutex> lock(metadata_mu_);
   if (config_.VerboseLogging()) {
     LOG(INFO) << "Updating metadata map " << full_resource_name << "->{"
+              << "type: " << entry.type << ", "
+              << "location: " << entry.location << ", "
               << "version: " << entry.version << ", "
+              << "schema name: " << entry.schema_name << ", "
               << "is_deleted: " << entry.is_deleted << ", "
-              << "created_at: " << time::rfc3339::ToString(entry.created_at) << ", "
               << "collected_at: " << time::rfc3339::ToString(entry.collected_at)
               << ", "
               << "metadata: " << *entry.metadata << ", "
@@ -89,10 +91,11 @@ void MetadataStore::PurgeDeletedEntries() {
     if (entry.is_deleted) {
       if (config_.VerboseLogging()) {
         LOG(INFO) << "Purging metadata entry " << full_resource_name << "->{"
+                  << "type: " << entry.type << ", "
+                  << "location: " << entry.location << ", "
                   << "version: " << entry.version << ", "
+                  << "schema name: " << entry.schema_name << ", "
                   << "is_deleted: " << entry.is_deleted << ", "
-                  << "created_at: " << time::rfc3339::ToString(entry.created_at)
-                  << ", "
                   << "collected_at: " << time::rfc3339::ToString(entry.collected_at)
                   << ", "
                   << "metadata: " << *entry.metadata << ", "

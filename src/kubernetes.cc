@@ -142,8 +142,9 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
       k8s_node,
       /*full_resource_name=*/"",
 #ifdef ENABLE_KUBERNETES_METADATA
-      MetadataStore::Metadata(config_.MetadataIngestionRawContentVersion(),
-                              is_deleted, created_at, collected_at,
+      MetadataStore::Metadata(/*type=*/"", /*location=*/"", /*version=*/"",
+                              /*schema_name=*/"",
+                              is_deleted, collected_at,
                               std::move(node_raw_metadata))
 #else
       MetadataStore::Metadata::IGNORED()
@@ -195,8 +196,9 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
       k8s_pod,
       /*full_resource_name=*/"",
 #ifdef ENABLE_KUBERNETES_METADATA
-      MetadataStore::Metadata(config_.MetadataIngestionRawContentVersion(),
-                              is_deleted, created_at, collected_at,
+      MetadataStore::Metadata(/*type=*/"", /*location=*/"", /*version=*/"",
+                              /*schema_name=*/"",
+                              is_deleted, collected_at,
                               std::move(pod_raw_metadata))
 #else
       MetadataStore::Metadata::IGNORED()

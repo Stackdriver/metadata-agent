@@ -150,14 +150,24 @@ void MetadataReporter::SendMetadata(
       continue;
     }
     json::value metadata_entry =
-        json::object({  // MonitoredResourceMetadata
+        json::object({
           {"name", json::string(full_resource_name)},
-          {"rawContentVersion", json::string(metadata.version)},
-          {"rawContent", std::move(metadata.metadata)},
-          {"state", json::string(metadata.is_deleted ? "DELETED" : "ACTIVE")},
-          {"createTime", json::string(time::rfc3339::ToString(metadata.created_at))},
-          {"collectTime", json::string(time::rfc3339::ToString(metadata.collected_at))},
-        });
+          {"type", json::string(metadata.type)},
+          {"location", json::string(metadata.location)},
+          {"state", json::string(metadata.is_deleted ? "DELETED" : "EXISTS")},
+          {"eventTime", json::string(
+              time::rfc3339::ToString(metadata.collected_at))},
+          {"views",
+            json::object({
+              {metadata.version,
+                json::object({
+                  {"schemaName", json::string(metadata.schema_name)},
+                  {"stringContent", json::string(metadata.metadata->ToString())},
+                })
+              }
+            })
+          }
+      });
     // TODO: This is probably all kinds of inefficient...
     const int size = metadata_entry->ToString().size();
     if (empty_size + size > limit_bytes) {
