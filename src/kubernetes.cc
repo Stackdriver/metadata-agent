@@ -112,9 +112,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
 
   const json::Object* metadata = node->Get<json::Object>("metadata");
   const std::string node_name = metadata->Get<json::String>("name");
-  const std::string created_str =
-      metadata->Get<json::String>("creationTimestamp");
-  Timestamp created_at = time::rfc3339::FromString(created_str);
 
   const MonitoredResource k8s_node("k8s_node", {
     {"cluster_name", cluster_name},
@@ -162,9 +159,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
   const std::string namespace_name = metadata->Get<json::String>("namespace");
   const std::string pod_name = metadata->Get<json::String>("name");
   const std::string pod_id = metadata->Get<json::String>("uid");
-  const std::string created_str =
-      metadata->Get<json::String>("creationTimestamp");
-  Timestamp created_at = time::rfc3339::FromString(created_str);
 
   const MonitoredResource k8s_pod("k8s_pod", {
     {"cluster_name", cluster_name},
@@ -216,10 +210,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
   const std::string namespace_name = metadata->Get<json::String>("namespace");
   const std::string pod_name = metadata->Get<json::String>("name");
   const std::string pod_id = metadata->Get<json::String>("uid");
-  const std::string created_str =
-      metadata->Get<json::String>("creationTimestamp");
-  Timestamp created_at = time::rfc3339::FromString(created_str);
-
   const std::string container_name = container_spec->Get<json::String>("name");
 
   const MonitoredResource k8s_container("k8s_container", {
