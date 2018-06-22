@@ -16,7 +16,6 @@ void VerifyDefaultConfig(const Configuration& config) {
               ::testing::StartsWith("metadata-agent/"));
   EXPECT_EQ("https://stackdriver.googleapis.com",
             config.MetadataIngestionHost());
-  EXPECT_EQ(false, config.MetadataIngestionUseBatch());
   EXPECT_EQ(8*1024*1024, config.MetadataIngestionRequestSizeLimitBytes());
   EXPECT_EQ(1000, config.MetadataIngestionRequestSizeLimitCount());
   EXPECT_EQ("0.1", config.MetadataIngestionRawContentVersion());
