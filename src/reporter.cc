@@ -86,11 +86,10 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
                          const std::string& publish_endpoint,
                          const std::string& auth_header,
                          const std::string& user_agent,
-                         bool verbose_logging,
-                         bool use_batch)
+                         bool verbose_logging)
     throw (boost::system::system_error) {
 
-  if (use_batch and (entries.size() > 1)) {
+  if (entries.size() > 1) {
     const std::string batch_uri = host + kBatchEndpoint;
     const std::string content_type =
         std::string("multipart/mixed; boundary=") + kMultipartBoundary;
@@ -284,7 +283,7 @@ void MetadataReporter::SendMetadata(
     if (entries.size() == limit_count || total_size + size > limit_bytes) {
       SendMetadataRequest(
           std::move(entries), host, endpoint, auth_header, user_agent,
-          config_.VerboseLogging(), config_.MetadataIngestionUseBatch());
+          config_.VerboseLogging());
       entries.clear();
       total_size = empty_size;
     }
@@ -294,7 +293,7 @@ void MetadataReporter::SendMetadata(
   if (!entries.empty()) {
     SendMetadataRequest(
         std::move(entries), host, endpoint, auth_header, user_agent,
-        config_.VerboseLogging(), config_.MetadataIngestionUseBatch());
+        config_.VerboseLogging());
   }
 }
 

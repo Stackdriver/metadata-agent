@@ -48,7 +48,6 @@ constexpr const char kMetadataReporterDefaultUserAgent[] =
     "metadata-agent/" STRINGIFY(AGENT_VERSION);
 constexpr const char kMetadataIngestionDefaultHost[] =
     "https://stackdriver.googleapis.com";
-constexpr const bool kMetadataIngestionUseBatch = false;
 constexpr const int kMetadataIngestionDefaultRequestSizeLimitBytes =
     8*1024*1024;
 constexpr const int kMetadataIngestionDefaultRequestSizeLimitCount = 1000;
@@ -94,8 +93,6 @@ Configuration::Configuration()
           kMetadataReporterDefaultUserAgent),
       metadata_ingestion_host_(
           kMetadataIngestionDefaultHost),
-      metadata_ingestion_use_batch_(
-          kMetadataIngestionUseBatch),
       metadata_ingestion_request_size_limit_bytes_(
           kMetadataIngestionDefaultRequestSizeLimitBytes),
       metadata_ingestion_request_size_limit_count_(
@@ -236,9 +233,6 @@ void Configuration::ParseConfiguration(std::istream& input) {
   metadata_ingestion_host_ =
       config["MetadataIngestionHost"].as<std::string>(
           metadata_ingestion_host_);
-  metadata_ingestion_use_batch_ =
-      config["MetadataIngestionUseBatch"].as<bool>(
-          metadata_ingestion_use_batch_);
   metadata_ingestion_request_size_limit_bytes_ =
       config["MetadataIngestionRequestSizeLimitBytes"].as<int>(
           metadata_ingestion_request_size_limit_bytes_);
