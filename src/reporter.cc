@@ -19,6 +19,8 @@
 #include <boost/algorithm/string/split.hpp>
 #define BOOST_NETWORK_ENABLE_HTTPS
 #include <boost/network/protocol/http/client.hpp>
+#include <network/uri/uri.hpp>
+#include <network/uri/uri_builder.hpp>
 
 #include "configuration.h"
 #include "format.h"
@@ -31,9 +33,7 @@ namespace http = boost::network::http;
 namespace google {
 
 constexpr const char kMultipartBoundary[] = "publishMultipartPost";
-constexpr const char kBatchEndpoint[] = "/batch/resourceMetadata";
-constexpr const char kMetadataIngestionPublishEndpoint[] =
-    "/v1beta3/projects/{{project_id}}/resourceMetadata:publish";
+constexpr const char kBatchPath[] = "/batch/resourceMetadata";
 
 constexpr const char kRegionalLocationFormat[] =
     "//cloud.google.com/locations/regions/{{region}}";
@@ -81,16 +81,36 @@ void MetadataReporter::ReportMetadata() {
 
 namespace {
 
+const std::pair<std::string, std::string> EndpointToHostWithSchemeAndPath(
+    const std::string ingestion_endpoint) {
+  const network::uri ingestion_uri(ingestion_endpoint);
+
+  std::ostringstream host_stream;
+  if (ingestion_uri.has_scheme()) {
+    host_stream << ingestion_uri.scheme() << "://";
+  }
+  host_stream << ingestion_uri.host();
+  if (ingestion_uri.has_port()) {
+    host_stream << ":" << ingestion_uri.port();
+  }
+
+  std::ostringstream path_stream;
+  path_stream << ingestion_uri.path();
+  return std::make_pair(host_stream.str(), path_stream.str());
+}
+
 void SendMetadataRequest(std::vector<json::value>&& entries,
-                         const std::string& host,
-                         const std::string& publish_endpoint,
+                         const std::string& endpoint,
                          const std::string& auth_header,
                          const std::string& user_agent,
                          bool verbose_logging)
     throw (boost::system::system_error) {
 
   if (entries.size() > 1) {
-    const std::string batch_uri = host + kBatchEndpoint;
+    const auto host_and_path = EndpointToHostWithSchemeAndPath(endpoint);
+    const std::string host = host_and_path.first;
+    const std::string publish_path = host_and_path.second;
+    const std::string batch_uri = host + kBatchPath;
     const std::string content_type =
         std::string("multipart/mixed; boundary=") + kMultipartBoundary;
     http::client client;
@@ -111,7 +131,7 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
       out << "Content-ID: " << single_request->Get<json::String>("name")
           << std::endl;
       out << std::endl;
-      out << "POST " << publish_endpoint << std::endl;
+      out << "POST " << publish_path << std::endl;
       out << "Content-Type: application/json; charset=UTF-8" << std::endl;
       out << "Content-Length: " << std::to_string(request_body.size())
           << std::endl;
@@ -161,7 +181,6 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
     }
     // TODO: process response.
   } else {
-    const std::string endpoint = host + publish_endpoint;
     for (json::value& update_metadata_request : entries) {
       if (verbose_logging) {
         LOG(INFO) << "About to send request: POST " << endpoint
@@ -229,11 +248,10 @@ void MetadataReporter::SendMetadata(
     LOG(INFO) << "Sending request to the server";
   }
   const std::string project_id = environment_.NumericProjectId();
-  const std::string host = config_.MetadataIngestionHost();
   // The endpoint template is expected to be of the form
-  // "/v1beta3/.../projects/{{project_id}}/...".
+  // "https://stackdriver.googleapis.com/.../projects/{{project_id}}/...".
   const std::string endpoint =
-      format::Substitute(kMetadataIngestionPublishEndpoint,
+      format::Substitute(config_.MetadataIngestionEndpointFormat(),
                          {{"project_id", project_id}});
   const std::string auth_header = auth_.GetAuthHeaderValue();
   const std::string user_agent = config_.MetadataReporterUserAgent();
@@ -281,9 +299,8 @@ void MetadataReporter::SendMetadata(
       continue;
     }
     if (entries.size() == limit_count || total_size + size > limit_bytes) {
-      SendMetadataRequest(
-          std::move(entries), host, endpoint, auth_header, user_agent,
-          config_.VerboseLogging());
+      SendMetadataRequest(std::move(entries), endpoint, auth_header, user_agent,
+                          config_.VerboseLogging());
       entries.clear();
       total_size = empty_size;
     }
@@ -291,9 +308,8 @@ void MetadataReporter::SendMetadata(
     total_size += size;
   }
   if (!entries.empty()) {
-    SendMetadataRequest(
-        std::move(entries), host, endpoint, auth_header, user_agent,
-        config_.VerboseLogging());
+    SendMetadataRequest(std::move(entries), endpoint, auth_header, user_agent,
+                        config_.VerboseLogging());
   }
 }
 

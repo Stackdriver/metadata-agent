@@ -46,8 +46,9 @@ constexpr const int kMetadataReporterDefaultIntervalSeconds = 60;
 constexpr const int kMetadataReporterDefaultPurgeDeleted = false;
 constexpr const char kMetadataReporterDefaultUserAgent[] =
     "metadata-agent/" STRINGIFY(AGENT_VERSION);
-constexpr const char kMetadataIngestionDefaultHost[] =
-    "https://stackdriver.googleapis.com";
+constexpr const char kMetadataIngestionDefaultEndpointFormat[] =
+    "https://stackdriver.googleapis.com/v1beta3/projects/{{project_id}}"
+    "/resourceMetadata:publish";
 constexpr const int kMetadataIngestionDefaultRequestSizeLimitBytes =
     8*1024*1024;
 constexpr const int kMetadataIngestionDefaultRequestSizeLimitCount = 1000;
@@ -91,8 +92,8 @@ Configuration::Configuration()
           kMetadataReporterDefaultPurgeDeleted),
       metadata_reporter_user_agent_(
           kMetadataReporterDefaultUserAgent),
-      metadata_ingestion_host_(
-          kMetadataIngestionDefaultHost),
+      metadata_ingestion_endpoint_format_(
+          kMetadataIngestionDefaultEndpointFormat),
       metadata_ingestion_request_size_limit_bytes_(
           kMetadataIngestionDefaultRequestSizeLimitBytes),
       metadata_ingestion_request_size_limit_count_(
@@ -230,9 +231,9 @@ void Configuration::ParseConfiguration(std::istream& input) {
   metadata_reporter_user_agent_ =
       config["MetadataReporterUserAgent"].as<std::string>(
           metadata_reporter_user_agent_);
-  metadata_ingestion_host_ =
-      config["MetadataIngestionHost"].as<std::string>(
-          metadata_ingestion_host_);
+  metadata_ingestion_endpoint_format_ =
+      config["MetadataIngestionEndpointFormat"].as<std::string>(
+          metadata_ingestion_endpoint_format_);
   metadata_ingestion_request_size_limit_bytes_ =
       config["MetadataIngestionRequestSizeLimitBytes"].as<int>(
           metadata_ingestion_request_size_limit_bytes_);
