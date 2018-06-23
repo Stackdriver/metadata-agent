@@ -46,8 +46,12 @@ class MetadataReporter {
 
   // Send the given set of metadata.
   void SendMetadata(
-      std::map<MonitoredResource, MetadataStore::Metadata>&& metadata)
+      std::map<std::string, MetadataStore::Metadata>&& metadata)
       throw (boost::system::system_error);
+
+  // Compute the fully qualified name of a GCP location.
+  const std::string FullyQualifiedResourceLocation(const std::string location)
+      const;
 
   const Configuration& config_;
   MetadataStore* store_;

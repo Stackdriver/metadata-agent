@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-MetadataIngestionEndpointFormat: "https://staging-stackdriver.sandbox.googleapis.com/v1beta2/projects/{{project_id}}/resourceMetadata:batchUpdate"
+MetadataIngestionHost: "https://staging-stackdriver.sandbox.googleapis.com"
+KubernetesUseWatch: true
 #CredentialsFile: /tmp/token.json
 #ProjectId: "1234567890"
 #InstanceZone: "us-central1-a"
