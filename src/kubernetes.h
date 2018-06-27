@@ -55,12 +55,6 @@ class KubernetesReader {
   void WatchPods(const std::string& node_name,
                  MetadataUpdater::UpdateCallback callback) const;
 
-  // Service watcher.
-  void WatchServices(MetadataUpdater::UpdateCallback callback);
-
-  // Endpoints watcher.
-  void WatchEndpoints(MetadataUpdater::UpdateCallback callback);
-
   // Gets the name of the node the agent is running on.
   // Returns an empty string if unable to find the current node.
   const std::string& CurrentNode() const;
@@ -102,16 +96,6 @@ class KubernetesReader {
       MetadataUpdater::UpdateCallback callback, const json::Object* pod,
       Timestamp collected_at, bool is_deleted) const throw(json::Exception);
 
-  // Service watch callback.
-  void ServiceCallback(
-      MetadataUpdater::UpdateCallback callback, const json::Object* service,
-      Timestamp collected_at, bool is_deleted) throw(json::Exception);
-
-  // Endpoints watch callback.
-  void EndpointsCallback(
-      MetadataUpdater::UpdateCallback callback, const json::Object* endpoints,
-      Timestamp collected_at, bool is_deleted) throw(json::Exception);
-
   // Given a node object, return the associated metadata.
   MetadataUpdater::ResourceMetadata GetNodeMetadata(
       const json::Object* node, Timestamp collected_at, bool is_deleted) const
@@ -134,14 +118,6 @@ class KubernetesReader {
   std::vector<MetadataUpdater::ResourceMetadata> GetPodAndContainerMetadata(
       const json::Object* pod, Timestamp collected_at, bool is_deleted) const
       throw(json::Exception);
-  // Get a list of service metadata based on the service level caches.
-  std::vector<json::value> GetServiceList(
-      const std::string& cluster_name, const std::string& location)
-      const throw(json::Exception);
-  // Return the cluster metadata based on the cached values for
-  // service_to_metadta_ and service_to_pods_.
-  MetadataUpdater::ResourceMetadata GetClusterMetadata(Timestamp collected_at)
-      const throw(json::Exception);
 
   // Gets the Kubernetes master API token.
   // Returns an empty string if unable to find the token.
@@ -151,19 +127,6 @@ class KubernetesReader {
   // Returns an empty string if unable to find the namespace.
   const std::string& KubernetesNamespace() const;
 
-  // Update service_to_metadata_ cache based on a newly updated service.
-  void UpdateServiceToMetadataCache(
-      const json::Object* service, bool is_deleted) throw(json::Exception);
-
-  // Update service_to_pods_ cache based on a newly updated endpoints. The
-  // Endpoints resource provides a mapping from a single service to its pods:
-  // https://kubernetes.io/docs/concepts/services-networking/service/
-  void UpdateServiceToPodsCache(
-      const json::Object* endpoints, bool is_deleted) throw(json::Exception);
-
-  // An empty vector value for endpoints that have no pods.
-  const std::vector<std::string> kNoPods;
-
   // Cached data.
   mutable std::recursive_mutex mutex_;
   mutable std::string current_node_;
@@ -172,18 +135,6 @@ class KubernetesReader {
   // A memoized map from version to a map from kind to name.
   mutable std::map<std::string, std::map<std::string, std::string>>
       version_to_kind_to_name_;
-
-  // ServiceKey is a pair of the namespace name and the service name that
-  // uniquely identifies a service in a cluster.
-  using ServiceKey = std::pair<std::string, std::string>;
-  // Mutex for the service related caches.
-  mutable std::mutex service_mutex_;
-  // Map from service key to service metadata. This map is built based on the
-  // response from WatchServices.
-  mutable std::map<ServiceKey, json::value> service_to_metadata_;
-  // Map from service key to names of pods in the service. This map is built
-  // based on the response from WatchEndpoints.
-  mutable std::map<ServiceKey, std::vector<std::string>> service_to_pods_;
 
   const Configuration& config_;
   HealthChecker* health_checker_;
