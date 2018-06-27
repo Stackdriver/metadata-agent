@@ -100,23 +100,6 @@ class Configuration {
     std::lock_guard<std::mutex> lock(mutex_);
     return instance_resource_type_;
   }
-  // Docker metadata updater options.
-  int DockerUpdaterIntervalSeconds() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return docker_updater_interval_seconds_;
-  }
-  const std::string& DockerEndpointHost() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return docker_endpoint_host_;
-  }
-  const std::string& DockerApiVersion() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return docker_api_version_;
-  }
-  const std::string& DockerContainerFilter() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return docker_container_filter_;
-  }
   // GKE metadata updater options.
   int KubernetesUpdaterIntervalSeconds() const {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -213,10 +196,6 @@ class Configuration {
   std::string metadata_ingestion_raw_content_version_;
   int instance_updater_interval_seconds_;
   std::string instance_resource_type_;
-  int docker_updater_interval_seconds_;
-  std::string docker_endpoint_host_;
-  std::string docker_api_version_;
-  std::string docker_container_filter_;
   int kubernetes_updater_interval_seconds_;
   int kubernetes_updater_watch_connection_retries_;
   int kubernetes_updater_watch_max_connection_failures_;

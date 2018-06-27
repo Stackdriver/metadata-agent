@@ -104,12 +104,6 @@ Configuration::Configuration()
          option(instance_updater_interval_seconds_, 60*60)},
         // A blank value means "unspecified; detect via environment".
         {"InstanceResourceType", option(instance_resource_type_, "")},
-        {"DockerUpdaterIntervalSeconds",
-         option(docker_updater_interval_seconds_, 0)},
-        {"DockerEndpointHost",
-         option(docker_endpoint_host_, "unix://%2Fvar%2Frun%2Fdocker.sock/")},
-        {"DockerApiVersion", option(docker_api_version_, "1.23")},
-        {"DockerContainerFilter", option(docker_container_filter_, "limit=30")},
         {"KubernetesUpdaterIntervalSeconds",
          option(kubernetes_updater_interval_seconds_, 0)},
         // Zero or a negative value means "infinite retries".
