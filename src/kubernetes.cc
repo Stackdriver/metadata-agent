@@ -120,17 +120,8 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     {"location", location},
   });
 
-  json::value associations = json::object({
-    {"version", json::string(config_.MetadataIngestionRawContentVersion())},
-    {"raw", json::object({
-      {"infrastructureResource",
-       InstanceReader::InstanceResource(environment_).ToJSON()},
-    })},
-  });
-
   json::value node_raw_metadata = json::object({
     {"blobs", json::object({
-      {"association", std::move(associations)},
       {"api", json::object({
         {"version", json::string(kKubernetesApiVersion)},
         {"raw", node->Clone()},
@@ -153,68 +144,9 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
   );
 }
 
-json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
-    const throw(json::Exception) {
-  const json::Object* metadata = pod->Get<json::Object>("metadata");
-  const std::string namespace_name = metadata->Get<json::String>("namespace");
-
-  json::value instance_resource =
-      InstanceReader::InstanceResource(environment_).ToJSON();
-
-  json::value controllers;
-  try {
-    const json::value top_level = FindTopLevelController(
-        namespace_name, pod->Clone());
-    const json::Object* top_level_controller = top_level->As<json::Object>();
-    const json::Object* top_level_metadata =
-        top_level_controller->Get<json::Object>("metadata");
-    const std::string top_level_name =
-        top_level_metadata->Get<json::String>("name");
-    const std::string pod_id = metadata->Get<json::String>("uid");
-    if (!top_level_controller->Has("kind") &&
-        top_level_metadata->Get<json::String>("uid") != pod_id) {
-      LOG(ERROR) << "Internal error; top-level controller without 'kind' "
-                 << *top_level_controller
-                 << " not the same as pod " << *pod;
-    }
-    const std::string top_level_kind =
-        top_level_controller->Has("kind")
-            ? top_level_controller->Get<json::String>("kind")
-            : "Pod";
-
-    controllers = json::object({
-      {"topLevelControllerType", json::string(top_level_kind)},
-      {"topLevelControllerName", json::string(top_level_name)},
-    });
-  } catch (const QueryException& e) {
-    LOG(ERROR) << "Error while finding top-level controller for "
-               << namespace_name << "." << metadata->Get<json::String>("name")
-               << ": " << e.what();
-  }
-
-  json::value node_name;
-  const json::Object* spec = pod->Get<json::Object>("spec");
-  if (spec->Has("nodeName")) {
-    // Pods that have been scheduled will have a nodeName.
-    node_name = json::string(spec->Get<json::String>("nodeName"));
-  }
-
-  // If controllers or node_name are not populated, they will be discarded.
-  json::value raw_associations = json::object({
-    {"infrastructureResource", std::move(instance_resource)},
-    {"controllers", std::move(controllers)},
-    {"nodeName", std::move(node_name)},
-  });
-
-  return json::object({
-    {"version", json::string(config_.MetadataIngestionRawContentVersion())},
-    {"raw", std::move(raw_associations)},
-  });
-}
-
 MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
-    const json::Object* pod, json::value associations, Timestamp collected_at,
-    bool is_deleted) const throw(json::Exception) {
+    const json::Object* pod, Timestamp collected_at, bool is_deleted) const
+    throw(json::Exception) {
   const std::string cluster_name = environment_.KubernetesClusterName();
   const std::string location = environment_.KubernetesClusterLocation();
 
@@ -235,7 +167,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
 
   json::value pod_raw_metadata = json::object({
     {"blobs", json::object({
-      {"association", std::move(associations)},
       {"api", json::object({
         {"version", json::string(kKubernetesApiVersion)},
         {"raw", pod->Clone()},
@@ -263,8 +194,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
     const json::Object* pod, const json::Object* container_spec,
-    const json::Object* container_status, json::value associations,
-    Timestamp collected_at, bool is_deleted) const throw(json::Exception) {
+    const json::Object* container_status, Timestamp collected_at, bool is_deleted) const throw(json::Exception) {
   const std::string cluster_name = environment_.KubernetesClusterName();
   const std::string location = environment_.KubernetesClusterLocation();
 
@@ -291,36 +221,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
     {"container_name", container_name},
     {"location", location},
   });
-
-  json::value raw_status;
-  if (container_status) {
-    raw_status = json::object({
-      {"version", json::string(kKubernetesApiVersion)},
-      {"raw", container_status->Clone()},
-    });
-  }
-
-  json::value raw_labels;
-  if (labels) {
-    raw_labels = json::object({
-      {"version", json::string(kKubernetesApiVersion)},
-      {"raw", labels->Clone()},
-    });
-  }
-  json::value container_raw_metadata = json::object({
-    {"blobs", json::object({
-      {"association", std::move(associations)},
-      {"spec", json::object({
-        {"version", json::string(kKubernetesApiVersion)},
-        {"raw", container_spec->Clone()},
-      })},
-      {"status", std::move(raw_status)},
-      {"labels", std::move(raw_labels)},
-    })},
-  });
-  if (config_.VerboseLogging()) {
-    LOG(INFO) << "Raw container metadata: " << *container_raw_metadata;
-  }
 
   const std::string k8s_container_pod = boost::algorithm::join(
       std::vector<std::string>{kK8sContainerResourcePrefix, pod_id, container_name},
@@ -357,9 +257,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
   return MetadataUpdater::ResourceMetadata(
       std::move(local_resource_ids),
       k8s_container,
-      MetadataStore::Metadata(kKubernetesApiVersion,
-                              is_deleted, created_at, collected_at,
-                              std::move(container_raw_metadata))
+      MetadataStore::Metadata::IGNORED()
   );
 }
 
@@ -401,8 +299,6 @@ KubernetesReader::GetPodAndContainerMetadata(
     const json::Object* pod, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
   std::vector<MetadataUpdater::ResourceMetadata> result;
-
-  json::value associations = ComputePodAssociations(pod);
 
   const json::Object* metadata = pod->Get<json::Object>("metadata");
   const std::string pod_name = metadata->Get<json::String>("name");
@@ -449,11 +345,10 @@ KubernetesReader::GetPodAndContainerMetadata(
     result.emplace_back(GetLegacyResource(pod, name));
     result.emplace_back(
         GetContainerMetadata(pod, container_spec, container_status,
-                             associations->Clone(), collected_at, is_deleted));
+                             collected_at, is_deleted));
   }
 
-  result.emplace_back(
-      GetPodMetadata(pod, std::move(associations), collected_at, is_deleted));
+  result.emplace_back(GetPodMetadata(pod, collected_at, is_deleted));
   return std::move(result);
 }
 
@@ -869,142 +764,6 @@ const std::string& KubernetesReader::CurrentNode() const {
     }
   }
   return current_node_;
-}
-
-std::pair<std::string, std::string> KubernetesReader::KindPath(
-    const std::string& version, const std::string& kind) const {
-  std::lock_guard<std::recursive_mutex> lock(mutex_);
-  const std::string prefix(
-      (version.find('/') == std::string::npos) ? "/api" : "/apis");
-  const std::string query_path(prefix + "/" + version);
-  auto found = version_to_kind_to_name_.emplace(
-      std::piecewise_construct,
-      std::forward_as_tuple(version),
-      std::forward_as_tuple());
-  std::map<std::string, std::string>& kind_to_name = found.first->second;
-  if (found.second) {  // Not found, inserted new.
-    try {
-      json::value apilist_response = QueryMaster(query_path);
-      if (config_.VerboseLogging()) {
-        LOG(INFO) << "Parsed API list: " << *apilist_response;
-      }
-
-      const json::Object* apilist_object = apilist_response->As<json::Object>();
-      const json::Array* api_list = apilist_object->Get<json::Array>("resources");
-      for (const json::value& element : *api_list) {
-        const json::Object* resource = element->As<json::Object>();
-        const std::string resource_name = resource->Get<json::String>("name");
-        // Hack: the API seems to return multiple names for the same kind.
-        if (resource_name.find('/') != std::string::npos) {
-          continue;
-        }
-        const std::string resource_kind = resource->Get<json::String>("kind");
-        kind_to_name.emplace(resource_kind, resource_name);
-      }
-    } catch (const json::Exception& e) {
-      LOG(ERROR) << e.what();
-    } catch (const QueryException& e) {
-      // Already logged.
-    }
-  }
-
-  auto name_it = kind_to_name.find(kind);
-  if (name_it == kind_to_name.end()) {
-    throw std::string("Unknown kind: ") + kind;
-  }
-  return {query_path, name_it->second};
-}
-
-json::value KubernetesReader::GetOwner(
-    const std::string& ns, const json::Object* owner_ref) const
-    throw(QueryException, json::Exception) {
-#ifdef VERBOSE
-  LOG(DEBUG) << "GetOwner(" << ns << ", " << *owner_ref << ")";
-#endif
-  const std::string api_version = owner_ref->Get<json::String>("apiVersion");
-  const std::string kind = owner_ref->Get<json::String>("kind");
-  const std::string name = owner_ref->Get<json::String>("name");
-  const std::string uid = owner_ref->Get<json::String>("uid");
-
-  // Even though we query by name, we should look up the owner by uid,
-  // to handle the case when an object is deleted and re-constructed.
-  const std::string encoded_ref = boost::algorithm::join(
-      std::vector<std::string>{api_version, kind, uid}, "/");
-
-  std::lock_guard<std::recursive_mutex> lock(mutex_);
-  auto owner_it = owners_.find(encoded_ref);
-  if (owner_it == owners_.end()) {  // Not found, add new.
-    const auto path_component = KindPath(api_version, kind);
-#ifdef VERBOSE
-    LOG(DEBUG) << "KindPath returned {" << path_component.first << ", "
-               << path_component.second << "}";
-#endif
-    json::value owner =
-        QueryMaster(path_component.first + "/namespaces/" + ns + "/" +
-                    path_component.second + "/" + name);
-    // Sanity check: because we are looking up by name, the object we get
-    // back might have a different uid.
-    const json::Object* owner_obj = owner->As<json::Object>();
-    const json::Object* metadata = owner_obj->Get<json::Object>("metadata");
-    const std::string owner_uid = metadata->Get<json::String>("uid");
-    if (owner_uid != uid) {
-      LOG(WARNING) << "Owner " << kind << "'" << name << "' (id " << uid
-                   << ") disappeared before we could query it. Found id "
-                   << owner_uid << " instead.";
-      throw QueryException("Owner " + kind + " " + name + " (id " + uid +
-                           ") disappeared");
-    }
-    auto inserted = owners_.emplace(encoded_ref, std::move(owner));
-    owner_it = inserted.first;
-  }
-  return owner_it->second->Clone();
-}
-
-json::value KubernetesReader::FindTopLevelController(
-    const std::string& ns, json::value object) const
-    throw(QueryException, json::Exception) {
-  const json::Object* obj = object->As<json::Object>();
-#ifdef VERBOSE
-  LOG(DEBUG) << "Looking for the top-level owner for " << *obj;
-#endif
-  const json::Object* metadata = obj->Get<json::Object>("metadata");
-#ifdef VERBOSE
-  LOG(DEBUG) << "FindTopLevelController: metadata is " << *metadata;
-#endif
-  if (!metadata->Has("ownerReferences")) {
-#ifdef VERBOSE
-    LOG(DEBUG) << "FindTopLevelController: no owner references in "
-               << *metadata;
-#endif
-    return object;
-  }
-  const json::Array* refs = metadata->Get<json::Array>("ownerReferences");
-#ifdef VERBOSE
-  LOG(DEBUG) << "FindTopLevelController: refs is " << *refs;
-#endif
-
-  // Kubernetes objects are supposed to have at most one controller:
-  // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#objectmeta-v1-meta.
-  const json::Object* controller_ref = nullptr;
-  for (const json::value& ref : *refs) {
-    const json::Object* ref_obj = ref->As<json::Object>();
-    if (ref_obj->Has("controller") &&
-        ref_obj->Get<json::Boolean>("controller")) {
-      controller_ref = ref_obj;
-      break;
-    }
-  }
-  if (!controller_ref) {
-#ifdef VERBOSE
-    LOG(DEBUG) << "FindTopLevelController: no controller references in "
-               << *refs;
-#endif
-    return object;
-  }
-#ifdef VERBOSE
-  LOG(DEBUG) << "FindTopLevelController: controller_ref is " << *controller_ref;
-#endif
-  return FindTopLevelController(ns, GetOwner(ns, controller_ref));
 }
 
 void KubernetesReader::UpdateServiceToMetadataCache(
