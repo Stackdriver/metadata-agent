@@ -48,7 +48,6 @@ SRCS=\
      configuration.cc \
      updater.cc \
      instance.cc \
-     docker.cc \
      kubernetes.cc \
      resource.cc \
      oauth2.cc \

@@ -57,11 +57,6 @@ constexpr const char kMetadataIngestionDefaultRawContentVersion[] = "0.1";
 constexpr const int kInstanceUpdaterDefaultIntervalSeconds = 60*60;
 constexpr const char kDefaultInstanceResourceType[] =
     "";  // A blank value means "unspecified; detect via environment".
-constexpr const int kDockerUpdaterDefaultIntervalSeconds = 0;
-constexpr const char kDockerDefaultEndpointHost[] =
-    "unix://%2Fvar%2Frun%2Fdocker.sock/";
-constexpr const char kDockerDefaultApiVersion[] = "1.23";
-constexpr const char kDockerDefaultContainerFilter[] = "limit=30";
 constexpr const int kKubernetesUpdaterDefaultIntervalSeconds = 0;
 constexpr const char kKubernetesDefaultEndpointHost[] =
     "https://kubernetes.default.svc";
@@ -106,10 +101,6 @@ Configuration::Configuration()
       instance_updater_interval_seconds_(
           kInstanceUpdaterDefaultIntervalSeconds),
       instance_resource_type_(kDefaultInstanceResourceType),
-      docker_updater_interval_seconds_(kDockerUpdaterDefaultIntervalSeconds),
-      docker_endpoint_host_(kDockerDefaultEndpointHost),
-      docker_api_version_(kDockerDefaultApiVersion),
-      docker_container_filter_(kDockerDefaultContainerFilter),
       kubernetes_updater_interval_seconds_(
           kKubernetesUpdaterDefaultIntervalSeconds),
       kubernetes_endpoint_host_(kKubernetesDefaultEndpointHost),
@@ -256,16 +247,6 @@ void Configuration::ParseConfiguration(std::istream& input) {
           instance_updater_interval_seconds_);
   instance_resource_type_ =
       config["InstanceResourceType"].as<std::string>(instance_resource_type_);
-  docker_updater_interval_seconds_ =
-      config["DockerUpdaterIntervalSeconds"].as<int>(
-          docker_updater_interval_seconds_);
-  docker_endpoint_host_ =
-      config["DockerEndpointHost"].as<std::string>(docker_endpoint_host_);
-  docker_api_version_ =
-      config["DockerApiVersion"].as<std::string>(docker_api_version_);
-  docker_container_filter_ =
-      config["DockerContainerFilter"].as<std::string>(
-          docker_container_filter_);
   kubernetes_updater_interval_seconds_ =
       config["KubernetesUpdaterIntervalSeconds"].as<int>(
           kubernetes_updater_interval_seconds_);
