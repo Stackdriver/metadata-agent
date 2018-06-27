@@ -112,22 +112,19 @@ class KubernetesReader {
       MetadataUpdater::UpdateCallback callback, const json::Object* endpoints,
       Timestamp collected_at, bool is_deleted) throw(json::Exception);
 
-  // Compute the associations for a given pod.
-  json::value ComputePodAssociations(const json::Object* pod) const
-      throw(json::Exception);
   // Given a node object, return the associated metadata.
   MetadataUpdater::ResourceMetadata GetNodeMetadata(
       const json::Object* node, Timestamp collected_at, bool is_deleted) const
       throw(json::Exception);
   // Given a pod object, return the associated metadata.
   MetadataUpdater::ResourceMetadata GetPodMetadata(
-      const json::Object* pod, json::value associations, Timestamp collected_at,
-      bool is_deleted) const throw(json::Exception);
+      const json::Object* pod, Timestamp collected_at, bool is_deleted) const
+      throw(json::Exception);
   // Given a pod object and container info, return the container metadata.
   MetadataUpdater::ResourceMetadata GetContainerMetadata(
       const json::Object* pod, const json::Object* container_spec,
-      const json::Object* container_status, json::value associations,
-      Timestamp collected_at, bool is_deleted) const throw(json::Exception);
+      const json::Object* container_status, Timestamp collected_at,
+      bool is_deleted) const throw(json::Exception);
   // Given a pod object and container name, return the legacy resource.
   // The returned "metadata" field will be Metadata::IGNORED.
   MetadataUpdater::ResourceMetadata GetLegacyResource(
@@ -154,18 +151,6 @@ class KubernetesReader {
   // Returns an empty string if unable to find the namespace.
   const std::string& KubernetesNamespace() const;
 
-  // Given a version string, returns the path and name for a given kind.
-  std::pair<std::string, std::string> KindPath(const std::string& version,
-                                               const std::string& kind) const;
-
-  // Follows the owner reference to get the corresponding object.
-  json::value GetOwner(const std::string& ns, const json::Object* owner_ref)
-      const throw(QueryException, json::Exception);
-
-  // For a given object, returns the top-level controller object.
-  json::value FindTopLevelController(const std::string& ns, json::value object)
-      const throw(QueryException, json::Exception);
-
   // Update service_to_metadata_ cache based on a newly updated service.
   void UpdateServiceToMetadataCache(
       const json::Object* service, bool is_deleted) throw(json::Exception);
@@ -187,8 +172,6 @@ class KubernetesReader {
   // A memoized map from version to a map from kind to name.
   mutable std::map<std::string, std::map<std::string, std::string>>
       version_to_kind_to_name_;
-  // A memoized map from an encoded owner reference to the owner object.
-  mutable std::map<std::string, json::value> owners_;
 
   // ServiceKey is a pair of the namespace name and the service name that
   // uniquely identifies a service in a cluster.
