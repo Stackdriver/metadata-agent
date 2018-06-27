@@ -131,30 +131,12 @@ class KubernetesTest : public ::testing::Test {
     return reader.GetLegacyResource(pod, container_name);
   }
 
-  static MetadataUpdater::ResourceMetadata GetClusterMetadata(
-      const KubernetesReader& reader, Timestamp collected_at)
-      throw(json::Exception) {
-    return reader.GetClusterMetadata(collected_at);
-  }
-
   static const std::string& KubernetesApiToken(const KubernetesReader& reader) {
     return reader.KubernetesApiToken();
   }
 
   static const std::string& KubernetesNamespace(const KubernetesReader& reader) {
     return reader.KubernetesNamespace();
-  }
-
-  static void UpdateServiceToMetadataCache(
-      KubernetesReader* reader, const json::Object* service, bool is_deleted)
-      throw(json::Exception) {
-    return reader->UpdateServiceToMetadataCache(service, is_deleted);
-  }
-
-  static void UpdateServiceToPodsCache(
-      KubernetesReader* reader, const json::Object* endpoints, bool is_deleted)
-      throw(json::Exception) {
-    return reader->UpdateServiceToPodsCache(endpoints, is_deleted);
   }
 
   static void SetServiceAccountDirectoryForTest(
@@ -460,144 +442,6 @@ TEST_F(KubernetesTestWithInstance, GetLegacyResource) {
     {"zone", "TestZone"},
   }), m.resource());
   EXPECT_TRUE(m.metadata().ignore);
-}
-
-TEST_F(KubernetesTestWithInstance, GetClusterMetadataEmpty) {
-  const auto m = GetClusterMetadata(*reader, Timestamp());
-  EXPECT_TRUE(m.ids().empty());
-  EXPECT_EQ(MonitoredResource("k8s_cluster", {
-    {"cluster_name", "TestClusterName"},
-    {"location", "TestClusterLocation"},
-  }), m.resource());
-  EXPECT_EQ("TestVersion", m.metadata().version);
-  EXPECT_FALSE(m.metadata().is_deleted);
-  EXPECT_EQ(Timestamp(), m.metadata().created_at);
-  EXPECT_EQ(Timestamp(), m.metadata().collected_at);
-  json::value empty_cluster = json::object({
-    {"blobs", json::object({
-      {"services", json::array({})},
-    })},
-  });
-  EXPECT_EQ(empty_cluster->ToString(), m.metadata().metadata->ToString());
-}
-
-TEST_F(KubernetesTestWithInstance, GetClusterMetadataEmptyService) {
-  json::value service = json::object({
-    {"metadata", json::object({
-      {"name", json::string("testname")},
-      {"namespace", json::string("testnamespace")},
-    })},
-  });
-  UpdateServiceToMetadataCache(
-      reader.get(), service->As<json::Object>(), /*is_deleted=*/false);
-  const auto m = GetClusterMetadata(*reader, Timestamp());
-  EXPECT_TRUE(m.ids().empty());
-  EXPECT_EQ(MonitoredResource("k8s_cluster", {
-    {"cluster_name", "TestClusterName"},
-    {"location", "TestClusterLocation"},
-  }), m.resource());
-  EXPECT_EQ("TestVersion", m.metadata().version);
-  EXPECT_FALSE(m.metadata().is_deleted);
-  EXPECT_EQ(Timestamp(), m.metadata().created_at);
-  EXPECT_EQ(Timestamp(), m.metadata().collected_at);
-  json::value expected_cluster = json::object({
-    {"blobs", json::object({
-      {"services", json::array({
-        json::object({
-          {"api", json::object({
-            {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
-            {"pods", json::array({})},
-            {"raw", std::move(service)},
-          })},
-        }),
-      })},
-    })},
-  });
-  EXPECT_EQ(expected_cluster->ToString(), m.metadata().metadata->ToString());
-}
-
-TEST_F(KubernetesTestWithInstance, GetClusterMetadataServiceWithPods) {
-  json::value service = json::object({
-    {"metadata", json::object({
-      {"name", json::string("testname")},
-      {"namespace", json::string("testnamespace")},
-    })},
-  });
-  json::value endpoints = json::object({
-    {"metadata", json::object({
-      {"name", json::string("testname")},
-      {"namespace", json::string("testnamespace")},
-    })},
-    {"subsets", json::array({
-      json::object({
-        {"addresses", json::array({
-          json::object({
-            {"targetRef", json::object({
-              {"kind", json::string("Pod")},
-              {"name", json::string("my-pod")},
-            })},
-          }),
-        })},
-      }),
-    })},
-  });
-  UpdateServiceToMetadataCache(
-      reader.get(), service->As<json::Object>(), /*is_deleted=*/false);
-  UpdateServiceToPodsCache(
-      reader.get(), endpoints->As<json::Object>(), /*is_deleted=*/false);
-  const auto m = GetClusterMetadata(*reader, Timestamp());
-  EXPECT_TRUE(m.ids().empty());
-  EXPECT_EQ(MonitoredResource("k8s_cluster", {
-    {"cluster_name", "TestClusterName"},
-    {"location", "TestClusterLocation"},
-  }), m.resource());
-  EXPECT_EQ("TestVersion", m.metadata().version);
-  EXPECT_FALSE(m.metadata().is_deleted);
-  EXPECT_EQ(Timestamp(), m.metadata().created_at);
-  EXPECT_EQ(Timestamp(), m.metadata().collected_at);
-  MonitoredResource pod_mr = MonitoredResource("k8s_pod", {
-    {"cluster_name", "TestClusterName"},
-    {"namespace_name", "testnamespace"},
-    {"pod_name", "my-pod"},
-    {"location", "TestClusterLocation"},
-  });
-  json::value expected_cluster = json::object({
-    {"blobs", json::object({
-      {"services", json::array({
-        json::object({
-          {"api", json::object({
-            {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
-            {"pods", json::array({
-              pod_mr.ToJSON(),
-            })},
-            {"raw", std::move(service)},
-          })},
-        }),
-      })},
-    })},
-  });
-  EXPECT_EQ(expected_cluster->ToString(), m.metadata().metadata->ToString());
-}
-
-TEST_F(KubernetesTestWithInstance, GetClusterMetadataDeletedService) {
-  json::value service = json::object({
-    {"metadata", json::object({
-      {"name", json::string("testname")},
-      {"namespace", json::string("testnamespace")},
-    })},
-  });
-  UpdateServiceToMetadataCache(
-      reader.get(), service->As<json::Object>(), /*is_deleted=*/false);
-  UpdateServiceToMetadataCache(
-      reader.get(), service->As<json::Object>(), /*is_deleted=*/true);
-  const auto m = GetClusterMetadata(*reader, Timestamp());
-  EXPECT_TRUE(m.ids().empty());
-  json::value empty_cluster = json::object({
-    {"blobs", json::object({
-      {"services", json::array({})},
-    })},
-  });
-  EXPECT_EQ(empty_cluster->ToString(), m.metadata().metadata->ToString());
 }
 
 TEST_F(KubernetesTestWithInstance, GetContainerMetadata) {
