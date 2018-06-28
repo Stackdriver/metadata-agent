@@ -462,6 +462,7 @@ KubernetesReader::GetPodAndContainerMetadata(
     try {
       result.emplace_back(GetLegacyResource(pod, name));
     } catch (const QueryException& e) {
+      // No instance information available; log and ignore.
       LOG(INFO) << e.what();
     }
     result.emplace_back(
