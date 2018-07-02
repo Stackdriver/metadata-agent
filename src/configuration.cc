@@ -52,7 +52,6 @@ constexpr const char kMetadataIngestionDefaultEndpointFormat[] =
 constexpr const int kMetadataIngestionDefaultRequestSizeLimitBytes =
     8*1024*1024;
 constexpr const int kMetadataIngestionDefaultRequestSizeLimitCount = 1000;
-constexpr const char kMetadataIngestionDefaultRawContentVersion[] = "0.1";
 constexpr const int kInstanceUpdaterDefaultIntervalSeconds = 60*60;
 constexpr const char kDefaultInstanceResourceType[] =
     "";  // A blank value means "unspecified; detect via environment".
@@ -93,8 +92,6 @@ Configuration::Configuration()
           kMetadataIngestionDefaultRequestSizeLimitBytes),
       metadata_ingestion_request_size_limit_count_(
           kMetadataIngestionDefaultRequestSizeLimitCount),
-      metadata_ingestion_raw_content_version_(
-          kMetadataIngestionDefaultRawContentVersion),
       instance_updater_interval_seconds_(
           kInstanceUpdaterDefaultIntervalSeconds),
       instance_resource_type_(kDefaultInstanceResourceType),
@@ -231,9 +228,6 @@ void Configuration::ParseConfiguration(std::istream& input) {
   metadata_ingestion_request_size_limit_count_ =
       config["MetadataIngestionRequestSizeLimitCount"].as<int>(
           metadata_ingestion_request_size_limit_count_);
-  metadata_ingestion_raw_content_version_ =
-      config["MetadataIngestionRawContentVersion"].as<std::string>(
-          metadata_ingestion_raw_content_version_);
   instance_updater_interval_seconds_ =
       config["InstanceUpdaterIntervalSeconds"].as<int>(
           instance_updater_interval_seconds_);

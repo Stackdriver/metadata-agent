@@ -150,7 +150,7 @@ void MetadataReporter::SendMetadata(
       continue;
     }
     json::value metadata_entry =
-        json::object({
+        json::object({  // ResourceMetadata
           {"name", json::string(full_resource_name)},
           {"type", json::string(metadata.type)},
           {"location", json::string(metadata.location)},

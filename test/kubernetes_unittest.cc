@@ -47,7 +47,6 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
   Configuration config(std::istringstream(
     "KubernetesClusterName: TestClusterName\n"
     "KubernetesClusterLocation: TestClusterLocation\n"
-    "MetadataIngestionRawContentVersion: TestVersion\n"
     "InstanceResourceType: gce_instance\n"
     "InstanceZone: TestZone\n"
     "InstanceId: TestID\n"
@@ -88,7 +87,6 @@ TEST_F(KubernetesTest, GetPodMetadata) {
     "KubernetesClusterName: TestClusterName\n"
     "KubernetesClusterLocation: TestClusterLocation\n"
     "MetadataApiResourceTypeSeparator: \".\"\n"
-    "MetadataIngestionRawContentVersion: TestVersion\n"
   ));
   Environment environment(config);
   KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
@@ -217,7 +215,6 @@ TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
     "KubernetesClusterName: TestClusterName\n"
     "KubernetesClusterLocation: TestClusterLocation\n"
     "MetadataApiResourceTypeSeparator: \".\"\n"
-    "MetadataIngestionRawContentVersion: TestVersion\n"
     "InstanceZone: TestZone\n"
     "InstanceId: TestID\n"
   ));

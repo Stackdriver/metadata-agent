@@ -45,14 +45,14 @@ class MetadataStore {
              const Timestamp& collected_at_,
              json::value metadata_)
         : type(type_), location(location_), version(version_),
-        schema_name(schema_name_), is_deleted(is_deleted_),
-        collected_at(collected_at_),
-        metadata(std::move(metadata_)), ignore(false) {}
+          schema_name(schema_name_), is_deleted(is_deleted_),
+          collected_at(collected_at_),
+          metadata(std::move(metadata_)), ignore(false) {}
     Metadata(Metadata&& other)
         : type(other.type), location(other.location), version(other.version),
-        schema_name(other.schema_name), is_deleted(other.is_deleted),
-        collected_at(other.collected_at),
-        metadata(std::move(other.metadata)), ignore(other.ignore) {}
+          schema_name(other.schema_name), is_deleted(other.is_deleted),
+          collected_at(other.collected_at),
+          metadata(std::move(other.metadata)), ignore(other.ignore) {}
 
     Metadata Clone() const {
       if (ignore) {
@@ -83,7 +83,9 @@ class MetadataStore {
   MetadataStore(const Configuration& config);
 
   // Returns a copy of the mapping from a Full Resource Name to the metadata
-  // associated with that resource.
+  // associated with that resource. See the following link for the definition of
+  // a Full Resource Name:
+  // https://cloud.google.com/apis/design/resource_names#full_resource_name
   std::map<std::string, Metadata> GetMetadataMap() const;
 
   // Looks up the local resource map entry for a given resource id.
@@ -98,7 +100,7 @@ class MetadataStore {
                       const MonitoredResource& resource);
 
   // Updates metadata for a given resource.
-  // Adds a metadata mapping from the Full Resource Name to the metadata
+  // Adds a metadata mapping from the `full_resource_name` to the metadata
   // `entry`.
   void UpdateMetadata(const std::string& full_resource_name, Metadata&& entry);
 
