@@ -28,61 +28,6 @@
 
 namespace google {
 
-namespace {
-
-json::value NodeMetadataWithAssociations(json::value node) {
-  return json::object({
-    {"blobs", json::object({
-      {"api", json::object({
-        {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
-        {"raw", std::move(node)},
-      })},
-    })},
-  });
-}
-
-json::value PodMetadataWithAssociations(const std::string& pod_name,
-                                        json::value pod) {
-  return json::object({
-    {"blobs", json::object({
-      {"api", json::object({
-        {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
-        {"raw", std::move(pod)},
-      })},
-    })},
-  });
-}
-
-json::value ContainerMetadataWithAssociations(const std::string& pod_name,
-                                              json::value spec,
-                                              json::value status) {
-  return json::object({
-    {"blobs", json::object({
-      {"association", json::object({
-        {"version", json::string("TestVersion")},
-        {"raw", json::object({
-          {"controllers", json::object({
-            {"topLevelControllerName", json::string(pod_name)},
-            {"topLevelControllerType", json::string("Pod")},
-          })},
-          {"infrastructureResource", json::object({
-            {"type", json::string("gce_instance")},
-            {"labels", json::object({
-              {"instance_id", json::string("TestID")},
-              {"zone", json::string("TestZone")},
-            })},
-          })},
-          {"nodeName", json::string("TestSpecNodeName")},
-        })},
-      })},
-      {"spec", std::move(spec)},
-      {"status", std::move(status)},
-    })},
-  });
-}
-
-}  // namespace
-
 class KubernetesTest : public ::testing::Test {
  public:
   virtual ~KubernetesTest() = default;
@@ -176,7 +121,7 @@ class KubernetesTestNoInstance : public KubernetesTest {
       new Configuration(std::istringstream(
         "KubernetesClusterName: TestClusterName\n"
         "KubernetesClusterLocation: TestClusterLocation\n"
-        "MetadataIngestionRawContentVersion: TestVersion\n"
+        "MetadataIngestionRawContentVersion: \n"
       )));
   }
 
@@ -199,10 +144,8 @@ TEST_F(KubernetesTestNoInstance, GetNodeMetadata) {
     {"node_name", "testname"},
     {"location", "TestClusterLocation"},
   }), m.resource());
-  EXPECT_EQ("TestVersion", m.metadata().version);
+  EXPECT_EQ("", m.metadata().version);
   EXPECT_FALSE(m.metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   json::value node_metadata = json::object({
     {"blobs", json::object({
@@ -291,10 +234,8 @@ TEST_F(KubernetesTestNoInstance, GetPodAndContainerMetadata) {
       {"pod_name", "TestPodName"},
   }), m[1].resource());
   EXPECT_FALSE(m[1].metadata().ignore);
-  EXPECT_EQ("TestVersion", m[1].metadata().version);
+  EXPECT_EQ("", m[1].metadata().version);
   EXPECT_FALSE(m[1].metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m[1].metadata().created_at);
   EXPECT_EQ(Timestamp(), m[1].metadata().collected_at);
   json::value pod_metadata = json::object({
     {"blobs", json::object({
@@ -337,7 +278,7 @@ class KubernetesTestWithInstance : public KubernetesTestNoInstance {
         "InstanceZone: TestZone\n"
         "KubernetesClusterLocation: TestClusterLocation\n"
         "KubernetesClusterName: TestClusterName\n"
-        "MetadataIngestionRawContentVersion: TestVersion\n"
+        "MetadataIngestionRawContentVersion: \n"
       )));
   }
 };
@@ -358,10 +299,8 @@ TEST_F(KubernetesTestWithInstance, GetNodeMetadata) {
     {"node_name", "testname"},
     {"location", "TestClusterLocation"},
   }), m.resource());
-  EXPECT_EQ("TestVersion", m.metadata().version);
+  EXPECT_EQ("", m.metadata().version);
   EXPECT_FALSE(m.metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   json::value expected_metadata = json::object({
     {"blobs", json::object({
@@ -394,10 +333,8 @@ TEST_F(KubernetesTestWithInstance, GetPodMetadata) {
     {"location", "TestClusterLocation"},
     {"namespace_name", "TestNamespace"},
   }), m.resource());
-  EXPECT_EQ("TestVersion", m.metadata().version);
+  EXPECT_EQ("", m.metadata().version);
   EXPECT_FALSE(m.metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   EXPECT_FALSE(m.metadata().ignore);
   json::value expected_metadata = json::object({
@@ -546,10 +483,8 @@ TEST_F(KubernetesTestWithInstance, GetPodAndContainerMetadata) {
       {"pod_name", "TestPodName"},
   }), m[2].resource());
   EXPECT_FALSE(m[2].metadata().ignore);
-  EXPECT_EQ("TestVersion", m[2].metadata().version);
+  EXPECT_EQ("", m[2].metadata().version);
   EXPECT_FALSE(m[2].metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m[2].metadata().created_at);
   EXPECT_EQ(Timestamp(), m[2].metadata().collected_at);
   json::value pod_metadata = json::object({
     {"blobs", json::object({
@@ -632,7 +567,7 @@ class KubernetesTestFakeServer : public KubernetesTest {
         "KubernetesClusterName: TestClusterName\n"
         "KubernetesEndpointHost: " + server->GetUrl() + "\n"
         "KubernetesNodeName: TestNodeName\n"
-        "MetadataIngestionRawContentVersion: TestVersion\n"
+        "MetadataIngestionRawContentVersion: \n"
       )));
   }
 
@@ -696,10 +631,8 @@ TEST_F(KubernetesTestFakeServer, MetadataQuery) {
     {"node_name", "TestNodeName"},
     {"location", "TestClusterLocation"},
   }), m[0].resource());
-  EXPECT_EQ("TestVersion", m[0].metadata().version);
+  EXPECT_EQ("", m[0].metadata().version);
   EXPECT_FALSE(m[0].metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m[0].metadata().created_at);
   json::value node_metadata = json::object({
     {"blobs", json::object({
       {"api", json::object({
@@ -754,10 +687,8 @@ TEST_F(KubernetesTestFakeServer, MetadataQuery) {
       {"pod_name", "TestPodName"},
   }), m[3].resource());
   EXPECT_FALSE(m[3].metadata().ignore);
-  EXPECT_EQ("TestVersion", m[3].metadata().version);
+  EXPECT_EQ("", m[3].metadata().version);
   EXPECT_FALSE(m[3].metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m[3].metadata().created_at);
   json::value pod_metadata = json::object({
     {"blobs", json::object({
       {"api", json::object({
@@ -804,7 +735,7 @@ class KubernetesTestFakeServerConfigurable : public KubernetesTestFakeServer {
         "KubernetesClusterName: TestClusterName\n"
         "KubernetesEndpointHost: " + server->GetUrl() + "\n"
         "KubernetesNodeName: TestNodeName\n"
-        "MetadataIngestionRawContentVersion: TestVersion\n"
+        "MetadataIngestionRawContentVersion: \n"
         "KubernetesUseWatch: true\n"
         + ExtraConfig()
       )));
@@ -847,11 +778,11 @@ namespace {
 // last_timestamp.  Returns false if newer timestamp not found after 3
 // seconds (polling every 100 millis).
 bool WaitForNewerCollectionTimestamp(const MetadataStore& store,
-                                     const MonitoredResource& resource,
+                                     const std::string& name,
                                      Timestamp last_timestamp) {
   for (int i = 0; i < 30; i++){
     const auto metadata_map = store.GetMetadataMap();
-    const auto m = metadata_map.find(resource);
+    const auto m = metadata_map.find(name);
     if (m != metadata_map.end() && m->second.collected_at > last_timestamp) {
       return true;
     }
@@ -895,19 +826,15 @@ void TestNodes(testing::FakeServer& server, MetadataStore& store,
     {"type", json::string("ADDED")},
     {"object", node1->Clone()},
   })->ToString());
-  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, resource1, last_timestamp));
+  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, "", last_timestamp));
 
   // Verify node #1 values in the store & update last_timestamp.
   EXPECT_EQ(resource1, store.LookupResource("k8s_node.TestNodeName1"));
   {
     const auto metadata_map = store.GetMetadataMap();
-    const auto& metadata = metadata_map.at(resource1);
-    EXPECT_EQ("TestVersion", metadata.version);
+    const auto& metadata = metadata_map.at("");
+    EXPECT_EQ("", metadata.version);
     EXPECT_FALSE(metadata.is_deleted);
-    EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-              metadata.created_at);
-    EXPECT_EQ(NodeMetadataWithAssociations(node1->Clone())->ToString(),
-              metadata.metadata->ToString());
     last_timestamp = metadata.collected_at;
   }
 
@@ -916,19 +843,15 @@ void TestNodes(testing::FakeServer& server, MetadataStore& store,
     {"type", json::string("ADDED")},
     {"object", node2->Clone()},
   })->ToString());
-  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, resource2, last_timestamp));
+  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, "", last_timestamp));
 
   // Verify node #2 values in the store & update last_timestamp.
   EXPECT_EQ(resource2, store.LookupResource("k8s_node.TestNodeName2"));
   {
     const auto metadata_map = store.GetMetadataMap();
-    const auto& metadata = metadata_map.at(resource2);
-    EXPECT_EQ("TestVersion", metadata.version);
+    const auto& metadata = metadata_map.at("");
+    EXPECT_EQ("", metadata.version);
     EXPECT_FALSE(metadata.is_deleted);
-    EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-              metadata.created_at);
-    EXPECT_EQ(NodeMetadataWithAssociations(node2->Clone())->ToString(),
-              metadata.metadata->ToString());
     last_timestamp = metadata.collected_at;
   }
 
@@ -938,19 +861,15 @@ void TestNodes(testing::FakeServer& server, MetadataStore& store,
     {"type", json::string("DELETED")},
     {"object", node1->Clone()},
   })->ToString());
-  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, resource1, last_timestamp));
+  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, "", last_timestamp));
 
   // Verify node #1 values in the store.
   EXPECT_EQ(resource1, store.LookupResource("k8s_node.TestNodeName1"));
   {
     const auto metadata_map = store.GetMetadataMap();
-    const auto& metadata = metadata_map.at(resource1);
-    EXPECT_EQ("TestVersion", metadata.version);
+    const auto& metadata = metadata_map.at("");
+    EXPECT_EQ("", metadata.version);
     EXPECT_TRUE(metadata.is_deleted);
-    EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-              metadata.created_at);
-    EXPECT_EQ(NodeMetadataWithAssociations(node1->Clone())->ToString(),
-              metadata.metadata->ToString());
   }
 }
 
@@ -1052,7 +971,7 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
     {"object", pod1->Clone()},
   })->ToString());
   EXPECT_TRUE(WaitForNewerCollectionTimestamp(
-      store, k8s_pod_resource1, last_timestamp));
+      store, "", last_timestamp));
 
   // Verify pod #1 values in the store & update last_timestamp.
   EXPECT_EQ(k8s_pod_resource1, store.LookupResource(
@@ -1066,27 +985,16 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
   {
     const auto metadata_map = store.GetMetadataMap();
 
-    const auto& k8s_pod_metadata = metadata_map.at(k8s_pod_resource1);
+    const auto& k8s_pod_metadata = metadata_map.at("");
     EXPECT_FALSE(k8s_pod_metadata.ignore);
-    EXPECT_EQ("TestVersion", k8s_pod_metadata.version);
+    EXPECT_EQ("", k8s_pod_metadata.version);
     EXPECT_FALSE(k8s_pod_metadata.is_deleted);
-    EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-              k8s_pod_metadata.created_at);
-    EXPECT_EQ(PodMetadataWithAssociations(
-                  "TestPodName1", pod1->Clone())->ToString(),
-              k8s_pod_metadata.metadata->ToString());
 
-    const auto& k8s_container_metadata = metadata_map.at(
-        k8s_container_resource1);
+    const auto& k8s_container_metadata = metadata_map.at("");
     EXPECT_FALSE(k8s_container_metadata.ignore);
-    EXPECT_EQ("1.6",
+    EXPECT_EQ("",
               k8s_container_metadata.version);  // Hard-coded in kubernetes.cc.
     EXPECT_FALSE(k8s_container_metadata.is_deleted);
-    EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-              k8s_container_metadata.created_at);
-    EXPECT_EQ(ContainerMetadataWithAssociations(
-                  "TestPodName1", spec->Clone(), status->Clone())->ToString(),
-              k8s_container_metadata.metadata->ToString());
 
     last_timestamp = k8s_pod_metadata.collected_at;
   }
@@ -1097,7 +1005,7 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
     {"object", pod2->Clone()},
   })->ToString());
   EXPECT_TRUE(WaitForNewerCollectionTimestamp(
-      store, k8s_pod_resource2, last_timestamp));
+      store, "", last_timestamp));
 
   // Verify pod #2 values in the store & update last_timestamp.
   EXPECT_EQ(k8s_pod_resource2, store.LookupResource(
@@ -1111,27 +1019,16 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
   {
     const auto metadata_map = store.GetMetadataMap();
 
-    const auto& k8s_pod_metadata = metadata_map.at(k8s_pod_resource2);
+    const auto& k8s_pod_metadata = metadata_map.at("");
     EXPECT_FALSE(k8s_pod_metadata.ignore);
-    EXPECT_EQ("TestVersion", k8s_pod_metadata.version);
+    EXPECT_EQ("", k8s_pod_metadata.version);
     EXPECT_FALSE(k8s_pod_metadata.is_deleted);
-    EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-              k8s_pod_metadata.created_at);
-    EXPECT_EQ(PodMetadataWithAssociations(
-                  "TestPodName2", pod2->Clone())->ToString(),
-              k8s_pod_metadata.metadata->ToString());
 
-    const auto& k8s_container_metadata = metadata_map.at(
-        k8s_container_resource2);
+    const auto& k8s_container_metadata = metadata_map.at("");
     EXPECT_FALSE(k8s_container_metadata.ignore);
-    EXPECT_EQ("1.6",
+    EXPECT_EQ("",
               k8s_container_metadata.version);  // Hard-coded in kubernetes.cc.
     EXPECT_FALSE(k8s_container_metadata.is_deleted);
-    EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-              k8s_container_metadata.created_at);
-    EXPECT_EQ(ContainerMetadataWithAssociations(
-                  "TestPodName2", spec->Clone(), status->Clone())->ToString(),
-              k8s_container_metadata.metadata->ToString());
 
     last_timestamp = k8s_pod_metadata.collected_at;
   }
@@ -1142,7 +1039,7 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
     {"object", pod1->Clone()},
   })->ToString());
   EXPECT_TRUE(WaitForNewerCollectionTimestamp(
-      store, k8s_pod_resource1, last_timestamp));
+      store, "", last_timestamp));
 
   // Verify pod #1 values in the store.
   EXPECT_EQ(k8s_pod_resource1, store.LookupResource(
@@ -1156,27 +1053,16 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
   {
     const auto metadata_map = store.GetMetadataMap();
 
-    const auto& k8s_pod_metadata = metadata_map.at(k8s_pod_resource1);
+    const auto& k8s_pod_metadata = metadata_map.at("");
     EXPECT_FALSE(k8s_pod_metadata.ignore);
-    EXPECT_EQ("TestVersion", k8s_pod_metadata.version);
+    EXPECT_EQ("", k8s_pod_metadata.version);
     EXPECT_TRUE(k8s_pod_metadata.is_deleted);
-    EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-              k8s_pod_metadata.created_at);
-    EXPECT_EQ(PodMetadataWithAssociations(
-                  "TestPodName1", pod1->Clone())->ToString(),
-              k8s_pod_metadata.metadata->ToString());
 
-    const auto& k8s_container_metadata = metadata_map.at(
-        k8s_container_resource1);
+    const auto& k8s_container_metadata = metadata_map.at("");
     EXPECT_FALSE(k8s_container_metadata.ignore);
-    EXPECT_EQ("1.6",
+    EXPECT_EQ("",
               k8s_container_metadata.version);  // Hard-coded in kubernetes.cc.
     EXPECT_TRUE(k8s_container_metadata.is_deleted);
-    EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-              k8s_container_metadata.created_at);
-    EXPECT_EQ(ContainerMetadataWithAssociations(
-                  "TestPodName1", spec->Clone(), status->Clone())->ToString(),
-              k8s_container_metadata.metadata->ToString());
   }
 }
 
@@ -1263,22 +1149,22 @@ void TestServicesAndEndpoints(testing::FakeServer& server, MetadataStore& store,
     {"type", json::string("ADDED")},
     {"object", service1->Clone()},
   })->ToString());
-  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, resource, last_timestamp));
+  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, "", last_timestamp));
 
   // Verify service #1 (with no pod data) in the store & update
   // last_timestamp.
   {
     const auto metadata_map = store.GetMetadataMap();
-    const auto& metadata = metadata_map.at(resource);
-    EXPECT_EQ("TestVersion", metadata.version);
+    const auto& metadata = metadata_map.at("");
+    EXPECT_EQ("", metadata.version);
     EXPECT_FALSE(metadata.is_deleted);
-    EXPECT_EQ(Timestamp(), metadata.created_at);
+    EXPECT_EQ(Timestamp(), metadata.collected_at);
     json::value expected_cluster = json::object({
       {"blobs", json::object({
         {"services", json::array({
           json::object({
             {"api", json::object({
-              {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
+              {"version", json::string("")},  // Hard-coded in kubernetes.cc.
               {"pods", json::array({})},
               {"raw", service1->Clone()},
             })},
@@ -1297,21 +1183,21 @@ void TestServicesAndEndpoints(testing::FakeServer& server, MetadataStore& store,
     {"type", json::string("ADDED")},
     {"object", endpoint1->Clone()},
   })->ToString());
-  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, resource, last_timestamp));
+  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, "", last_timestamp));
 
   // Verify that service #1 now has pods & update last_timestamp.
   {
     const auto metadata_map = store.GetMetadataMap();
-    const auto& metadata = metadata_map.at(resource);
-    EXPECT_EQ("TestVersion", metadata.version);
+    const auto& metadata = metadata_map.at("");
+    EXPECT_EQ("", metadata.version);
     EXPECT_FALSE(metadata.is_deleted);
-    EXPECT_EQ(Timestamp(), metadata.created_at);
+    EXPECT_EQ(Timestamp(), metadata.collected_at);
     json::value expected_cluster = json::object({
       {"blobs", json::object({
         {"services", json::array({
           json::object({
             {"api", json::object({
-              {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
+              {"version", json::string("")},  // Hard-coded in kubernetes.cc.
               {"pods", json::array({pod_mr1.ToJSON()})},
               {"raw", service1->Clone()},
             })},
@@ -1330,21 +1216,21 @@ void TestServicesAndEndpoints(testing::FakeServer& server, MetadataStore& store,
     {"type", json::string("ADDED")},
     {"object", endpoint2->Clone()},
   })->ToString());
-  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, resource, last_timestamp));
+  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, "", last_timestamp));
 
   // Verify that store still only has service #1 & update last_timestamp.
   {
     const auto metadata_map = store.GetMetadataMap();
-    const auto& metadata = metadata_map.at(resource);
-    EXPECT_EQ("TestVersion", metadata.version);
+    const auto& metadata = metadata_map.at("");
+    EXPECT_EQ("", metadata.version);
     EXPECT_FALSE(metadata.is_deleted);
-    EXPECT_EQ(Timestamp(), metadata.created_at);
+    EXPECT_EQ(Timestamp(), metadata.collected_at);
     json::value expected_cluster = json::object({
       {"blobs", json::object({
         {"services", json::array({
           json::object({
             {"api", json::object({
-              {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
+              {"version", json::string("")},  // Hard-coded in kubernetes.cc.
               {"pods", json::array({pod_mr1.ToJSON()})},
               {"raw", service1->Clone()},
             })},
@@ -1363,29 +1249,29 @@ void TestServicesAndEndpoints(testing::FakeServer& server, MetadataStore& store,
     {"type", json::string("ADDED")},
     {"object", service2->Clone()},
   })->ToString());
-  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, resource, last_timestamp));
+  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, "", last_timestamp));
 
   // Verify that store now has services #1 and #2 with pod data &
   // update last_timestamp.
   {
     const auto metadata_map = store.GetMetadataMap();
-    const auto& metadata = metadata_map.at(resource);
-    EXPECT_EQ("TestVersion", metadata.version);
+    const auto& metadata = metadata_map.at("");
+    EXPECT_EQ("", metadata.version);
     EXPECT_FALSE(metadata.is_deleted);
-    EXPECT_EQ(Timestamp(), metadata.created_at);
+    EXPECT_EQ(Timestamp(), metadata.collected_at);
     json::value expected_cluster = json::object({
       {"blobs", json::object({
         {"services", json::array({
           json::object({
             {"api", json::object({
-              {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
+              {"version", json::string("")},  // Hard-coded in kubernetes.cc.
               {"pods", json::array({pod_mr1.ToJSON()})},
               {"raw", service1->Clone()},
             })},
           }),
           json::object({
             {"api", json::object({
-              {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
+              {"version", json::string("")},  // Hard-coded in kubernetes.cc.
               {"pods", json::array({pod_mr2.ToJSON()})},
               {"raw", service2->Clone()},
             })},
@@ -1404,21 +1290,21 @@ void TestServicesAndEndpoints(testing::FakeServer& server, MetadataStore& store,
     {"type", json::string("DELETED")},
     {"object", service1->Clone()},
   })->ToString());
-  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, resource, last_timestamp));
+  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, "", last_timestamp));
 
   // Verify that store now has only service #2 & update last_timestamp.
   {
     const auto metadata_map = store.GetMetadataMap();
-    const auto& metadata = metadata_map.at(resource);
-    EXPECT_EQ("TestVersion", metadata.version);
+    const auto& metadata = metadata_map.at("");
+    EXPECT_EQ("", metadata.version);
     EXPECT_FALSE(metadata.is_deleted);
-    EXPECT_EQ(Timestamp(), metadata.created_at);
+    EXPECT_EQ(Timestamp(), metadata.collected_at);
     json::value expected_cluster = json::object({
       {"blobs", json::object({
         {"services", json::array({
           json::object({
             {"api", json::object({
-              {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
+              {"version", json::string("")},  // Hard-coded in kubernetes.cc.
               {"pods", json::array({pod_mr2.ToJSON()})},
               {"raw", service2->Clone()},
             })},
@@ -1437,7 +1323,7 @@ void TestServicesAndEndpoints(testing::FakeServer& server, MetadataStore& store,
     {"type", json::string("DELETED")},
     {"object", endpoint2->Clone()},
   })->ToString());
-  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, resource, last_timestamp));
+  EXPECT_TRUE(WaitForNewerCollectionTimestamp(store, "", last_timestamp));
 
   // Verify that store now has no services.
   //
@@ -1446,10 +1332,10 @@ void TestServicesAndEndpoints(testing::FakeServer& server, MetadataStore& store,
   // with no pod data.
   {
     const auto metadata_map = store.GetMetadataMap();
-    const auto& metadata = metadata_map.at(resource);
-    EXPECT_EQ("TestVersion", metadata.version);
+    const auto& metadata = metadata_map.at("");
+    EXPECT_EQ("", metadata.version);
     EXPECT_FALSE(metadata.is_deleted);
-    EXPECT_EQ(Timestamp(), metadata.created_at);
+    EXPECT_EQ(Timestamp(), metadata.collected_at);
     json::value expected_cluster = json::object({
       {"blobs", json::object({
         {"services", json::array({})},
@@ -1481,38 +1367,6 @@ TEST_F(KubernetesTestFakeServerOneWatchRetryNodeLevelMetadata,
   // Test nodes & pods (but not services & endpoints).
   TestNodes(*server, store, nodes_watch_path);
   TestPods(*server, store, pods_watch_path);
-
-  // Terminate the hanging GETs on the server so that the updater will finish.
-  server->TerminateAllStreams();
-}
-
-TEST_F(KubernetesTestFakeServerOneWatchRetryClusterLevelMetadata,
-       KubernetesUpdater) {
-  const std::string nodes_watch_path =
-    "/api/v1/watch/nodes/?watch=true";
-  const std::string pods_watch_path =
-    "/api/v1/pods?fieldSelector=spec.nodeName%3D&watch=true";
-  const std::string services_watch_path =
-    "/api/v1/watch/services/?watch=true";
-  const std::string endpoints_watch_path =
-    "/api/v1/watch/endpoints/?watch=true";
-
-  server->SetResponse("/api/v1/nodes?limit=1", "{}");
-  server->SetResponse("/api/v1/pods?limit=1", "{}");
-  server->AllowStream(nodes_watch_path);
-  server->AllowStream(pods_watch_path);
-  server->AllowStream(services_watch_path);
-  server->AllowStream(endpoints_watch_path);
-
-  MetadataStore store(*config);
-  KubernetesUpdater updater(*config, /*health_checker=*/nullptr, &store);
-  updater.Start();
-
-  // Tests for nodes, pods, services, endpoints.
-  TestNodes(*server, store, nodes_watch_path);
-  TestPods(*server, store, pods_watch_path);
-  TestServicesAndEndpoints(
-      *server, store, services_watch_path, endpoints_watch_path);
 
   // Terminate the hanging GETs on the server so that the updater will finish.
   server->TerminateAllStreams();

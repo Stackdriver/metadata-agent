@@ -47,10 +47,6 @@ TEST(InstanceTest, GetInstanceMetatadataQuery) {
   const auto result = reader.MetadataQuery();
   EXPECT_EQ(1, result.size());
   const MetadataUpdater::ResourceMetadata& rm = result[0];
-  EXPECT_EQ(MonitoredResource("gce_instance", {
-    {"instance_id", "1234567891011"},
-    {"zone", "us-east1-b"}
-  }), rm.resource());
   EXPECT_EQ(std::vector<std::string>({"", "1234567891011"}), rm.ids());
   EXPECT_TRUE(rm.metadata().ignore);
 }

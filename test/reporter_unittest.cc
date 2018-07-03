@@ -73,11 +73,13 @@ TEST(ReporterTest, MetadataReporter) {
   ));
   MetadataStore store(config);
   MonitoredResource resource("type", {});
-  store.UpdateMetadata(resource, MetadataStore::Metadata(
+  store.UpdateMetadata("", MetadataStore::Metadata(
+      "default-type",
+      "default-location",
       "default-version",
+      "default-schema",
       false,
-      time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-      time::rfc3339::FromString("2018-03-03T01:32:45.678901234Z"),
+      std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}})));
   double period_s = 60.0;
   FakeMetadataReporter reporter(config, &store, period_s);
@@ -87,25 +89,12 @@ TEST(ReporterTest, MetadataReporter) {
     {"Content-Type", "application/json"},
     {"User-Agent", "metadata-agent/1.2.3-4"},
   };
-  auto expected_body = [](const std::string& state) -> std::string {
-    return json::object({
-      {"entries", json::array({
-        json::object({  // MonitoredResourceMetadata
-          {"resource", json::object({
-              {"type", json::string("type")},
-              {"labels", json::object({})},
-          })},
-          {"rawContentVersion", json::string("default-version")},
-          {"rawContent", json::object({{"f", json::string("hello")}})},
-          {"state", json::string(state)},
-          {"createTime", json::string("2018-03-03T01:23:45.678901234Z")},
-          {"collectTime", json::string("2018-03-03T01:32:45.678901234Z")},
-        })
-      })}
-    })->ToString();
-  };
-  const std::string expected_body_active = expected_body("ACTIVE");
-  const std::string expected_body_deleted = expected_body("DELETED");
+
+  json::value response;
+  const json::Object* metadata_response;
+  const json::Array* metadata_entries;
+  const json::Object* metadata_entry;
+  std::string state;
 
   // Wait for 1st post to server, and verify contents.
   {
@@ -114,7 +103,12 @@ TEST(ReporterTest, MetadataReporter) {
   }
   EXPECT_EQ(1, post_count);
   EXPECT_THAT(response_headers, ContainsAll(expected_headers));
-  EXPECT_EQ(expected_body_active, response_body);
+  response = json::Parser::FromString(response_body);
+  metadata_response = response->As<json::Object>();
+  metadata_entries = metadata_response->Get<json::Array>("entries");
+  metadata_entry = (*metadata_entries)[0]->As<json::Object>();
+  state = metadata_entry->Get<json::String>("state");
+  EXPECT_EQ(state, "EXISTS");
 
   // Advance fake clock, wait for 2nd post, verify contents.
   testing::FakeClock::AdvanceAfterNextNowCall(time::seconds(60));
@@ -124,15 +118,22 @@ TEST(ReporterTest, MetadataReporter) {
   }
   EXPECT_EQ(2, post_count);
   EXPECT_THAT(response_headers, ContainsAll(expected_headers));
-  EXPECT_EQ(expected_body_active, response_body);
+  response = json::Parser::FromString(response_body);
+  metadata_response = response->As<json::Object>();
+  metadata_entries = metadata_response->Get<json::Array>("entries");
+  metadata_entry = (*metadata_entries)[0]->As<json::Object>();
+  state = metadata_entry->Get<json::String>("state");
+  EXPECT_EQ(state, "EXISTS");
 
   // Mark metadata as deleted in store, advance fake clock, wait for
   // 3rd post, verify contents.
-  store.UpdateMetadata(resource, MetadataStore::Metadata(
+  store.UpdateMetadata("", MetadataStore::Metadata(
+      "default-type",
+      "default-location",
       "default-version",
+      "default-schema",
       true,
-      time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-      time::rfc3339::FromString("2018-03-03T01:32:45.678901234Z"),
+      std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}})));
   testing::FakeClock::AdvanceAfterNextNowCall(time::seconds(60));
   {
@@ -141,7 +142,12 @@ TEST(ReporterTest, MetadataReporter) {
   }
   EXPECT_EQ(3, post_count);
   EXPECT_THAT(response_headers, ContainsAll(expected_headers));
-  EXPECT_EQ(expected_body_deleted, response_body);
+  response = json::Parser::FromString(response_body);
+  metadata_response = response->As<json::Object>();
+  metadata_entries = metadata_response->Get<json::Array>("entries");
+  metadata_entry = (*metadata_entries)[0]->As<json::Object>();
+  state = metadata_entry->Get<json::String>("state");
+  EXPECT_EQ(state, "DELETED");
 }
 
 }  // namespace google

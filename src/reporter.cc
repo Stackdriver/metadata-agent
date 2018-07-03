@@ -136,7 +136,7 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 }
 
 void MetadataReporter::SendMetadata(
-    std::map<MonitoredResource, MetadataStore::Metadata>&& metadata)
+    std::map<std::string, MetadataStore::Metadata>&& metadata)
     throw (boost::system::system_error) {
   if (metadata.empty()) {
     if (config_.VerboseLogging()) {
@@ -168,17 +168,27 @@ void MetadataReporter::SendMetadata(
 
   std::vector<json::value> entries;
   for (auto& entry : metadata) {
-    const MonitoredResource& resource = entry.first;
+    const std::string& full_resource_name = entry.first;
     MetadataStore::Metadata& metadata = entry.second;
     json::value metadata_entry =
-        json::object({  // MonitoredResourceMetadata
-          {"resource", resource.ToJSON()},
-          {"rawContentVersion", json::string(metadata.version)},
-          {"rawContent", std::move(metadata.metadata)},
-          {"state", json::string(metadata.is_deleted ? "DELETED" : "ACTIVE")},
-          {"createTime", json::string(time::rfc3339::ToString(metadata.created_at))},
-          {"collectTime", json::string(time::rfc3339::ToString(metadata.collected_at))},
-        });
+        json::object({  // ResourceMetadata
+          {"name", json::string(full_resource_name)},
+          {"type", json::string(metadata.type)},
+          {"location", json::string(metadata.location)},
+          {"state", json::string(metadata.is_deleted ? "DELETED" : "EXISTS")},
+          {"eventTime", json::string(
+              time::rfc3339::ToString(metadata.collected_at))},
+          {"views",
+            json::object({
+              {metadata.version,
+                json::object({
+                  {"schemaName", json::string(metadata.schema_name)},
+                  {"stringContent", json::string(metadata.metadata->ToString())},
+                })
+              }
+            })
+          }
+      });
     // TODO: This is probably all kinds of inefficient...
     const int size = metadata_entry->ToString().size();
     if (empty_size + size > limit_bytes) {
