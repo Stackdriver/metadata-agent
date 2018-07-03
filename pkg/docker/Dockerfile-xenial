@@ -3,7 +3,7 @@ FROM ubuntu:xenial
 
 EXPOSE 8000
 
-ARG version=0.0.19-1
+ARG version=0.0.20-1
 ARG package=https://storage.googleapis.com/stackdriver-container-alpha/deb/xenial/stackdriver-metadata_${version}.xenial.deb
 ADD ${package} /stackdriver-metadata.deb
 RUN apt-get update \
