@@ -185,27 +185,34 @@ TEST_F(ValidationOrderingTest, AllChecksPassedInvokesStartUpdater) {
 
 TEST_F(UpdaterTest, UpdateMetadataCallback) {
   MetadataStore::Metadata m(
+      "test-type",
+      "test-location",
       "test-version",
+      "test-schema-name",
       false,
-      std::chrono::system_clock::now(),
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("test")}}));
   MonitoredResource resource("test_resource", {});
+  const std::string frn = "/test";
   MetadataUpdater::ResourceMetadata metadata(
       std::vector<std::string>({"", "test-prefix"}),
-      resource, std::move(m));
+      resource, frn, std::move(m));
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
   UpdateMetadataCallback(&updater, std::move(metadata));
   const auto metadata_map = store.GetMetadataMap();
   EXPECT_EQ(1, metadata_map.size());
-  EXPECT_EQ("test-version", metadata_map.at(resource).version);
-  EXPECT_EQ("{\"f\":\"test\"}", metadata_map.at(resource).metadata->ToString());
+  EXPECT_EQ("test-type", metadata_map.at(frn).type);
+  EXPECT_EQ("test-location", metadata_map.at(frn).location);
+  EXPECT_EQ("test-version", metadata_map.at(frn).version);
+  EXPECT_EQ("test-schema-name", metadata_map.at(frn).schema_name);
+  EXPECT_EQ("{\"f\":\"test\"}", metadata_map.at(frn).metadata->ToString());
 }
 
 TEST_F(UpdaterTest, UpdateResourceCallback) {
   MetadataUpdater::ResourceMetadata metadata(
       std::vector<std::string>({"", "test-prefix"}),
       MonitoredResource("test_resource", {}),
+      "/test",
       MetadataStore::Metadata::IGNORED()
   );
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
@@ -217,10 +224,10 @@ TEST_F(UpdaterTest, UpdateResourceCallback) {
 }
 
 bool WaitForResource(const MetadataStore& store,
-                     const MonitoredResource& resource) {
+                     const std::string& full_resource_name) {
   for (int i = 0; i < 30; i++) {
     const auto metadata_map = store.GetMetadataMap();
-    if (metadata_map.find(resource) != metadata_map.end()) {
+    if (metadata_map.find(full_resource_name) != metadata_map.end()) {
       return true;
     }
     // Use real time here, because we are polling until the store has
@@ -252,15 +259,18 @@ TEST_F(UpdaterTest, PollingMetadataUpdater) {
   std::function<std::vector<MetadataUpdater::ResourceMetadata>()> query_metadata(
     [&i]() {
       MetadataStore::Metadata m(
+          "test-type",
+          "test-location",
           "test-version",
+          "test-schema-name",
           false,
-          std::chrono::system_clock::now(),
           std::chrono::system_clock::now(),
           json::object({{"f", json::string("test")}}));
       std::vector<MetadataUpdater::ResourceMetadata> result;
       result.emplace_back(std::move(MetadataUpdater::ResourceMetadata(
           {"", "test-prefix"},
-          MonitoredResource("test_resource_" + std::to_string(i++), {}),
+          MonitoredResource("test_resource_", {}),
+          "test_name_" + std::to_string(i++),
           std::move(m))));
       return result;
     });
@@ -269,17 +279,17 @@ TEST_F(UpdaterTest, PollingMetadataUpdater) {
   std::thread updater_thread([&updater] { updater.Start(); });
 
   // Wait for 1st update, verify store.
-  EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_0", {})));
+  EXPECT_TRUE(WaitForResource(store, "test_name_0"));
   EXPECT_EQ(1, store.GetMetadataMap().size());
 
   // Advance fake clock, wait for 2nd update, verify store.
   testing::FakeClock::Advance(time::seconds(60));
-  EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_1", {})));
+  EXPECT_TRUE(WaitForResource(store, "test_name_1"));
   EXPECT_EQ(2, store.GetMetadataMap().size());
 
   // Advance fake clock, wait for 3rd update, verify store.
   testing::FakeClock::Advance(time::seconds(60));
-  EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_2", {})));
+  EXPECT_TRUE(WaitForResource(store, "test_name_2"));
   EXPECT_EQ(3, store.GetMetadataMap().size());
 
   updater.NotifyStop();
