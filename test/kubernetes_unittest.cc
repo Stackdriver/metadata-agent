@@ -142,10 +142,8 @@ TEST_F(KubernetesTestNoInstance, GetNodeMetadata) {
     {"node_name", "testname"},
     {"location", "TestClusterLocation"},
   }), m.resource());
-  EXPECT_EQ("TestVersion", m.metadata().version);
+  EXPECT_EQ("", m.metadata().version);
   EXPECT_FALSE(m.metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   json::value big = json::object({
     {"blobs", json::object({
@@ -234,10 +232,8 @@ TEST_F(KubernetesTestNoInstance, GetPodAndContainerMetadata) {
       {"pod_name", "TestPodName"},
   }), m[1].resource());
   EXPECT_FALSE(m[1].metadata().ignore);
-  EXPECT_EQ("TestVersion", m[1].metadata().version);
+  EXPECT_EQ("", m[1].metadata().version);
   EXPECT_FALSE(m[1].metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m[1].metadata().created_at);
   EXPECT_EQ(Timestamp(), m[1].metadata().collected_at);
   json::value pod_metadata = json::object({
     {"blobs", json::object({
@@ -301,10 +297,8 @@ TEST_F(KubernetesTestWithInstance, GetNodeMetadata) {
     {"node_name", "testname"},
     {"location", "TestClusterLocation"},
   }), m.resource());
-  EXPECT_EQ("TestVersion", m.metadata().version);
+  EXPECT_EQ("", m.metadata().version);
   EXPECT_FALSE(m.metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   json::value expected_metadata = json::object({
     {"blobs", json::object({
@@ -337,10 +331,8 @@ TEST_F(KubernetesTestWithInstance, GetPodMetadata) {
     {"location", "TestClusterLocation"},
     {"namespace_name", "TestNamespace"},
   }), m.resource());
-  EXPECT_EQ("TestVersion", m.metadata().version);
+  EXPECT_EQ("", m.metadata().version);
   EXPECT_FALSE(m.metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   EXPECT_FALSE(m.metadata().ignore);
   json::value expected_metadata = json::object({
@@ -489,10 +481,8 @@ TEST_F(KubernetesTestWithInstance, GetPodAndContainerMetadata) {
       {"pod_name", "TestPodName"},
   }), m[2].resource());
   EXPECT_FALSE(m[2].metadata().ignore);
-  EXPECT_EQ("TestVersion", m[2].metadata().version);
+  EXPECT_EQ("", m[2].metadata().version);
   EXPECT_FALSE(m[2].metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m[2].metadata().created_at);
   EXPECT_EQ(Timestamp(), m[2].metadata().collected_at);
   json::value pod_metadata = json::object({
     {"blobs", json::object({
@@ -639,10 +629,8 @@ TEST_F(KubernetesTestFakeServer, MetadataQuery) {
     {"node_name", "TestNodeName"},
     {"location", "TestClusterLocation"},
   }), m[0].resource());
-  EXPECT_EQ("TestVersion", m[0].metadata().version);
+  EXPECT_EQ("", m[0].metadata().version);
   EXPECT_FALSE(m[0].metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m[0].metadata().created_at);
   json::value node_metadata = json::object({
     {"blobs", json::object({
       {"api", json::object({
@@ -697,10 +685,8 @@ TEST_F(KubernetesTestFakeServer, MetadataQuery) {
       {"pod_name", "TestPodName"},
   }), m[3].resource());
   EXPECT_FALSE(m[3].metadata().ignore);
-  EXPECT_EQ("TestVersion", m[3].metadata().version);
+  EXPECT_EQ("", m[3].metadata().version);
   EXPECT_FALSE(m[3].metadata().is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m[3].metadata().created_at);
   json::value pod_metadata = json::object({
     {"blobs", json::object({
       {"api", json::object({
@@ -762,11 +748,11 @@ class KubernetesTestFakeServerOneWatchRetry : public KubernetesTest {
 // last_timestamp.  Returns false if newer timestamp not found after 3
 // seconds (polling every 100 millis).
 bool WaitForNewerCollectionTimestamp(const MetadataStore& store,
-                                     const MonitoredResource& resource,
+                                     const std::string& name,
                                      Timestamp last_timestamp) {
   for (int i = 0; i < 30; i++){
     const auto metadata_map = store.GetMetadataMap();
-    const auto m = metadata_map.find(resource);
+    const auto m = metadata_map.find(name);
     if (m != metadata_map.end() && m->second.collected_at > last_timestamp) {
       return true;
     }
@@ -816,15 +802,12 @@ TEST_F(KubernetesTestFakeServerOneWatchRetry, KubernetesUpdater) {
         "/api/v1/watch/nodes/TestNodeName?watch=true",
         node_metadata->ToString());
     // Wait until watcher has processed response (by polling the store).
-    MonitoredResource resource("k8s_node",
-                               {{"cluster_name", "TestClusterName"},
-                                {"location", "TestClusterLocation"},
-                                {"node_name", "TestNodeName"}});
+    const std::string name = "";
     EXPECT_TRUE(
-        WaitForNewerCollectionTimestamp(store, resource, last_nodes_timestamp));
+        WaitForNewerCollectionTimestamp(store, name, last_nodes_timestamp));
 
     const auto metadata_map = store.GetMetadataMap();
-    const auto& metadata = metadata_map.at(resource);
+    const auto& metadata = metadata_map.at(name);
     // TODO: Insert tests of metadata values.
     last_nodes_timestamp = metadata.collected_at;
   }
@@ -862,16 +845,12 @@ TEST_F(KubernetesTestFakeServerOneWatchRetry, KubernetesUpdater) {
         "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true",
         pod_metadata->ToString());
     // Wait until watcher has processed response (by polling the store).
-    MonitoredResource resource("k8s_pod",
-                               {{"cluster_name", "TestClusterName"},
-                                {"location", "TestClusterLocation"},
-                                {"namespace_name", "TestNamespace"},
-                                {"pod_name", "TestPodName"}});
+    const std::string name = "";
     EXPECT_TRUE(
-        WaitForNewerCollectionTimestamp(store, resource, last_pods_timestamp));
+        WaitForNewerCollectionTimestamp(store, name, last_pods_timestamp));
 
     const auto metadata_map = store.GetMetadataMap();
-    const auto& metadata = metadata_map.at(resource);
+    const auto& metadata = metadata_map.at(name);
     // TODO: Insert tests of metadata values.
     last_pods_timestamp = metadata.collected_at;
   }
