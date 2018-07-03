@@ -112,7 +112,7 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 }
 
 void MetadataReporter::SendMetadata(
-    std::map<std::string, MetadataStore::Metadata>&& metadata)
+    std::map<MetadataStore::MetadataKey, MetadataStore::Metadata>&& metadata)
     throw (boost::system::system_error) {
   if (metadata.empty()) {
     if (config_.VerboseLogging()) {
@@ -144,7 +144,8 @@ void MetadataReporter::SendMetadata(
 
   std::vector<json::value> entries;
   for (auto& entry : metadata) {
-    const std::string& full_resource_name = entry.first;
+    const std::string& full_resource_name = entry.first.first;
+    const std::string& version = entry.first.second;
     MetadataStore::Metadata& metadata = entry.second;
     if (metadata.ignore) {
       continue;
@@ -159,7 +160,7 @@ void MetadataReporter::SendMetadata(
               time::rfc3339::ToString(metadata.collected_at))},
           {"views",
             json::object({
-              {metadata.version,
+              {version,
                 json::object({
                   {"schemaName", json::string(metadata.schema_name)},
                   {"stringContent", json::string(metadata.metadata->ToString())},

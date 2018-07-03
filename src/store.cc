@@ -47,14 +47,14 @@ void MetadataStore::UpdateResource(const std::vector<std::string>& resource_ids,
   }
 }
 
-void MetadataStore::UpdateMetadata(const std::string& full_resource_name,
+void MetadataStore::UpdateMetadata(const MetadataKey& metadata_key,
                                    Metadata&& entry) {
   std::lock_guard<std::mutex> lock(metadata_mu_);
   if (config_.VerboseLogging()) {
-    LOG(INFO) << "Updating metadata map " << full_resource_name << "->{"
+    LOG(INFO) << "Updating metadata map (" << metadata_key.first
+              << ", " << metadata_key.second << ") ->{"
               << "type: " << entry.type << ", "
               << "location: " << entry.location << ", "
-              << "version: " << entry.version << ", "
               << "schema name: " << entry.schema_name << ", "
               << "is_deleted: " << entry.is_deleted << ", "
               << "collected_at: " << time::rfc3339::ToString(entry.collected_at)
@@ -65,19 +65,19 @@ void MetadataStore::UpdateMetadata(const std::string& full_resource_name,
   }
   // Force value update. The repeated search is inefficient, but shouldn't
   // be a huge deal.
-  metadata_map_.erase(full_resource_name);
-  metadata_map_.emplace(full_resource_name, std::move(entry));
+  metadata_map_.erase(metadata_key);
+  metadata_map_.emplace(metadata_key, std::move(entry));
 }
 
-std::map<std::string, MetadataStore::Metadata>
+std::map<MetadataStore::MetadataKey, MetadataStore::Metadata>
     MetadataStore::GetMetadataMap() const {
   std::lock_guard<std::mutex> lock(metadata_mu_);
 
-  std::map<std::string, Metadata> result;
+  std::map<MetadataKey, Metadata> result;
   for (const auto& kv : metadata_map_) {
-    const std::string& full_resource_name = kv.first;
+    const MetadataKey& metadata_key = kv.first;
     const Metadata& metadata = kv.second;
-    result.emplace(full_resource_name, metadata.Clone());
+    result.emplace(metadata_key, metadata.Clone());
   }
   return result;
 }
@@ -86,18 +86,18 @@ void MetadataStore::PurgeDeletedEntries() {
   std::lock_guard<std::mutex> lock(metadata_mu_);
 
   for (auto it = metadata_map_.begin(); it != metadata_map_.end(); ) {
-    const std::string& full_resource_name = it->first;
+    const MetadataKey& metadata_key = it->first;
     const Metadata& entry = it->second;
     if (entry.is_deleted) {
       if (config_.VerboseLogging()) {
-        LOG(INFO) << "Purging metadata entry " << full_resource_name << "->{"
+        LOG(INFO) << "Purging metadata entry " << metadata_key.first
+                  << ", " << metadata_key.second << ") ->{"
                   << "type: " << entry.type << ", "
                   << "location: " << entry.location << ", "
-                  << "version: " << entry.version << ", "
                   << "schema name: " << entry.schema_name << ", "
                   << "is_deleted: " << entry.is_deleted << ", "
-                  << "collected_at: " << time::rfc3339::ToString(entry.collected_at)
-                  << ", "
+                  << "collected_at: "
+                  << time::rfc3339::ToString(entry.collected_at) << ", "
                   << "metadata: " << *entry.metadata << ", "
                   << "ignore: " << entry.ignore
                   << "}";

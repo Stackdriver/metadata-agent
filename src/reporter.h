@@ -46,7 +46,7 @@ class MetadataReporter {
 
   // Send the given set of metadata.
   void SendMetadata(
-      std::map<std::string, MetadataStore::Metadata>&& metadata)
+      std::map<MetadataStore::MetadataKey, MetadataStore::Metadata>&& metadata)
       throw (boost::system::system_error);
 
   const Configuration& config_;

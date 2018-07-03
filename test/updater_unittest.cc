@@ -186,32 +186,30 @@ TEST_F(UpdaterTest, UpdateMetadataCallback) {
   MetadataStore::Metadata m(
       "test-type",
       "test-location",
-      "test-version",
       "test-schema-name",
       false,
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("test")}}));
   MonitoredResource resource("test_resource", {});
-  const std::string frn = "/test";
+  const MetadataStore::MetadataKey key("/test", "test-version");
   MetadataUpdater::ResourceMetadata metadata(
       std::vector<std::string>({"", "test-prefix"}),
-      resource, frn, std::move(m));
+      resource, key, std::move(m));
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
   UpdateMetadataCallback(&updater, std::move(metadata));
   const auto metadata_map = store.GetMetadataMap();
   EXPECT_EQ(1, metadata_map.size());
-  EXPECT_EQ("test-type", metadata_map.at(frn).type);
-  EXPECT_EQ("test-location", metadata_map.at(frn).location);
-  EXPECT_EQ("test-version", metadata_map.at(frn).version);
-  EXPECT_EQ("test-schema-name", metadata_map.at(frn).schema_name);
-  EXPECT_EQ("{\"f\":\"test\"}", metadata_map.at(frn).metadata->ToString());
+  EXPECT_EQ("test-type", metadata_map.at(key).type);
+  EXPECT_EQ("test-location", metadata_map.at(key).location);
+  EXPECT_EQ("test-schema-name", metadata_map.at(key).schema_name);
+  EXPECT_EQ("{\"f\":\"test\"}", metadata_map.at(key).metadata->ToString());
 }
 
 TEST_F(UpdaterTest, UpdateResourceCallback) {
   MetadataUpdater::ResourceMetadata metadata(
       std::vector<std::string>({"", "test-prefix"}),
       MonitoredResource("test_resource", {}),
-      "/test",
+      MetadataStore::MetadataKey("/test", "test-version"),
       MetadataStore::Metadata::IGNORED()
   );
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);

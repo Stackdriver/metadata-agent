@@ -37,27 +37,29 @@ class MetadataUpdater {
   struct ResourceMetadata {
     ResourceMetadata(const std::vector<std::string>& ids,
                      const MonitoredResource& resource,
-                     const std::string& full_resource_name,
+                     const MetadataStore::MetadataKey& metadata_key,
                      MetadataStore::Metadata&& metadata)
         : ids_(ids), resource_(resource),
-          full_resource_name_(full_resource_name),
+          metadata_key_(metadata_key),
           metadata_(std::move(metadata)) {}
     ResourceMetadata(ResourceMetadata&& other)
         : ResourceMetadata(other.ids_, other.resource_,
-                           other.full_resource_name_,
+                           other.metadata_key_,
                            std::move(other.metadata_)) {}
 
     const MetadataStore::Metadata& metadata() const { return metadata_; }
     const MonitoredResource& resource() const { return resource_; }
     const std::vector<std::string>& ids() const { return ids_; }
-    const std::string& full_resource_name() const { return full_resource_name_; }
+    const MetadataStore::MetadataKey& metadata_key() const {
+      return metadata_key_;
+    }
 
    private:
     friend class MetadataUpdater;  // Needs write access to metadata_.
 
     std::vector<std::string> ids_;
     MonitoredResource resource_;
-    std::string full_resource_name_;
+    MetadataStore::MetadataKey metadata_key_;
     MetadataStore::Metadata metadata_;
   };
 
@@ -121,7 +123,7 @@ class MetadataUpdater {
   // Updates the metadata in the store. Consumes result.
   void UpdateMetadataCallback(ResourceMetadata&& result) {
     store_->UpdateMetadata(
-        result.full_resource_name_, std::move(result.metadata_));
+        result.metadata_key_, std::move(result.metadata_));
   }
 
   const std::string& name() const {
