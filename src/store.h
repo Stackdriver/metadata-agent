@@ -82,10 +82,9 @@ class MetadataStore {
 
   MetadataStore(const Configuration& config);
 
-  // Returns a copy of the mapping from a Full Resource Name to the metadata
-  // associated with that resource. See the following link for the definition of
-  // a Full Resource Name:
+  // Returns a copy of the mapping from a Full Resource Name
   // https://cloud.google.com/apis/design/resource_names#full_resource_name
+  // to the metadata associated with that resource.
   std::map<std::string, Metadata> GetMetadataMap() const;
 
   // Looks up the local resource map entry for a given resource id.
