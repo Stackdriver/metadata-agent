@@ -90,32 +90,41 @@ TEST_F(MetadataStoreTest, UpdateResourceDoesNotUpdateMetadata) {
 }
 
 TEST_F(MetadataStoreTest, UpdateMetadataChangesMetadataMap) {
-  MonitoredResource resource("type", {});
+  const std::string resource = "/type";
   MetadataStore::Metadata m(
+      "default-type",
+      "default-location",
       "default-version",
+      "default-schema",
       false,
-      std::chrono::system_clock::now(),
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}}));
   store.UpdateMetadata(resource, std::move(m));
   const auto metadata_map = store.GetMetadataMap();
   EXPECT_EQ(1, metadata_map.size());
+  EXPECT_EQ("default-type", metadata_map.at(resource).type);
+  EXPECT_EQ("default-location", metadata_map.at(resource).location);
   EXPECT_EQ("default-version", metadata_map.at(resource).version);
+  EXPECT_EQ("default-schema", metadata_map.at(resource).schema_name);
 }
 
 TEST_F(MetadataStoreTest, MultipleUpdateMetadataChangesMetadataMap) {
-  MonitoredResource resource1("type1", {});
-  MonitoredResource resource2("type2", {});
+  const std::string resource1 = "/type1";
+  const std::string resource2 = "/type2";
   MetadataStore::Metadata m1(
+      "default-type1",
+      "default-location1",
       "default-version1",
+      "default-schema1",
       false,
-      std::chrono::system_clock::now(),
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}}));
   MetadataStore::Metadata m2(
+      "default-type2",
+      "default-location2",
       "default-version2",
+      "default-schema2",
       false,
-      std::chrono::system_clock::now(),
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}}));
   store.UpdateMetadata(resource1, std::move(m1));
@@ -127,11 +136,13 @@ TEST_F(MetadataStoreTest, MultipleUpdateMetadataChangesMetadataMap) {
 }
 
 TEST_F(MetadataStoreTest, UpdateMetadataForResourceChangesMetadataEntry) {
-  MonitoredResource resource("type", {});
+  const std::string resource = "/type";
   MetadataStore::Metadata m1(
+      "default-type1",
+      "default-location1",
       "default-version1",
+      "default-schema1",
       false,
-      std::chrono::system_clock::now(),
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}}));
   store.UpdateMetadata(resource, std::move(m1));
@@ -139,9 +150,11 @@ TEST_F(MetadataStoreTest, UpdateMetadataForResourceChangesMetadataEntry) {
   EXPECT_EQ(1, metadata_map_before.size());
   EXPECT_EQ("default-version1", metadata_map_before.at(resource).version);
   MetadataStore::Metadata m2(
+      "default-type2",
+      "default-location2",
       "default-version2",
+      "default-schema2",
       false,
-      std::chrono::system_clock::now(),
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}}));
   store.UpdateMetadata(resource, std::move(m2));
@@ -151,18 +164,22 @@ TEST_F(MetadataStoreTest, UpdateMetadataForResourceChangesMetadataEntry) {
 }
 
 TEST_F(MetadataStoreTest, PurgeDeletedEntriesDeletesCorrectMetadata) {
-  MonitoredResource resource1("type1", {});
-  MonitoredResource resource2("type2", {});
+  const std::string resource1 = "/type1";
+  const std::string resource2 = "/type2";
   MetadataStore::Metadata m1(
+      "default-type1",
+      "default-location1",
       "default-version1",
+      "default-schema1",
       false,
-      std::chrono::system_clock::now(),
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}}));
   MetadataStore::Metadata m2(
+      "default-type2",
+      "default-location2",
       "default-version2",
+      "default-schema2",
       true,
-      std::chrono::system_clock::now(),
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("hello")}}));
   store.UpdateMetadata(resource1, std::move(m1));
@@ -180,16 +197,16 @@ TEST_F(MetadataStoreTest, PurgeDeletedEntriesDeletesCorrectMetadata) {
 
 TEST(MetadataTest, MetadataCorrectlyConstructed) {
   MetadataStore::Metadata m(
+      "default-type",
+      "default-location",
       "default-version",
+      "default-schema",
       false,
-      time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
       time::rfc3339::FromString("2018-03-03T01:32:45.678901234Z"),
       json::object({{"f", json::string("hello")}}));
   EXPECT_FALSE(m.ignore);
   EXPECT_EQ("default-version", m.version);
   EXPECT_FALSE(m.is_deleted);
-  EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-            m.created_at);
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:32:45.678901234Z"),
             m.collected_at);
   EXPECT_EQ("{\"f\":\"hello\"}", m.metadata->ToString());
@@ -197,16 +214,17 @@ TEST(MetadataTest, MetadataCorrectlyConstructed) {
 
 TEST(MetadataTest, MetadataCorrectlyCloned) {
   MetadataStore::Metadata m(
+      "default-type",
+      "default-location",
       "default-version",
+      "default-schema",
       false,
       time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-      time::rfc3339::FromString("2018-03-03T01:32:45.678901234Z"),
       json::object({{"f", json::string("hello")}}));
   MetadataStore::Metadata m_clone = m.Clone();
   EXPECT_FALSE(m_clone.ignore);
   EXPECT_EQ(m.version, m_clone.version);
   EXPECT_FALSE(m_clone.is_deleted);
-  EXPECT_EQ(m.created_at, m_clone.created_at);
   EXPECT_EQ(m.collected_at, m_clone.collected_at);
   EXPECT_EQ(m.metadata->ToString(), m_clone.metadata->ToString());
 }
