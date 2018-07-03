@@ -91,14 +91,12 @@ Configuration::Configuration()
                 "metadata-agent/" STRINGIFY(AGENT_VERSION))},
         {"MetadataIngestionEndpointFormat",
          option(metadata_ingestion_endpoint_format_,
-                "https://stackdriver.googleapis.com/v1beta2/projects/"
-                "{{project_id}}/resourceMetadata:batchUpdate")},
+                "https://stackdriver.googleapis.com/v1beta3/projects/"
+                "{{project_id}}/resourceMetadata:publish")},
         {"MetadataIngestionRequestSizeLimitBytes",
          option(metadata_ingestion_request_size_limit_bytes_, 8*1024*1024)},
         {"MetadataIngestionRequestSizeLimitCount",
          option(metadata_ingestion_request_size_limit_count_, 1000)},
-        {"MetadataIngestionRawContentVersion",
-         option(metadata_ingestion_raw_content_version_, "0.1")},
         {"InstanceUpdaterIntervalSeconds",
          option(instance_updater_interval_seconds_, 60*60)},
         // A blank value means "unspecified; detect via environment".
