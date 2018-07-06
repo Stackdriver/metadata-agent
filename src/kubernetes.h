@@ -76,6 +76,10 @@ class KubernetesReader {
   json::value QueryMaster(const std::string& path) const
       throw(QueryException, json::Exception);
 
+  // Builds the cluster full name by reading in cluster related environment
+  // variables.
+  const std::string ClusterFullName() const;
+
   // Issues a Kubernetes master API query at a given path and
   // watches for parsed JSON responses. The path has to start with "/".
   // Invokes callback for every notification.
