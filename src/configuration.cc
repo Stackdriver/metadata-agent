@@ -47,8 +47,7 @@ constexpr const int kMetadataReporterDefaultPurgeDeleted = false;
 constexpr const char kMetadataReporterDefaultUserAgent[] =
     "metadata-agent/" STRINGIFY(AGENT_VERSION);
 constexpr const char kMetadataIngestionDefaultEndpointFormat[] =
-    "https://stackdriver.googleapis.com/v1beta3/projects/{{project_id}}"
-    "/resourceMetadata:publish";
+    "https://stackdriver.googleapis.com/batch/resourceMetadata";
 constexpr const int kMetadataIngestionDefaultRequestSizeLimitBytes =
     8*1024*1024;
 constexpr const int kMetadataIngestionDefaultRequestSizeLimitCount = 1000;
