@@ -184,32 +184,33 @@ TEST_F(ValidationOrderingTest, AllChecksPassedInvokesStartUpdater) {
 
 TEST_F(UpdaterTest, UpdateMetadataCallback) {
   MetadataStore::Metadata m(
+      "test-name",
       "test-type",
       "test-location",
+      "test-version",
       "test-schema-name",
       false,
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("test")}}));
   MonitoredResource resource("test_resource", {});
-  const MetadataStore::MetadataKey key("/test", "test-version");
   MetadataUpdater::ResourceMetadata metadata(
-      std::vector<std::string>({"", "test-prefix"}),
-      resource, key, std::move(m));
+      std::vector<std::string>({"", "test-prefix"}), resource, std::move(m));
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
   UpdateMetadataCallback(&updater, std::move(metadata));
-  const auto metadata_map = store.GetMetadataMap();
-  EXPECT_EQ(1, metadata_map.size());
-  EXPECT_EQ("test-type", metadata_map.at(key).type);
-  EXPECT_EQ("test-location", metadata_map.at(key).location);
-  EXPECT_EQ("test-schema-name", metadata_map.at(key).schema_name);
-  EXPECT_EQ("{\"f\":\"test\"}", metadata_map.at(key).metadata->ToString());
+  const auto metadata_list = store.GetMetadataList();
+  EXPECT_EQ(1, metadata_list.size());
+  EXPECT_EQ("test-name", metadata_list.at(0).name);
+  EXPECT_EQ("test-type", metadata_list.at(0).type);
+  EXPECT_EQ("test-location", metadata_list.at(0).location);
+  EXPECT_EQ("test-version", metadata_list.at(0).version);
+  EXPECT_EQ("test-schema-name", metadata_list.at(0).schema_name);
+  EXPECT_EQ("{\"f\":\"test\"}", metadata_list.at(0).metadata->ToString());
 }
 
 TEST_F(UpdaterTest, UpdateResourceCallback) {
   MetadataUpdater::ResourceMetadata metadata(
       std::vector<std::string>({"", "test-prefix"}),
       MonitoredResource("test_resource", {}),
-      MetadataStore::MetadataKey("/test", "test-version"),
       MetadataStore::Metadata::IGNORED()
   );
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);

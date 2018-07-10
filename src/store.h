@@ -37,34 +37,38 @@ using Timestamp = time_point;
 class MetadataStore {
  public:
   struct Metadata {
-    Metadata(const std::string& type_,
+    Metadata(const std::string& name_,
+             const std::string& type_,
              const std::string& location_,
+             const std::string& version_,
              const std::string& schema_name_,
              bool is_deleted_,
              const Timestamp& collected_at_,
              json::value metadata_)
-        : type(type_), location(location_),
+        : name(name_), type(type_), location(location_), version(version_),
           schema_name(schema_name_), is_deleted(is_deleted_),
           collected_at(collected_at_),
           metadata(std::move(metadata_)), ignore(false) {}
     Metadata(Metadata&& other)
-        : type(other.type), location(other.location),
-          schema_name(other.schema_name), is_deleted(other.is_deleted),
-          collected_at(other.collected_at),
+        : name(other.name), type(other.type), location(other.location),
+          version(other.version), schema_name(other.schema_name),
+          is_deleted(other.is_deleted), collected_at(other.collected_at),
           metadata(std::move(other.metadata)), ignore(other.ignore) {}
 
     Metadata Clone() const {
       if (ignore) {
         return IGNORED();
       }
-      return {type, location, schema_name, is_deleted,
+      return {name, type, location, version, schema_name, is_deleted,
               collected_at, metadata->Clone()};
     }
 
     static Metadata IGNORED();
 
+    const std::string name;
     const std::string type;
     const std::string location;
+    const std::string version;
     const std::string schema_name;
     const bool is_deleted;
     const Timestamp collected_at;
@@ -73,21 +77,15 @@ class MetadataStore {
 
    private:
     Metadata()
-        : type(), location(), schema_name(), is_deleted(false),
-          collected_at(), metadata(json::object({})),
+        : name(), type(), location(), version(), schema_name(),
+          is_deleted(false), collected_at(), metadata(json::object({})),
           ignore(true) {}
   };
 
   MetadataStore(const Configuration& config);
 
-  // MetadataKey is a pair of the Full Resource Name,
-  // https://cloud.google.com/apis/design/resource_names#full_resource_name
-  // and the version that uniquely identifies a metadata blob in a cluster.
-  using MetadataKey = std::pair<std::string, std::string>;
-
-  // Returns a copy of the mapping from the metadata key to the metadata
-  // associated with that resource.
-  std::map<MetadataKey, Metadata> GetMetadataMap() const;
+  // Returns a copy of the resource metadata.
+  std::vector<Metadata> GetMetadataList() const;
 
   // Looks up the local resource map entry for a given resource id.
   // Throws an exception if the resource is not found.
@@ -100,9 +98,8 @@ class MetadataStore {
   void UpdateResource(const std::vector<std::string>& resource_ids,
                       const MonitoredResource& resource);
 
-  // Updates metadata for a given resource.
-  // Adds a metadata mapping from the `metadata_key` to the metadata `entry`.
-  void UpdateMetadata(const MetadataKey& metadata_key, Metadata&& entry);
+  // Updates the metadata map with the provided `entry`.
+  void UpdateMetadata(Metadata&& entry);
 
  private:
   friend class MetadataReporter;
@@ -118,6 +115,11 @@ class MetadataStore {
   std::map<std::string, MonitoredResource> resource_map_;
   // A lock that guards access to the metadata map.
   mutable std::mutex metadata_mu_;
+
+  // MetadataKey is a pair of the Full Resource Name,
+  // https://cloud.google.com/apis/design/resource_names#full_resource_name
+  // and the version that uniquely identifies a metadata blob in a cluster.
+  using MetadataKey = std::pair<std::string, std::string>;
   // A map from the metadata key to (JSON) resource metadata.
   std::map<MetadataKey, Metadata> metadata_map_;
 };

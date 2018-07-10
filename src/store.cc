@@ -47,12 +47,11 @@ void MetadataStore::UpdateResource(const std::vector<std::string>& resource_ids,
   }
 }
 
-void MetadataStore::UpdateMetadata(const MetadataKey& metadata_key,
-                                   Metadata&& entry) {
+void MetadataStore::UpdateMetadata(Metadata&& entry) {
   std::lock_guard<std::mutex> lock(metadata_mu_);
   if (config_.VerboseLogging()) {
-    LOG(INFO) << "Updating metadata map (" << metadata_key.first
-              << ", " << metadata_key.second << ") ->{"
+    LOG(INFO) << "Updating metadata map (" << entry.name
+              << ", " << entry.version << ") ->{"
               << "type: " << entry.type << ", "
               << "location: " << entry.location << ", "
               << "schema name: " << entry.schema_name << ", "
@@ -65,19 +64,18 @@ void MetadataStore::UpdateMetadata(const MetadataKey& metadata_key,
   }
   // Force value update. The repeated search is inefficient, but shouldn't
   // be a huge deal.
+  const MetadataKey metadata_key{entry.name, entry.version};
   metadata_map_.erase(metadata_key);
   metadata_map_.emplace(metadata_key, std::move(entry));
 }
 
-std::map<MetadataStore::MetadataKey, MetadataStore::Metadata>
-    MetadataStore::GetMetadataMap() const {
+std::vector<MetadataStore::Metadata> MetadataStore::GetMetadataList() const {
   std::lock_guard<std::mutex> lock(metadata_mu_);
 
-  std::map<MetadataKey, Metadata> result;
+  std::vector<Metadata> result;
   for (const auto& kv : metadata_map_) {
-    const MetadataKey& metadata_key = kv.first;
     const Metadata& metadata = kv.second;
-    result.emplace(metadata_key, metadata.Clone());
+    result.push_back(metadata.Clone());
   }
   return result;
 }

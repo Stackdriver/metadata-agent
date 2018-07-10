@@ -53,7 +53,7 @@ void MetadataReporter::ReportMetadata() {
       LOG(INFO) << "Sending metadata request to server";
     }
     try {
-      SendMetadata(store_->GetMetadataMap());
+      SendMetadata(store_->GetMetadataList());
       if (config_.VerboseLogging()) {
         LOG(INFO) << "Metadata request sent successfully";
       }
@@ -112,9 +112,9 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 }
 
 void MetadataReporter::SendMetadata(
-    std::map<MetadataStore::MetadataKey, MetadataStore::Metadata>&& metadata)
+    std::vector<MetadataStore::Metadata>&& metadata_list)
     throw (boost::system::system_error) {
-  if (metadata.empty()) {
+  if (metadata_list.empty()) {
     if (config_.VerboseLogging()) {
       LOG(INFO) << "No data to send";
     }
@@ -143,16 +143,13 @@ void MetadataReporter::SendMetadata(
   int total_size = empty_size;
 
   std::vector<json::value> entries;
-  for (auto& entry : metadata) {
-    const std::string& full_resource_name = entry.first.first;
-    const std::string& version = entry.first.second;
-    MetadataStore::Metadata& metadata = entry.second;
+  for (auto& metadata : metadata_list) {
     if (metadata.ignore) {
       continue;
     }
     json::value metadata_entry =
         json::object({  // ResourceMetadata
-          {"name", json::string(full_resource_name)},
+          {"name", json::string(metadata.name)},
           {"type", json::string(metadata.type)},
           {"location", json::string(metadata.location)},
           {"state", json::string(metadata.is_deleted ? "DELETED" : "EXISTS")},
@@ -160,7 +157,7 @@ void MetadataReporter::SendMetadata(
               time::rfc3339::ToString(metadata.collected_at))},
           {"views",
             json::object({
-              {version,
+              {metadata.version,
                 json::object({
                   {"schemaName", json::string(metadata.schema_name)},
                   {"stringContent", json::string(metadata.metadata->ToString())},
