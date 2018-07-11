@@ -199,12 +199,12 @@ TEST_F(UpdaterTest, UpdateMetadataCallback) {
   UpdateMetadataCallback(&updater, std::move(metadata));
   const auto metadata_list = store.GetMetadataList();
   EXPECT_EQ(1, metadata_list.size());
-  EXPECT_EQ("test-name", metadata_list.at(0).name);
-  EXPECT_EQ("test-type", metadata_list.at(0).type);
-  EXPECT_EQ("test-location", metadata_list.at(0).location);
-  EXPECT_EQ("test-version", metadata_list.at(0).version);
-  EXPECT_EQ("test-schema-name", metadata_list.at(0).schema_name);
-  EXPECT_EQ("{\"f\":\"test\"}", metadata_list.at(0).metadata->ToString());
+  EXPECT_EQ("test-name", metadata_list[0].name);
+  EXPECT_EQ("test-type", metadata_list[0].type);
+  EXPECT_EQ("test-location", metadata_list[0].location);
+  EXPECT_EQ("test-version", metadata_list[0].version);
+  EXPECT_EQ("test-schema-name", metadata_list[0].schema_name);
+  EXPECT_EQ("{\"f\":\"test\"}", metadata_list[0].metadata->ToString());
 }
 
 TEST_F(UpdaterTest, UpdateResourceCallback) {
