@@ -22,7 +22,6 @@ CPP_NETLIB_LIBS=\
 YAML_CPP_LIBS=$(YAML_CPP_LIBDIR)/libyaml-cpp.a
 
 CPPFLAGS+= \
-    -DNOOPT= \
     -isystem $(GTEST_DIR)/include -I$(GMOCK_DIR)/include \
     -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include
 CXXFLAGS=\
@@ -35,7 +34,7 @@ LDLIBS=\
 
 UNAME_S=$(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-  CPPFLAGS+= -UNOOPT -DNOOPT='[[clang::optnone]]' -I/usr/local/include -I/usr/local/opt/openssl/include
+  CPPFLAGS+= -I/usr/local/include -I/usr/local/opt/openssl/include
   CXXFLAGS+= -Wno-deprecated-declarations -Wno-c++14-extensions
   LDFLAGS+= -L/usr/local/lib -L/usr/local/opt/openssl/lib
   SED_I+= ''
