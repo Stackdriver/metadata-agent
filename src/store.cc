@@ -75,7 +75,7 @@ std::vector<MetadataStore::Metadata> MetadataStore::GetMetadataList() const {
   std::vector<Metadata> result;
   for (const auto& kv : metadata_map_) {
     const Metadata& metadata = kv.second;
-    result.push_back(metadata.Clone());
+    result.emplace_back(metadata.Clone());
   }
   return result;
 }
