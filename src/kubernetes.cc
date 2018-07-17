@@ -933,8 +933,8 @@ json::value KubernetesReader::GetOwner(
       std::vector<std::string>{api_version, kind, uid}, "/");
 
   std::lock_guard<std::recursive_mutex> lock(mutex_);
-  auto found = owners_.find(encoded_ref);
-  if (found == owners_.end()) {  // Not found, add new.
+  auto owner_it = owners_.find(encoded_ref);
+  if (owner_it == owners_.end()) {  // Not found, add new.
     const auto path_component = KindPath(api_version, kind);
 #ifdef VERBOSE
     LOG(DEBUG) << "KindPath returned {" << path_component.first << ", "
@@ -956,9 +956,9 @@ json::value KubernetesReader::GetOwner(
                            ") disappeared");
     }
     auto inserted = owners_.emplace(encoded_ref, std::move(owner));
-    found = inserted.first;
+    owner_it = inserted.first;
   }
-  return found->second->Clone();
+  return owner_it->second->Clone();
 }
 
 json::value KubernetesReader::FindTopLevelController(
