@@ -193,10 +193,10 @@ TEST_F(UpdaterTest, UpdateMetadataCallback) {
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("test")}}));
   MonitoredResource resource("test_resource", {});
-  MetadataUpdater::ResourceMetadata mr(
+  MetadataUpdater::ResourceMetadata resource_metadata(
       std::vector<std::string>({"", "test-prefix"}), resource, std::move(m));
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
-  UpdateMetadataCallback(&updater, std::move(mr));
+  UpdateMetadataCallback(&updater, std::move(resource_metadata));
   const auto metadata = store.GetMetadata();
   EXPECT_EQ(1, metadata.size());
   EXPECT_EQ("test-name", metadata[0].name);
