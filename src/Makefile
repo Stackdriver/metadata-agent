@@ -136,6 +136,7 @@ docker: $(DEB_PKG) ../pkg/docker/Dockerfile-$(DISTRO)
 	export DOCKER_DIR=$$TMPDIR/docker && \
 	mkdir -p $$DOCKER_DIR && \
 	cp ../pkg/docker/Dockerfile-$(DISTRO) $$DOCKER_DIR/Dockerfile && \
+	cp ../pkg/docker/entrypoint.sh $$DOCKER_DIR/ && \
 	cp $(DEB_PKG) $$DOCKER_DIR/ && \
 	docker build --build-arg package="$(DEB_PKG)" -t $(DOCKER_IMAGE):$(DOCKER_TAG) $$DOCKER_DIR && \
 	$(RM) -r $$TMPDIR
