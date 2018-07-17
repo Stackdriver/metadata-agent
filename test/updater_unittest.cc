@@ -197,7 +197,7 @@ TEST_F(UpdaterTest, UpdateMetadataCallback) {
       std::vector<std::string>({"", "test-prefix"}), resource, std::move(m));
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
   UpdateMetadataCallback(&updater, std::move(metadata));
-  const auto metadata_list = store.GetMetadataList();
+  const auto metadata_list = store.GetMetadata();
   EXPECT_EQ(1, metadata_list.size());
   EXPECT_EQ("test-name", metadata_list[0].name);
   EXPECT_EQ("test-type", metadata_list[0].type);

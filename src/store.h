@@ -85,7 +85,7 @@ class MetadataStore {
   MetadataStore(const Configuration& config);
 
   // Returns a copy of the resource metadata.
-  std::vector<Metadata> GetMetadataList() const;
+  std::vector<Metadata> GetMetadata() const;
 
   // Looks up the local resource map entry for a given resource id.
   // Throws an exception if the resource is not found.

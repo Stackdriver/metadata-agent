@@ -53,7 +53,7 @@ void MetadataReporter::ReportMetadata() {
       LOG(INFO) << "Sending metadata request to server";
     }
     try {
-      SendMetadata(store_->GetMetadataList());
+      SendMetadata(store_->GetMetadata());
       if (config_.VerboseLogging()) {
         LOG(INFO) << "Metadata request sent successfully";
       }

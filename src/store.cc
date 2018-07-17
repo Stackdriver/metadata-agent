@@ -69,7 +69,7 @@ void MetadataStore::UpdateMetadata(Metadata&& entry) {
   metadata_map_.emplace(metadata_key, std::move(entry));
 }
 
-std::vector<MetadataStore::Metadata> MetadataStore::GetMetadataList() const {
+std::vector<MetadataStore::Metadata> MetadataStore::GetMetadata() const {
   std::lock_guard<std::mutex> lock(metadata_mu_);
 
   std::vector<Metadata> result;
