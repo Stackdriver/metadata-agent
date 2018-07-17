@@ -145,7 +145,7 @@ TEST_F(EnvironmentTest, ValuesFromMetadataServer) {
 
   Configuration config;
   Environment environment(config);
-  SetMetadataServerUrlForTest(&environment, server.GetUrl());
+  SetMetadataServerUrlForTest(&environment, server.GetUrl() + "/");
 
   EXPECT_EQ("some-cluster-location", environment.KubernetesClusterLocation());
   EXPECT_EQ("some-cluster-name", environment.KubernetesClusterName());
@@ -162,7 +162,7 @@ TEST_F(EnvironmentTest, KubernetesClusterLocationFromMetadataServerKubeEnv) {
 
   Configuration config;
   Environment environment(config);
-  SetMetadataServerUrlForTest(&environment, server.GetUrl());
+  SetMetadataServerUrlForTest(&environment, server.GetUrl() + "/");
 
   EXPECT_EQ("some-kube-env-zone", environment.KubernetesClusterLocation());
 }

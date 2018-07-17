@@ -787,7 +787,7 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
   ));
   MetadataStore store(config);
   KubernetesUpdater updater(config, /*health_checker=*/nullptr, &store);
-  std::thread updater_thread([&updater] { updater.start(); });
+  std::thread updater_thread([&updater] { updater.Start(); });
 
   // Wait for updater's watchers to connect to the server (hanging GETs).
   server.WaitForOneStreamWatcher(
@@ -875,7 +875,6 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
 
   // Terminate the hanging GETs on the server so that the updater will finish.
   server.TerminateAllStreams();
-  updater.stop();
   updater_thread.join();
 }
 
