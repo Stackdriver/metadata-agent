@@ -37,7 +37,8 @@ class FakeServer {
   void AllowStream(const std::string& path);
 
   // Blocks until at least one client has connected to the given path.
-  void WaitForOneStreamWatcher(const std::string& path);
+  // Returns false if no client has connected after 3 seconds.
+  bool WaitForOneStreamWatcher(const std::string& path);
 
   // Sends a streaming response to all watchers fo the given path.
   void SendStreamResponse(const std::string& path, const std::string& response);

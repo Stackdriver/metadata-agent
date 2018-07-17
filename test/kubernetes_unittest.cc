@@ -1259,10 +1259,10 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
   std::thread updater_thread([&updater] { updater.Start(); });
 
   // Wait for updater's watchers to connect to the server (hanging GETs).
-  server.WaitForOneStreamWatcher(
-      "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true");
-  server.WaitForOneStreamWatcher(
-      "/api/v1/watch/nodes/TestNodeName?watch=true");
+  EXPECT_TRUE(server.WaitForOneStreamWatcher(
+      "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true"));
+  EXPECT_TRUE(server.WaitForOneStreamWatcher(
+      "/api/v1/watch/nodes/TestNodeName?watch=true"));
 
   // For nodes, send stream responses from the fake Kubernetes
   // master and verify that the updater propagates them to the store.
