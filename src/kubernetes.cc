@@ -955,8 +955,8 @@ json::value KubernetesReader::GetOwner(
       throw QueryException("Owner " + kind + " " + name + " (id " + uid +
                            ") disappeared");
     }
-    owners_.emplace(encoded_ref, owner->Clone());
-    return std::move(owner);
+    auto inserted = owners_.emplace(encoded_ref, std::move(owner));
+    found = inserted.first;
   }
   return found->second->Clone();
 }
