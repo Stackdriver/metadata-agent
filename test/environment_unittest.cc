@@ -1,4 +1,5 @@
 #include "../src/environment.h"
+#include "fake_http_server.h"
 #include "gtest/gtest.h"
 
 #include <fstream>
@@ -12,9 +13,15 @@ class EnvironmentTest : public ::testing::Test {
   static void ReadApplicationDefaultCredentials(const Environment& environment) {
     environment.ReadApplicationDefaultCredentials();
   }
+
+  static void SetMetadataServerUrlForTest(Environment* environment,
+                                          const std::string& url) {
+    environment->SetMetadataServerUrlForTest(url);
+  }
 };
 
 namespace {
+
 // A file with a given name in a temporary (unique) directory.
 boost::filesystem::path TempPath(const std::string& filename) {
   boost::filesystem::path path = boost::filesystem::temp_directory_path();
@@ -42,6 +49,7 @@ class TemporaryFile {
  private:
   boost::filesystem::path path_;
 };
+
 }  // namespace
 
 TEST(TemporaryFile, Basic) {
@@ -70,7 +78,6 @@ TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsSucceeds) {
   TemporaryFile credentials_file(
     std::string(test_info_->name()) + "_creds.json",
     "{\"client_email\":\"user@example.com\",\"private_key\":\"some_key\"}");
-  std::string cfg;
   Configuration config(std::istringstream(
       "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
   ));
@@ -98,4 +105,17 @@ TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsCaches) {
   );
   EXPECT_EQ("some_key", environment.CredentialsPrivateKey());
 }
+
+TEST_F(EnvironmentTest, GetMetadataString) {
+  testing::FakeServer server;
+  server.SetResponse("/a/b/c", "hello");
+
+  Configuration config;
+  Environment environment(config);
+  SetMetadataServerUrlForTest(&environment, server.GetUrl());
+
+  EXPECT_EQ("hello", environment.GetMetadataString("a/b/c"));
+  EXPECT_EQ("", environment.GetMetadataString("unknown/path"));
+}
+
 }  // namespace google

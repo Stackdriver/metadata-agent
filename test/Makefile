@@ -121,7 +121,7 @@ base64_unittest: base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 configuration_unittest: configuration_unittest.o $(SRC_DIR)/configuration.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-environment_unittest: environment_unittest.o $(SRC_DIR)/environment.o $(SRC_DIR)/configuration.o $(SRC_DIR)/format.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o
+environment_unittest: environment_unittest.o fake_http_server.o $(SRC_DIR)/environment.o $(SRC_DIR)/configuration.o $(SRC_DIR)/format.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 format_unittest: format_unittest.o $(SRC_DIR)/format.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@

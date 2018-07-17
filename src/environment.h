@@ -48,6 +48,11 @@ class Environment {
 
   void ReadApplicationDefaultCredentials() const;
 
+  // The url must end in a '/'.
+  void SetMetadataServerUrlForTest(const std::string& url) {
+    metadata_server_url_ = url;
+  }
+
   const Configuration& config_;
 
   // Cached data.
@@ -60,6 +65,7 @@ class Environment {
   mutable std::string kubernetes_cluster_location_;
   mutable std::string client_email_;
   mutable std::string private_key_;
+  mutable std::string metadata_server_url_;
   mutable bool application_default_credentials_read_;
 };
 
