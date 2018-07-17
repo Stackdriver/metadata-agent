@@ -933,19 +933,16 @@ json::value KubernetesReader::GetOwner(
       std::vector<std::string>{api_version, kind, uid}, "/");
 
   std::lock_guard<std::recursive_mutex> lock(mutex_);
-  auto found = owners_.emplace(std::piecewise_construct,
-                               std::forward_as_tuple(encoded_ref),
-                               std::forward_as_tuple());
-  json::value& owner = found.first->second;
-  if (found.second) {  // Not found, inserted new.
+  auto owner_it = owners_.find(encoded_ref);
+  if (owner_it == owners_.end()) {  // Not found, add new.
     const auto path_component = KindPath(api_version, kind);
 #ifdef VERBOSE
     LOG(DEBUG) << "KindPath returned {" << path_component.first << ", "
                << path_component.second << "}";
 #endif
-    owner = std::move(
+    json::value owner =
         QueryMaster(path_component.first + "/namespaces/" + ns + "/" +
-                    path_component.second + "/" + name));
+                    path_component.second + "/" + name);
     // Sanity check: because we are looking up by name, the object we get
     // back might have a different uid.
     const json::Object* owner_obj = owner->As<json::Object>();
@@ -955,12 +952,13 @@ json::value KubernetesReader::GetOwner(
       LOG(WARNING) << "Owner " << kind << "'" << name << "' (id " << uid
                    << ") disappeared before we could query it. Found id "
                    << owner_uid << " instead.";
-      owner.reset();
       throw QueryException("Owner " + kind + " " + name + " (id " + uid +
                            ") disappeared");
     }
+    auto inserted = owners_.emplace(encoded_ref, std::move(owner));
+    owner_it = inserted.first;
   }
-  return owner->Clone();
+  return owner_it->second->Clone();
 }
 
 json::value KubernetesReader::FindTopLevelController(
