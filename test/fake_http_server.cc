@@ -3,6 +3,8 @@
 #include "../src/json.h"
 #include "../src/logging.h"
 
+#include <chrono>
+
 namespace google {
 namespace testing {
 
@@ -38,16 +40,19 @@ void FakeServer::AllowStream(const std::string& path) {
       new Handler::Stream);
 }
 
-void FakeServer::WaitForOneStreamWatcher(const std::string& path) {
-  auto s = handler_.path_streams.find(path);
-  if (s == handler_.path_streams.end()) {
+bool FakeServer::WaitForOneStreamWatcher(const std::string& path) {
+  auto stream_it = handler_.path_streams.find(path);
+  if (stream_it == handler_.path_streams.end()) {
     LOG(ERROR) << "No stream for path " << path;
-    return;
+    return false;
   }
-  auto& stream = s->second;
-  std::unique_lock<std::mutex> lk(stream->mutex);
-  stream->cv.wait(lk, [&stream]{return stream->queues.size() > 0;});
-  lk.unlock();
+  auto& stream = stream_it->second;
+  std::unique_lock<std::mutex> queues_lock(stream->mutex);
+  bool success = stream->cv.wait_for(queues_lock,
+                                     std::chrono::seconds(3),
+                                     [&stream]{return stream->queues.size() > 0;});
+  queues_lock.unlock();
+  return success;
 }
 
 void FakeServer::SendStreamResponse(const std::string& path, const std::string& response) {
