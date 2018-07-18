@@ -142,6 +142,7 @@ TEST_F(KubernetesTestNoInstance, GetNodeMetadata) {
     {"node_name", "testname"},
     {"location", "TestClusterLocation"},
   }), m.resource());
+  EXPECT_EQ("", m.metadata().name);
   EXPECT_EQ("", m.metadata().version);
   EXPECT_FALSE(m.metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
@@ -331,6 +332,7 @@ TEST_F(KubernetesTestWithInstance, GetPodMetadata) {
     {"location", "TestClusterLocation"},
     {"namespace_name", "TestNamespace"},
   }), m.resource());
+  EXPECT_EQ("", m.metadata().name);
   EXPECT_EQ("", m.metadata().version);
   EXPECT_FALSE(m.metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
@@ -481,6 +483,7 @@ TEST_F(KubernetesTestWithInstance, GetPodAndContainerMetadata) {
       {"pod_name", "TestPodName"},
   }), m[2].resource());
   EXPECT_FALSE(m[2].metadata().ignore);
+  EXPECT_EQ("", m[2].metadata().name);
   EXPECT_EQ("", m[2].metadata().version);
   EXPECT_FALSE(m[2].metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m[2].metadata().collected_at);
@@ -749,12 +752,14 @@ class KubernetesTestFakeServerOneWatchRetry : public KubernetesTest {
 // seconds (polling every 100 millis).
 bool WaitForNewerCollectionTimestamp(const MetadataStore& store,
                                      const std::string& name,
+                                     const std::string& version,
                                      Timestamp last_timestamp) {
   for (int i = 0; i < 30; i++){
-    const auto metadata_map = store.GetMetadataMap();
-    const auto m = metadata_map.find(name);
-    if (m != metadata_map.end() && m->second.collected_at > last_timestamp) {
-      return true;
+    for (auto& m: store.GetMetadata()) {
+      if (m.name == name && m.version == version &&
+          m.collected_at > last_timestamp) {
+        return true;
+      }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
@@ -803,13 +808,17 @@ TEST_F(KubernetesTestFakeServerOneWatchRetry, KubernetesUpdater) {
         node_metadata->ToString());
     // Wait until watcher has processed response (by polling the store).
     const std::string name = "";
+    const std::string version = "";
     EXPECT_TRUE(
-        WaitForNewerCollectionTimestamp(store, name, last_nodes_timestamp));
-
-    const auto metadata_map = store.GetMetadataMap();
-    const auto& metadata = metadata_map.at(name);
-    // TODO: Insert tests of metadata values.
-    last_nodes_timestamp = metadata.collected_at;
+        WaitForNewerCollectionTimestamp(
+            store, name, version, last_nodes_timestamp)
+    );
+    for (auto& m: store.GetMetadata()) {
+      if (m.name == name && m.version == version) {
+        // TODO: Insert tests of metadata values.
+        last_nodes_timestamp = m.collected_at;
+      }
+    }
   }
 
   // For pods, do the same thing.
@@ -846,13 +855,18 @@ TEST_F(KubernetesTestFakeServerOneWatchRetry, KubernetesUpdater) {
         pod_metadata->ToString());
     // Wait until watcher has processed response (by polling the store).
     const std::string name = "";
+    const std::string version = "";
     EXPECT_TRUE(
-        WaitForNewerCollectionTimestamp(store, name, last_pods_timestamp));
+        WaitForNewerCollectionTimestamp(
+            store, name, version, last_pods_timestamp)
+    );
 
-    const auto metadata_map = store.GetMetadataMap();
-    const auto& metadata = metadata_map.at(name);
-    // TODO: Insert tests of metadata values.
-    last_pods_timestamp = metadata.collected_at;
+    for (auto& m: store.GetMetadata()) {
+      if (m.name == name && m.version == version) {
+        // TODO: Insert tests of metadata values.
+        last_pods_timestamp = m.collected_at;
+      }
+    }
   }
 
   // Terminate the hanging GETs on the server so that the updater will finish.

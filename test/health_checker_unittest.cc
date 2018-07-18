@@ -93,9 +93,8 @@ TEST_F(HealthCheckerUnittest, RecentMetadataSucceeds) {
   time_point now = std::chrono::system_clock::now();
   time_point then = now - std::chrono::seconds(10);
   store.UpdateMetadata(
-      "my_resource",
       MetadataStore::Metadata(
-          "0", "0", "0", "0", false, then, json::object({})));
+          "my_name", "my_type", "0", "0", "0", false, then, json::object({})));
   EXPECT_TRUE(health_checker.UnhealthyComponents().empty());
 }
 
@@ -109,9 +108,8 @@ TEST_F(HealthCheckerUnittest, StaleMetadataCausesFailure) {
   time_point now = std::chrono::system_clock::now();
   time_point then = now - std::chrono::seconds(10);
   store.UpdateMetadata(
-      "my_resource",
       MetadataStore::Metadata(
-          "my_type", "0", "0", "0", false, then, json::object({})));
+          "my_name", "my_type", "0", "0", "0", false, then, json::object({})));
   EXPECT_EQ(health_checker.UnhealthyComponents(),
             std::set<std::string>({
                 "my_type",
@@ -128,18 +126,16 @@ TEST_F(HealthCheckerUnittest, UpdatedMetadataClearsFailure) {
   time_point now = std::chrono::system_clock::now();
   time_point then = now - std::chrono::seconds(10);
   store.UpdateMetadata(
-      "my_resource",
       MetadataStore::Metadata(
-          "my_type", "0", "0", "0", false, then, json::object({})));
+          "my_name", "my_type", "0", "0", "0", false, then, json::object({})));
   EXPECT_EQ(health_checker.UnhealthyComponents(),
             std::set<std::string>({
                 "my_type",
             }));
   now = std::chrono::system_clock::now();
   store.UpdateMetadata(
-      "my_resource",
       MetadataStore::Metadata(
-          "my_type", "0", "0", "0", false, now, json::object({})));
+          "my_name", "my_type", "0", "0", "0", false, now, json::object({})));
   EXPECT_TRUE(health_checker.UnhealthyComponents().empty());
 }
 
