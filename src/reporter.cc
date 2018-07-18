@@ -33,6 +33,8 @@ constexpr const char kMultipartBoundary[] = "publishMultipartPost";
 constexpr const char kBatchPath[] = "/batch/resourceMetadata";
 constexpr const char kPublishPathFormat[] =
     "/v1beta3/projects/{{project_id}}/resourceMetadata:publish";
+constexpr const char kGcpLocationFormat[] =
+    "//cloud.google.com/locations/{{location_type}}/{{location}}";
 
 MetadataReporter::MetadataReporter(const Configuration& config,
                                    MetadataStore* store, double period_s)
@@ -170,6 +172,15 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 
 }
 
+const std::string MetadataReporter::FullyQualifiedResourceLocation(
+    const std::string location) const {
+  int num_dashes = std::count(location.begin(), location.end(), '-');
+  const std::string location_type = num_dashes == 2 ? "zones" : "regions";
+  return format::Substitute(
+      std::string(kGcpLocationFormat),
+      {{"location_type", location_type}, {"location", location}});
+}
+
 void MetadataReporter::SendMetadata(
     std::vector<MetadataStore::Metadata>&& metadata)
     throw (boost::system::system_error) {
@@ -201,14 +212,15 @@ void MetadataReporter::SendMetadata(
 
   std::vector<json::value> entries;
   for (auto& m: metadata) {
+    const std::string resource_location =
+        FullyQualifiedResourceLocation(m.location);
     json::value metadata_entry =
         json::object({  // ResourceMetadata
           {"name", json::string(m.name)},
           {"type", json::string(m.type)},
-          {"location", json::string(m.location)},
+          {"location", json::string(resource_location)},
           {"state", json::string(m.is_deleted ? "DELETED" : "EXISTS")},
-          {"eventTime", json::string(
-              time::rfc3339::ToString(m.collected_at))},
+          {"eventTime", json::string(time::rfc3339::ToString(m.collected_at))},
           {"views",
             json::object({
               {m.version,
