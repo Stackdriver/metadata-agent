@@ -73,7 +73,8 @@ TEST(ReporterTest, MetadataReporter) {
   ));
   MetadataStore store(config);
   MonitoredResource resource("type", {});
-  store.UpdateMetadata("", MetadataStore::Metadata(
+  store.UpdateMetadata(MetadataStore::Metadata(
+      "",
       "default-type",
       "default-location",
       "default-version",
@@ -127,7 +128,8 @@ TEST(ReporterTest, MetadataReporter) {
 
   // Mark metadata as deleted in store, advance fake clock, wait for
   // 3rd post, verify contents.
-  store.UpdateMetadata("", MetadataStore::Metadata(
+  store.UpdateMetadata(MetadataStore::Metadata(
+      "",
       "default-type",
       "default-location",
       "default-version",
