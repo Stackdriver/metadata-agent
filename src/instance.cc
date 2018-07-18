@@ -55,7 +55,6 @@ std::vector<MetadataUpdater::ResourceMetadata>
   result.emplace_back(
       std::vector<std::string>{"", environment_.InstanceId()},
       instance_resource,
-      /*full_resource_name=*/"",
       // TODO: Send actual instance metadata.
       MetadataStore::Metadata::IGNORED()
   );
