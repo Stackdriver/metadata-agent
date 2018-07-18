@@ -208,13 +208,13 @@ TEST_F(UpdaterTest, UpdateMetadataCallback) {
 }
 
 TEST_F(UpdaterTest, UpdateResourceCallback) {
-  MetadataUpdater::ResourceMetadata m(
+  MetadataUpdater::ResourceMetadata resource_metadata(
       std::vector<std::string>({"", "test-prefix"}),
       MonitoredResource("test_resource", {}),
       MetadataStore::Metadata::IGNORED()
   );
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
-  UpdateResourceCallback(&updater, m);
+  UpdateResourceCallback(&updater, resource_metadata);
   EXPECT_EQ(MonitoredResource("test_resource", {}),
             store.LookupResource(""));
   EXPECT_EQ(MonitoredResource("test_resource", {}),
