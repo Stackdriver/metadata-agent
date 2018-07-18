@@ -90,6 +90,7 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
     {"node_name", "testname"},
     {"location", "TestClusterLocation"},
   }), m.resource());
+  EXPECT_EQ("", m.metadata().name);
   EXPECT_EQ("", m.metadata().version);
   EXPECT_FALSE(m.metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
@@ -132,6 +133,7 @@ TEST_F(KubernetesTest, GetPodMetadata) {
     {"location", "TestClusterLocation"},
     {"namespace_name", "TestNamespace"},
   }), m.resource());
+  EXPECT_EQ("", m.metadata().name);
   EXPECT_EQ("", m.metadata().version);
   EXPECT_FALSE(m.metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
@@ -307,6 +309,7 @@ TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
       {"pod_name", "TestPodName"},
   }), m[2].resource());
   EXPECT_FALSE(m[2].metadata().ignore);
+  EXPECT_EQ("", m[2].metadata().name);
   EXPECT_EQ("", m[2].metadata().version);
   EXPECT_FALSE(m[2].metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m[2].metadata().collected_at);

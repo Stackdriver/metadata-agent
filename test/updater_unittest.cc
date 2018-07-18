@@ -185,6 +185,7 @@ TEST_F(ValidationOrderingTest, AllChecksPassedInvokesStartUpdater) {
 
 TEST_F(UpdaterTest, UpdateMetadataCallback) {
   MetadataStore::Metadata m(
+      "test-name",
       "test-type",
       "test-location",
       "test-version",
@@ -193,30 +194,28 @@ TEST_F(UpdaterTest, UpdateMetadataCallback) {
       std::chrono::system_clock::now(),
       json::object({{"f", json::string("test")}}));
   MonitoredResource resource("test_resource", {});
-  const std::string frn = "/test";
-  MetadataUpdater::ResourceMetadata metadata(
-      std::vector<std::string>({"", "test-prefix"}),
-      resource, frn, std::move(m));
+  MetadataUpdater::ResourceMetadata resource_metadata(
+      std::vector<std::string>({"", "test-prefix"}), resource, std::move(m));
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
-  UpdateMetadataCallback(&updater, std::move(metadata));
-  const auto metadata_map = store.GetMetadataMap();
-  EXPECT_EQ(1, metadata_map.size());
-  EXPECT_EQ("test-type", metadata_map.at(frn).type);
-  EXPECT_EQ("test-location", metadata_map.at(frn).location);
-  EXPECT_EQ("test-version", metadata_map.at(frn).version);
-  EXPECT_EQ("test-schema-name", metadata_map.at(frn).schema_name);
-  EXPECT_EQ("{\"f\":\"test\"}", metadata_map.at(frn).metadata->ToString());
+  UpdateMetadataCallback(&updater, std::move(resource_metadata));
+  const auto metadata = store.GetMetadata();
+  EXPECT_EQ(1, metadata.size());
+  EXPECT_EQ("test-name", metadata[0].name);
+  EXPECT_EQ("test-type", metadata[0].type);
+  EXPECT_EQ("test-location", metadata[0].location);
+  EXPECT_EQ("test-version", metadata[0].version);
+  EXPECT_EQ("test-schema-name", metadata[0].schema_name);
+  EXPECT_EQ("{\"f\":\"test\"}", metadata[0].metadata->ToString());
 }
 
 TEST_F(UpdaterTest, UpdateResourceCallback) {
-  MetadataUpdater::ResourceMetadata metadata(
+  MetadataUpdater::ResourceMetadata resource_metadata(
       std::vector<std::string>({"", "test-prefix"}),
       MonitoredResource("test_resource", {}),
-      "/test",
       MetadataStore::Metadata::IGNORED()
   );
   PollingMetadataUpdater updater(config, &store, "Test", 60, nullptr);
-  UpdateResourceCallback(&updater, metadata);
+  UpdateResourceCallback(&updater, resource_metadata);
   EXPECT_EQ(MonitoredResource("test_resource", {}),
             store.LookupResource(""));
   EXPECT_EQ(MonitoredResource("test_resource", {}),
@@ -226,9 +225,10 @@ TEST_F(UpdaterTest, UpdateResourceCallback) {
 bool WaitForResource(const MetadataStore& store,
                      const std::string& full_resource_name) {
   for (int i = 0; i < 30; i++) {
-    const auto metadata_map = store.GetMetadataMap();
-    if (metadata_map.find(full_resource_name) != metadata_map.end()) {
-      return true;
+    for (auto& m: store.GetMetadata()) {
+      if (full_resource_name == m.name) {
+        return true;
+      }
     }
     // Use real time here, because we are polling until the store has
     // been updated by another thread.
@@ -254,11 +254,12 @@ TEST_F(UpdaterTest, PollingMetadataUpdater) {
   // Start updater with 60 second polling interval, using fake clock
   // implementation.
   //
-  // Each callback will return a new resource "test_resource_<i>".
+  // Each callback will return a new resource "test-name-<i>".
   int i = 0;
   std::function<std::vector<MetadataUpdater::ResourceMetadata>()> query_metadata(
     [&i]() {
       MetadataStore::Metadata m(
+          "test-name-" + std::to_string(i),
           "test-type",
           "test-location",
           "test-version",
@@ -269,9 +270,9 @@ TEST_F(UpdaterTest, PollingMetadataUpdater) {
       std::vector<MetadataUpdater::ResourceMetadata> result;
       result.emplace_back(std::move(MetadataUpdater::ResourceMetadata(
           {"", "test-prefix"},
-          MonitoredResource("test_resource_", {}),
-          "test_name_" + std::to_string(i++),
+          MonitoredResource("test_resource_" + std::to_string(i), {}),
           std::move(m))));
+      i++;
       return result;
     });
   FakePollingMetadataUpdater updater(
@@ -279,18 +280,18 @@ TEST_F(UpdaterTest, PollingMetadataUpdater) {
   std::thread updater_thread([&updater] { updater.Start(); });
 
   // Wait for 1st update, verify store.
-  EXPECT_TRUE(WaitForResource(store, "test_name_0"));
-  EXPECT_EQ(1, store.GetMetadataMap().size());
+  EXPECT_TRUE(WaitForResource(store, "test-name-0"));
+  EXPECT_EQ(1, store.GetMetadata().size());
 
   // Advance fake clock, wait for 2nd update, verify store.
   testing::FakeClock::Advance(time::seconds(60));
-  EXPECT_TRUE(WaitForResource(store, "test_name_1"));
-  EXPECT_EQ(2, store.GetMetadataMap().size());
+  EXPECT_TRUE(WaitForResource(store, "test-name-1"));
+  EXPECT_EQ(2, store.GetMetadata().size());
 
   // Advance fake clock, wait for 3rd update, verify store.
   testing::FakeClock::Advance(time::seconds(60));
-  EXPECT_TRUE(WaitForResource(store, "test_name_2"));
-  EXPECT_EQ(3, store.GetMetadataMap().size());
+  EXPECT_TRUE(WaitForResource(store, "test-name-2"));
+  EXPECT_EQ(3, store.GetMetadata().size());
 
   updater.NotifyStop();
   updater_thread.join();
