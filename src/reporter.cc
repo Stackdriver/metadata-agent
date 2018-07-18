@@ -53,7 +53,7 @@ void MetadataReporter::ReportMetadata() {
       LOG(INFO) << "Sending metadata request to server";
     }
     try {
-      SendMetadata(store_->GetMetadataMap());
+      SendMetadata(store_->GetMetadata());
       if (config_.VerboseLogging()) {
         LOG(INFO) << "Metadata request sent successfully";
       }
@@ -112,7 +112,7 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 }
 
 void MetadataReporter::SendMetadata(
-    std::map<std::string, MetadataStore::Metadata>&& metadata)
+    std::vector<MetadataStore::Metadata>&& metadata)
     throw (boost::system::system_error) {
   if (metadata.empty()) {
     if (config_.VerboseLogging()) {
@@ -143,23 +143,24 @@ void MetadataReporter::SendMetadata(
   int total_size = empty_size;
 
   std::vector<json::value> entries;
-  for (auto& entry : metadata) {
-    const std::string& full_resource_name = entry.first;
-    MetadataStore::Metadata& metadata = entry.second;
+  for (auto& m: metadata) {
+    if (m.ignore) {
+      continue;
+    }
     json::value metadata_entry =
         json::object({  // ResourceMetadata
-          {"name", json::string(full_resource_name)},
-          {"type", json::string(metadata.type)},
-          {"location", json::string(metadata.location)},
-          {"state", json::string(metadata.is_deleted ? "DELETED" : "EXISTS")},
+          {"name", json::string(m.name)},
+          {"type", json::string(m.type)},
+          {"location", json::string(m.location)},
+          {"state", json::string(m.is_deleted ? "DELETED" : "EXISTS")},
           {"eventTime", json::string(
-              time::rfc3339::ToString(metadata.collected_at))},
+              time::rfc3339::ToString(m.collected_at))},
           {"views",
             json::object({
-              {metadata.version,
+              {m.version,
                 json::object({
-                  {"schemaName", json::string(metadata.schema_name)},
-                  {"stringContent", json::string(metadata.metadata->ToString())},
+                  {"schemaName", json::string(m.schema_name)},
+                  {"stringContent", json::string(m.metadata->ToString())},
                 })
               }
             })
