@@ -16,9 +16,10 @@
 #ifndef HEALTH_CHECKER_H_
 #define HEALTH_CHECKER_H_
 
-#include <string>
+#include <map>
 #include <mutex>
 #include <set>
+#include <string>
 
 #include "configuration.h"
 
@@ -29,15 +30,19 @@ class HealthChecker {
  public:
   HealthChecker(const Configuration& config);
   void SetUnhealthy(const std::string& component);
+  bool IsHealthy() const;
+  void RegisterCallback(const std::string& component,
+                        std::function<bool()> callback);
+  void UnregisterCallback(const std::string& component);
 
  private:
   friend class HealthCheckerUnittest;
 
-  bool IsHealthy() const;
   void CleanupForTest();
 
   const Configuration& config_;
   std::set<std::string> unhealthy_components_;
+  std::map<std::string, std::function<bool()>> component_callbacks_;
   mutable std::mutex mutex_;
 };
 

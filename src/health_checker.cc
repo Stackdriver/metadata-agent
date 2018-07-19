@@ -39,12 +39,31 @@ void HealthChecker::SetUnhealthy(const std::string& component) {
 
 bool HealthChecker::IsHealthy() const {
   std::lock_guard<std::mutex> lock(mutex_);
-  return unhealthy_components_.empty();
+  if (!unhealthy_components_.empty()) {
+    return false;
+  }
+  for (auto& c : component_callbacks_) {
+    if (!c.second()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void HealthChecker::CleanupForTest() {
   boost::filesystem::remove_all(boost::filesystem::path(
       config_.HealthCheckFile()).parent_path());
+}
+
+void HealthChecker::RegisterCallback(const std::string& component,
+                                     std::function<bool()> callback) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  component_callbacks_[component] = callback;
+}
+
+void HealthChecker::UnregisterCallback(const std::string& component) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  component_callbacks_.erase(component);
 }
 
 }  // namespace google

@@ -33,14 +33,17 @@ namespace google {
 // Configuration object.
 class Configuration;
 
+class HealthChecker;
+
 // Storage for the metadata mapping.
 class MetadataStore;
 
 // A server that implements the metadata agent API.
 class MetadataApiServer {
  public:
-  MetadataApiServer(const Configuration& config, const MetadataStore& store,
-                    int server_threads, const std::string& host, int port);
+  MetadataApiServer(const Configuration& config, HealthChecker* health_checker,
+                    const MetadataStore& store, int server_threads,
+                    const std::string& host, int port);
   ~MetadataApiServer();
 
   // Stops the server and closes the listening socket.
@@ -71,8 +74,11 @@ class MetadataApiServer {
   // Handler functions.
   void HandleMonitoredResource(const HttpServer::request& request,
                                std::shared_ptr<HttpServer::connection> conn);
+  void HandleHealthz(const HttpServer::request& request,
+                     std::shared_ptr<HttpServer::connection> conn);
 
   const Configuration& config_;
+  HealthChecker* health_checker_;
   const MetadataStore& store_;
   Dispatcher dispatcher_;
   HttpServer server_;

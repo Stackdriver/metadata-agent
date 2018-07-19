@@ -796,6 +796,15 @@ void KubernetesReader::WatchMaster(
   if (verbose) {
     LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint;
   }
+  std::mutex last_received_mutex;
+  auto last_received = std::chrono::high_resolution_clock::now();
+  if (health_checker_) {
+    health_checker_->RegisterCallback(name, [&last_received_mutex, &last_received]{
+      std::lock_guard<std::mutex> last_received_lock(last_received_mutex);
+      return last_received > (std::chrono::high_resolution_clock::now() -
+                              std::chrono::minutes(5));
+    });
+  }
   try {
     if (verbose) {
       LOG(INFO) << "Locking completion mutex";
@@ -805,7 +814,11 @@ void KubernetesReader::WatchMaster(
     std::unique_lock<std::mutex> watch_completion(completion_mutex);
     Watcher watcher(
       endpoint,
-      [=](json::value raw_watch) {
+      [=, &last_received_mutex, &last_received](json::value raw_watch) {
+        {
+          std::lock_guard<std::mutex> last_received_lock(last_received_mutex);
+          last_received = std::chrono::high_resolution_clock::now();
+        }
         WatchEventCallback(callback, name, std::move(raw_watch));
       },
       std::move(watch_completion), verbose);
@@ -819,7 +832,13 @@ void KubernetesReader::WatchMaster(
     }
   } catch (const boost::system::system_error& e) {
     LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
+    if (health_checker_) {
+      health_checker_->UnregisterCallback(name);
+    }
     throw QueryException(endpoint + " -> " + e.what());
+  }
+  if (health_checker_) {
+    health_checker_->UnregisterCallback(name);
   }
 }
 
