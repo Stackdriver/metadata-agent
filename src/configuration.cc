@@ -63,6 +63,7 @@ constexpr const char kDockerDefaultEndpointHost[] =
 constexpr const char kDockerDefaultApiVersion[] = "1.23";
 constexpr const char kDockerDefaultContainerFilter[] = "limit=30";
 constexpr const int kKubernetesUpdaterDefaultIntervalSeconds = 0;
+constexpr const int kKubernetesUpdaterDefaultWatchRetries = 15;
 constexpr const char kKubernetesDefaultEndpointHost[] =
     "https://kubernetes.default.svc";
 constexpr const char kKubernetesDefaultPodLabelSelector[] = "";
@@ -112,6 +113,8 @@ Configuration::Configuration()
       docker_container_filter_(kDockerDefaultContainerFilter),
       kubernetes_updater_interval_seconds_(
           kKubernetesUpdaterDefaultIntervalSeconds),
+      kubernetes_updater_watch_retries_(
+          kKubernetesUpdaterDefaultWatchRetries),
       kubernetes_endpoint_host_(kKubernetesDefaultEndpointHost),
       kubernetes_pod_label_selector_(kKubernetesDefaultPodLabelSelector),
       kubernetes_cluster_name_(kKubernetesDefaultClusterName),
@@ -269,6 +272,9 @@ void Configuration::ParseConfiguration(std::istream& input) {
   kubernetes_updater_interval_seconds_ =
       config["KubernetesUpdaterIntervalSeconds"].as<int>(
           kubernetes_updater_interval_seconds_);
+  kubernetes_updater_watch_retries_ =
+      config["KubernetesUpdaterWatchRetries"].as<int>(
+          kubernetes_updater_watch_retries_);
   kubernetes_endpoint_host_ =
       config["KubernetesEndpointHost"].as<std::string>(
           kubernetes_endpoint_host_);

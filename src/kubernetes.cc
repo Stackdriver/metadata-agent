@@ -733,11 +733,11 @@ struct Watcher {
 #ifdef VERBOSE
         LOG(DEBUG) << name_ << " => Watch callback: EOF";
 #endif
-      try {
-        event_parser_.NotifyEOF();
-      } catch (const json::Exception& e) {
-        LOG(ERROR) << "Error while processing last event: " << e.what();
-      }
+        try {
+          event_parser_.NotifyEOF();
+        } catch (const json::Exception& e) {
+          LOG(ERROR) << "Error while processing last event: " << e.what();
+        }
       } else {
         LOG(ERROR) << name_ << " => Callback got error " << error;
       }
@@ -792,10 +792,6 @@ void KubernetesReader::WatchMaster(
   http::client::request request(endpoint);
   request << boost::network::header(
       "Authorization", "Bearer " + KubernetesApiToken());
-  const bool verbose = config_.VerboseLogging();
-  if (verbose) {
-    LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint;
-  }
   // Initialize the expiration time.  This is the time by when the
   // watcher has to receive some data to be considered healthy.  Each
   // receipt of a new message bumps the expiration forward.
@@ -812,30 +808,43 @@ void KubernetesReader::WatchMaster(
         return std::chrono::steady_clock::now() < expiration;
       });
   try {
+    const bool verbose = config_.VerboseLogging();
     if (verbose) {
-      LOG(INFO) << "Locking completion mutex";
+      LOG(INFO) << "WatchMaster(" << name << "): Will retry "
+                << config_.KubernetesUpdaterWatchRetries() << " times";
     }
-    // A notification for watch completion.
-    std::mutex completion_mutex;
-    std::unique_lock<std::mutex> watch_completion(completion_mutex);
-    Watcher watcher(
-      endpoint,
-      [=, &expiration_mutex, &expiration](json::value raw_watch) {
-        {
-          std::lock_guard<std::mutex> expiration_lock(expiration_mutex);
-          expiration =
-            std::chrono::steady_clock::now() + time::seconds(max_data_age);
-        }
-        WatchEventCallback(callback, name, std::move(raw_watch));
-      },
-      std::move(watch_completion), verbose);
-    http::client::response response = client.get(request, std::ref(watcher));
-    if (verbose) {
-      LOG(INFO) << "Waiting for completion";
+    for (int i = 0; i < config_.KubernetesUpdaterWatchRetries(); i++) {
+      if (verbose) {
+        LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint
+                  << " attempt #" << i;
+      }
+      // A notification for watch completion.
+      std::mutex completion_mutex;
+      std::unique_lock<std::mutex> watch_completion(completion_mutex);
+      Watcher watcher(
+        endpoint,
+        [=, &expiration_mutex, &expiration](json::value raw_watch) {
+          {
+            std::lock_guard<std::mutex> expiration_lock(expiration_mutex);
+            expiration =
+              std::chrono::steady_clock::now() + time::seconds(max_data_age);
+          }
+          WatchEventCallback(callback, name, std::move(raw_watch));
+        },
+        std::move(watch_completion), verbose);
+      http::client::response response = client.get(request, std::ref(watcher));
+      if (verbose) {
+        LOG(INFO) << "Waiting for completion attempt #" << i;
+      }
+      std::lock_guard<std::mutex> await_completion(completion_mutex);
+      if (verbose) {
+        LOG(INFO) << "WatchMaster(" << name << ") completed " << body(response)
+                  << "attempt #" << i;
+      }
     }
-    std::lock_guard<std::mutex> await_completion(completion_mutex);
     if (verbose) {
-      LOG(INFO) << "WatchMaster(" << name << ") completed " << body(response);
+      LOG(INFO) << "WatchMaster(" << name << "): Exiting after "
+                << config_.KubernetesUpdaterWatchRetries() << " retries";
     }
   } catch (const boost::system::system_error& e) {
     LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
