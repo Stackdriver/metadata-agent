@@ -14,8 +14,7 @@ void VerifyDefaultConfig(const Configuration& config) {
   EXPECT_EQ(false, config.MetadataReporterPurgeDeleted());
   EXPECT_THAT(config.MetadataReporterUserAgent(),
               ::testing::StartsWith("metadata-agent/"));
-  EXPECT_EQ("https://stackdriver.googleapis.com/"
-            "v1beta3/projects/{{project_id}}/resourceMetadata:publish",
+  EXPECT_EQ("https://stackdriver.googleapis.com/batch/resourceMetadata",
             config.MetadataIngestionEndpointFormat());
   EXPECT_EQ(8*1024*1024, config.MetadataIngestionRequestSizeLimitBytes());
   EXPECT_EQ(1000, config.MetadataIngestionRequestSizeLimitCount());

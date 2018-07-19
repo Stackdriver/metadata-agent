@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-MetadataIngestionHost: "https://staging-stackdriver.sandbox.googleapis.com"
+MetadataIngestionEndpointFormat: "https://staging-stackdriver.sandbox.googleapis.com/batch/resourceMetadata"
 KubernetesUseWatch: true
 #CredentialsFile: /tmp/token.json
 #ProjectId: "1234567890"
