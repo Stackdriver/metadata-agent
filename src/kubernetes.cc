@@ -813,10 +813,13 @@ void KubernetesReader::WatchMaster(
       LOG(INFO) << "WatchMaster(" << name << "): Will retry "
                 << config_.KubernetesUpdaterWatchRetries() << " times";
     }
-    for (int i = 0; i < config_.KubernetesUpdaterWatchRetries(); i++) {
+    for (int i = 0; i < config_.KubernetesUpdaterWatchRetries(); ++i) {
       if (verbose) {
-        LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint
-                  << " attempt #" << i;
+        if (i != 0) {
+          LOG(INFO) << "WatchMaster(" << name << "): Retrying; attempt #" << i
+                    << " of " << config_.KubernetesUpdaterWatchRetries();
+        }
+        LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint;
       }
       // A notification for watch completion.
       std::mutex completion_mutex;
@@ -838,8 +841,10 @@ void KubernetesReader::WatchMaster(
       }
       std::lock_guard<std::mutex> await_completion(completion_mutex);
       if (verbose) {
-        LOG(INFO) << "WatchMaster(" << name << ") completed " << body(response)
-                  << "attempt #" << i;
+        if (i != 0) {
+          LOG(INFO) << "WatchMaster(" << name << ") completed " << body(response)
+                    << "attempt #" << i;
+        }
       }
     }
     if (verbose) {
