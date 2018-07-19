@@ -16,7 +16,6 @@
 
 #include "reporter.h"
 
-#include <boost/algorithm/string/split.hpp>
 #define BOOST_NETWORK_ENABLE_HTTPS
 #include <boost/network/protocol/http/client.hpp>
 
@@ -34,10 +33,8 @@ constexpr const char kMultipartBoundary[] = "publishMultipartPost";
 constexpr const char kPublishPathFormat[] =
     "/v1beta3/projects/{{project_id}}/resourceMetadata:publish";
 
-constexpr const char kRegionalLocationFormat[] =
-    "//cloud.google.com/locations/regions/{{region}}";
-constexpr const char kZonalLocationFormat[] =
-    "//cloud.google.com/locations/regions/{{region}}/zones/{{zone}}";
+constexpr const char kGcpLocationFormat[] =
+    "//cloud.google.com/locations/{{location_type}}/{{location}}";
 
 MetadataReporter::MetadataReporter(const Configuration& config,
                                    MetadataStore* store, double period_s)
@@ -176,22 +173,11 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 
 const std::string MetadataReporter::FullyQualifiedResourceLocation(
     const std::string location) const {
-
   int num_dashes = std::count(location.begin(), location.end(), '-');
-  if (num_dashes == 2) {
-    // location is a zone.
-    std::vector<std::string> dash_split;
-    boost::algorithm::split(
-        dash_split, location, boost::algorithm::is_any_of("-"));
-    const std::string region = dash_split[0] + "-" + dash_split[1];
-    return format::Substitute(std::string(kZonalLocationFormat),
-                              {{"region", region}, {"zone", location}});
-
-  } else {
-    // location is a region.
-    return format::Substitute(std::string(kRegionalLocationFormat),
-                              {{"region", location}});
-  }
+  const std::string location_type = num_dashes == 2 ? "zones" : "regions";
+  return format::Substitute(
+      std::string(kGcpLocationFormat),
+      {{"location_type", location_type}, {"location", location}});
 }
 
 void MetadataReporter::SendMetadata(
