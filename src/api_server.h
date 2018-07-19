@@ -41,7 +41,8 @@ class MetadataStore;
 // A server that implements the metadata agent API.
 class MetadataApiServer {
  public:
-  MetadataApiServer(const Configuration& config, HealthChecker* health_checker,
+  MetadataApiServer(const Configuration& config,
+                    const HealthChecker* health_checker,
                     const MetadataStore& store, int server_threads,
                     const std::string& host, int port);
   ~MetadataApiServer();
@@ -78,7 +79,7 @@ class MetadataApiServer {
                      std::shared_ptr<HttpServer::connection> conn);
 
   const Configuration& config_;
-  HealthChecker* health_checker_;
+  const HealthChecker* health_checker_;
   const MetadataStore& store_;
   Dispatcher dispatcher_;
   HttpServer server_;

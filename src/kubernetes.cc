@@ -798,13 +798,13 @@ void KubernetesReader::WatchMaster(
   }
   std::mutex last_received_mutex;
   auto last_received = std::chrono::high_resolution_clock::now();
-  if (health_checker_) {
-    health_checker_->RegisterCallback(name, [&last_received_mutex, &last_received]{
-      std::lock_guard<std::mutex> last_received_lock(last_received_mutex);
-      return last_received > (std::chrono::high_resolution_clock::now() -
-                              std::chrono::minutes(5));
-    });
-  }
+  auto timeout = std::chrono::seconds(config_.HealthCheckWatchTimeoutSeconds());
+  ScopedHealthCheckRegistration health_check_registration(
+      health_checker_, name, [&last_received_mutex, &last_received, timeout]{
+        std::lock_guard<std::mutex> last_received_lock(last_received_mutex);
+        return last_received > (std::chrono::high_resolution_clock::now()
+                                - timeout);
+      });
   try {
     if (verbose) {
       LOG(INFO) << "Locking completion mutex";
@@ -832,13 +832,7 @@ void KubernetesReader::WatchMaster(
     }
   } catch (const boost::system::system_error& e) {
     LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
-    if (health_checker_) {
-      health_checker_->UnregisterCallback(name);
-    }
     throw QueryException(endpoint + " -> " + e.what());
-  }
-  if (health_checker_) {
-    health_checker_->UnregisterCallback(name);
   }
 }
 

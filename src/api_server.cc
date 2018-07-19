@@ -68,7 +68,7 @@ void MetadataApiServer::Dispatcher::log(const HttpServer::string_type& info) con
 
 
 MetadataApiServer::MetadataApiServer(const Configuration& config,
-                                     HealthChecker* health_checker,
+                                     const HealthChecker* health_checker,
                                      const MetadataStore& store,
                                      int server_threads,
                                      const std::string& host, int port)
@@ -150,7 +150,11 @@ void MetadataApiServer::HandleMonitoredResource(
 void MetadataApiServer::HandleHealthz(
     const HttpServer::request& request,
     std::shared_ptr<HttpServer::connection> conn) {
-  if (health_checker_->IsHealthy()) {
+  std::set<std::string> unhealthy_components;
+  if (health_checker_ != nullptr) {
+    unhealthy_components = health_checker_->UnhealthyComponents();
+  }
+  if (unhealthy_components.empty()) {
     if (config_.VerboseLogging()) {
       LOG(INFO) << "Healthz returning 200";
     }
@@ -167,7 +171,10 @@ void MetadataApiServer::HandleHealthz(
     conn->set_headers(std::map<std::string, std::string>({
       {"Content-Type", "text/plain"},
     }));
-    conn->write("unhealthy");
+    conn->write("unhealthy components:\n");
+    for (const auto& s : unhealthy_components) {
+      conn->write(s + "\n");
+    }
   }
 }
 

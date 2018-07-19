@@ -39,15 +39,7 @@ void HealthChecker::SetUnhealthy(const std::string& component) {
 
 bool HealthChecker::IsHealthy() const {
   std::lock_guard<std::mutex> lock(mutex_);
-  if (!unhealthy_components_.empty()) {
-    return false;
-  }
-  for (auto& c : component_callbacks_) {
-    if (!c.second()) {
-      return false;
-    }
-  }
-  return true;
+  return !UnhealthyComponents().empty();
 }
 
 void HealthChecker::CleanupForTest() {
@@ -55,13 +47,24 @@ void HealthChecker::CleanupForTest() {
       config_.HealthCheckFile()).parent_path());
 }
 
-void HealthChecker::RegisterCallback(const std::string& component,
-                                     std::function<bool()> callback) {
+std::set<std::string> HealthChecker::UnhealthyComponents() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  std::set<std::string> result(unhealthy_components_);
+  for (auto& c : component_callbacks_) {
+    if (c.second != nullptr && !c.second()) {
+      result.insert(c.first);
+    }
+  }
+  return std::move(result);
+}
+
+void HealthChecker::RegisterComponent(const std::string& component,
+                                      std::function<bool()> callback) {
   std::lock_guard<std::mutex> lock(mutex_);
   component_callbacks_[component] = callback;
 }
 
-void HealthChecker::UnregisterCallback(const std::string& component) {
+void HealthChecker::UnregisterComponent(const std::string& component) {
   std::lock_guard<std::mutex> lock(mutex_);
   component_callbacks_.erase(component);
 }

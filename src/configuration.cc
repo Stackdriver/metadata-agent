@@ -75,6 +75,7 @@ constexpr const char kDefaultInstanceId[] = "";
 constexpr const char kDefaultInstanceZone[] = "";
 constexpr const char kDefaultHealthCheckFile[] =
     "/var/run/metadata-agent/health/unhealthy";
+constexpr const int kDefaultHealthCheckWatchTimeoutSeconds = 5*60;
 
 }
 
@@ -120,7 +121,9 @@ Configuration::Configuration()
       kubernetes_service_metadata_(kKubernetesDefaultServiceMetadata),
       instance_id_(kDefaultInstanceId),
       instance_zone_(kDefaultInstanceZone),
-      health_check_file_(kDefaultHealthCheckFile) {}
+      health_check_file_(kDefaultHealthCheckFile),
+      health_check_watch_timeout_seconds_(
+          kDefaultHealthCheckWatchTimeoutSeconds) {}
 
 Configuration::Configuration(std::istream& input) : Configuration() {
   ParseConfiguration(input);
@@ -289,6 +292,9 @@ void Configuration::ParseConfiguration(std::istream& input) {
       config["InstanceZone"].as<std::string>(instance_zone_);
   health_check_file_ =
       config["HealthCheckFile"].as<std::string>(health_check_file_);
+  health_check_watch_timeout_seconds_ =
+      config["HealthCheckWatchTimeoutSeconds"].as<int>(
+          health_check_watch_timeout_seconds_);
 }
 
 }  // google
