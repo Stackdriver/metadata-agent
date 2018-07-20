@@ -146,9 +146,6 @@ void MetadataReporter::SendMetadata(
   for (auto& entry : metadata) {
     const MonitoredResource& resource = entry.first;
     MetadataStore::Metadata& metadata = entry.second;
-    if (metadata.ignore) {
-      continue;
-    }
     json::value metadata_entry =
         json::object({  // MonitoredResourceMetadata
           {"resource", resource.ToJSON()},
