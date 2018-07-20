@@ -142,9 +142,10 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
   const std::string k8s_node_name = boost::algorithm::join(
       std::vector<std::string>{kK8sNodeResourcePrefix, node_name},
       config_.MetadataApiResourceTypeSeparator());
-  const std::string node_full_name = format::Substitute(
-      kNodeFullNameFormat,
-      {{"cluster_full_name", ClusterFullName()}, {"node_name", node_name}});
+  const std::string node_full_name =
+      format::Substitute(kNodeFullNameFormat,
+                         {{"cluster_full_name", ClusterFullName()},
+                          {"node_name", node_name}});
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_node_name},
       k8s_node,
@@ -191,10 +192,11 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
   const std::string k8s_pod_name = boost::algorithm::join(
       std::vector<std::string>{kK8sPodResourcePrefix, namespace_name, pod_name},
       config_.MetadataApiResourceTypeSeparator());
-  const std::string pod_full_name = format::Substitute(
-      kPodFullNameFormat,
-      {{"cluster_full_name", ClusterFullName()},
-        {"namespace_name", namespace_name}, {"pod_name", pod_name}});
+  const std::string pod_full_name =
+      format::Substitute(kPodFullNameFormat,
+                         {{"cluster_full_name", ClusterFullName()},
+                          {"namespace_name", namespace_name},
+                          {"pod_name", pod_name}});
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_pod_id, k8s_pod_name},
       k8s_pod,
@@ -520,12 +522,11 @@ const std::string KubernetesReader::ClusterFullName() const {
   const std::string location = environment_.KubernetesClusterLocation();
   int num_dashes = std::count(location.begin(), location.end(), '-');
   const std::string location_type = num_dashes == 2 ? "zones": "locations";
-  return format::Substitute(
-      kClusterFullNameFormat,
-      {{"project_id", project_id},
-       {"location_type", location_type},
-       {"location", location},
-       {"cluster_name", cluster_name}});
+  return format::Substitute(kClusterFullNameFormat,
+                            {{"project_id", project_id},
+                             {"location_type", location_type},
+                             {"location", location},
+                             {"cluster_name", cluster_name}});
 }
 
 namespace {

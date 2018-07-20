@@ -96,7 +96,7 @@ class KubernetesReader {
       MetadataUpdater::UpdateCallback callback, const json::Object* pod,
       Timestamp collected_at, bool is_deleted) const throw(json::Exception);
 
-  // Builds the cluster full name by reading in cluster related environment
+  // Builds the cluster full name by reading from cluster related environment
   // variables.
   const std::string ClusterFullName() const;
 

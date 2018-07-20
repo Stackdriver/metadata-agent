@@ -21,6 +21,7 @@
 
 #include "configuration.h"
 #include "format.h"
+#include "http_common.h"
 #include "json.h"
 #include "logging.h"
 #include "time.h"
@@ -101,12 +102,11 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
     // We're making use of the fact that duplicate metadata is ignored.
     const json::Object* single_request = entries[0]->As<json::Object>();
     json::value duplicate_request = json::object({  // ResourceMetadata
-      {"name", json::string(single_request->Get<json::String>("name"))},
-      {"type", json::string(single_request->Get<json::String>("type"))},
-      {"location", json::string(single_request->Get<json::String>("location"))},
-      {"state", json::string(single_request->Get<json::String>("state"))},
-      {"eventTime",
-       json::string(single_request->Get<json::String>("eventTime"))},
+      {"name", single_request->at("name")->Clone()},
+      {"type", single_request->at("type")->Clone()},
+      {"location", single_request->at("location")->Clone()},
+      {"state", single_request->at("state")->Clone()},
+      {"evenTime", single_request->at("evenTime")->Clone()},
     });
     entries.emplace_back(std::move(duplicate_request));
   }
@@ -142,11 +142,7 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 
   if (verbose_logging) {
     LOG(INFO) << "About to send request: POST " << endpoint;
-    LOG(INFO) << "Headers:";
-    http::client::request::headers_container_type head = (headers(request));
-    for (auto it = head.begin(); it != head.end(); ++it) {
-      LOG(INFO) << it->first << ": " << it->second;
-    }
+    LOG(INFO) << "Headers:" << request.headers();
     LOG(INFO) << "Body:" << std::endl << body(request);
   }
 
@@ -164,11 +160,7 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
         "Server responded with '{{message}}' ({{code}})",
         {{"message", status_message(response)},
          {"code", format::str(status(response))}});
-    LOG(INFO) << "Headers:";
-    http::client::response::headers_container_type head = (headers(response));
-    for (auto it = head.begin(); it != head.end(); ++it) {
-      LOG(INFO) << it->first << ": " << it->second;
-    }
+    LOG(INFO) << "Headers: " << response.headers();
     LOG(INFO) << "Body:" << std::endl << body(response);
   }
   // TODO: process response.
