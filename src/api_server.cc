@@ -156,7 +156,7 @@ void MetadataApiServer::HandleHealthz(
   }
   if (unhealthy_components.empty()) {
     if (config_.VerboseLogging()) {
-      LOG(INFO) << "Healthz returning 200";
+      LOG(INFO) << "/healthz returning 200";
     }
     conn->set_status(HttpServer::connection::ok);
     conn->set_headers(std::map<std::string, std::string>({
@@ -165,15 +165,15 @@ void MetadataApiServer::HandleHealthz(
     conn->write("healthy");
   } else {
     if (config_.VerboseLogging()) {
-      LOG(WARNING) << "Healthz returning 500";
+      LOG(WARNING) << "/healthz returning 500";
     }
     conn->set_status(HttpServer::connection::internal_server_error);
     conn->set_headers(std::map<std::string, std::string>({
       {"Content-Type", "text/plain"},
     }));
     conn->write("unhealthy components:\n");
-    for (const auto& s : unhealthy_components) {
-      conn->write(s + "\n");
+    for (const auto& component : unhealthy_components) {
+      conn->write(component + "\n");
     }
   }
 }
