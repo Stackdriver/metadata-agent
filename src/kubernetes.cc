@@ -69,9 +69,13 @@ constexpr const char kServiceAccountDirectory[] =
 constexpr const char kKubernetesSchemaNameFormat[] =
     "//container.googleapis.com/resourceTypes/{{type}}/versions/{{version}}";
 
-constexpr const char kKubernetesClusterFullNameFormat[] =
+constexpr const char kClusterFullNameFormat[] =
     "//container.googleapis.com/projects/{{project_id}}/{{location_type}}/"
     "{{location}}/clusters/{{cluster_name}}";
+constexpr const char kNodeFullNameFormat[] =
+    "{{cluster_full_name}}/k8s/nodes/{{node_name}}";
+constexpr const char kPodFullNameFormat[] =
+    "{{cluster_full_name}}/k8s/namespaces/{{namespace_name}}/pods/{{pod_name}}";
 
 
 // Returns the full path to the secret filename.
@@ -122,7 +126,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
   const std::string node_version = node->Get<json::String>("apiVersion");
   const std::string node_type = "io.k8s.Node";
   const std::string node_schema =
-      format::Substitute(std::string(kKubernetesSchemaNameFormat),
+      format::Substitute(kKubernetesSchemaNameFormat,
                          {{"type", node_type}, {"version", node_version}});
 
   const MonitoredResource k8s_node("k8s_node", {
@@ -138,8 +142,9 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
   const std::string k8s_node_name = boost::algorithm::join(
       std::vector<std::string>{kK8sNodeResourcePrefix, node_name},
       config_.MetadataApiResourceTypeSeparator());
-  const std::string node_full_name =
-      ClusterFullName() + "/k8s/nodes/" + node_name;
+  const std::string node_full_name = format::Substitute(
+      kNodeFullNameFormat,
+      {{"cluster_full_name", ClusterFullName()}, {"node_name", node_name}});
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_node_name},
       k8s_node,
@@ -166,7 +171,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
   const std::string pod_version = pod->Get<json::String>("apiVersion");
   const std::string pod_type = "io.k8s.Pod";
   const std::string pod_schema =
-      format::Substitute(std::string(kKubernetesSchemaNameFormat),
+      format::Substitute(kKubernetesSchemaNameFormat,
                          {{"type", pod_type}, {"version", pod_version}});
 
   const MonitoredResource k8s_pod("k8s_pod", {
@@ -186,9 +191,10 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
   const std::string k8s_pod_name = boost::algorithm::join(
       std::vector<std::string>{kK8sPodResourcePrefix, namespace_name, pod_name},
       config_.MetadataApiResourceTypeSeparator());
-  const std::string pod_full_name =
-      ClusterFullName() + "/k8s/namespaces/" + namespace_name + "/pods/" +
-      pod_name;
+  const std::string pod_full_name = format::Substitute(
+      kPodFullNameFormat,
+      {{"cluster_full_name", ClusterFullName()},
+        {"namespace_name", namespace_name}, {"pod_name", pod_name}});
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_pod_id, k8s_pod_name},
       k8s_pod,
@@ -515,7 +521,7 @@ const std::string KubernetesReader::ClusterFullName() const {
   int num_dashes = std::count(location.begin(), location.end(), '-');
   const std::string location_type = num_dashes == 2 ? "zones": "locations";
   return format::Substitute(
-      std::string(kKubernetesClusterFullNameFormat),
+      kClusterFullNameFormat,
       {{"project_id", project_id},
        {"location_type", location_type},
        {"location", location},

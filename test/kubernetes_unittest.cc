@@ -58,8 +58,8 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
       {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
     })}
   });
-  const auto m = GetNodeMetadata(reader, node->As<json::Object>(),
-                                 Timestamp(), false);
+  const auto m =
+      GetNodeMetadata(reader, node->As<json::Object>(), Timestamp(), false);
   EXPECT_EQ(1, m.ids().size());
   EXPECT_EQ("k8s_node.testname", m.ids()[0]);
   EXPECT_EQ(MonitoredResource("k8s_node", {
@@ -68,8 +68,8 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
     {"location", "TestClusterLocation"},
   }), m.resource());
   EXPECT_EQ("//container.googleapis.com/projects/TestProjectId/locations/"
-           "TestClusterLocation/clusters/TestClusterName/k8s/nodes/testname",
-           m.metadata().name);
+            "TestClusterLocation/clusters/TestClusterName/k8s/nodes/testname",
+            m.metadata().name);
   EXPECT_EQ("NodeVersion", m.metadata().version);
   EXPECT_EQ("io.k8s.Node", m.metadata().type);
   EXPECT_EQ("TestClusterLocation", m.metadata().location);
@@ -284,7 +284,6 @@ TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
   EXPECT_EQ("", m[2].metadata().version);
   EXPECT_FALSE(m[2].metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m[2].metadata().collected_at);
-  EXPECT_EQ(pod->ToString(),
-            m[2].metadata().metadata->ToString());
+  EXPECT_EQ(pod->ToString(), m[2].metadata().metadata->ToString());
 }
 }  // namespace google

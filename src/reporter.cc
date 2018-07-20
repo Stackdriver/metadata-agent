@@ -30,11 +30,21 @@ namespace http = boost::network::http;
 namespace google {
 
 constexpr const char kMultipartBoundary[] = "publishMultipartPost";
-constexpr const char kBatchPath[] = "/batch/resourceMetadata";
 constexpr const char kPublishPathFormat[] =
     "/v1beta3/projects/{{project_id}}/resourceMetadata:publish";
 constexpr const char kGcpLocationFormat[] =
     "//cloud.google.com/locations/{{location_type}}/{{location}}";
+constexpr const char kPartFormat[] =
+    "--{{boundary}}\n"
+    "Content-Type: application/http\n"
+    "Content-Transfer-Encoding: binary\n"
+    "Content-ID: {{name}}\n"
+    "\n"
+    "POST {{path}}\n"
+    "Content-Type: application/json; charset=UTF-8\n"
+    "ContentLength: {{length}}\n"
+    "\n"
+    "{{body}}\n";
 
 MetadataReporter::MetadataReporter(const Configuration& config,
                                    MetadataStore* store, double period_s)
@@ -78,7 +88,7 @@ void MetadataReporter::ReportMetadata() {
 namespace {
 
 void SendMetadataRequest(std::vector<json::value>&& entries,
-                         const std::string& batch_uri,
+                         const std::string& endpoint,
                          const std::string& publish_path,
                          const std::string& auth_header,
                          const std::string& user_agent,
@@ -88,6 +98,7 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
   if (entries.size() == 1) {
     // Add a copy of the single entry, except for the `views` field. This allows
     // us to sent a request to the batch endpoint when we have a single request.
+    // We're making use of the fact that duplicate metadata is ignored.
     const json::Object* single_request = entries[0]->As<json::Object>();
     json::value duplicate_request = json::object({  // ResourceMetadata
       {"name", json::string(single_request->Get<json::String>("name"))},
@@ -95,14 +106,14 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
       {"location", json::string(single_request->Get<json::String>("location"))},
       {"state", json::string(single_request->Get<json::String>("state"))},
       {"eventTime",
-        json::string(single_request->Get<json::String>("eventTime"))},
+       json::string(single_request->Get<json::String>("eventTime"))},
     });
     entries.emplace_back(std::move(duplicate_request));
   }
   const std::string content_type =
       std::string("multipart/mixed; boundary=") + kMultipartBoundary;
   http::client client;
-  http::client::request request(batch_uri);
+  http::client::request request(endpoint);
   request << boost::network::header("User-Agent", user_agent);
   request << boost::network::header("Content-Type", content_type);
   request << boost::network::header("Authorization", auth_header);
@@ -112,18 +123,14 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 
   for (json::value& entry : entries) {
     const json::Object* single_request = entry->As<json::Object>();
-    std::string request_body = single_request->ToString();
-    out << "--" << kMultipartBoundary << std::endl;
-    out << "Content-Type: application/http" << std::endl;
-    out << "Content-Transfer-Encoding: binary" << std::endl;
-    out << "Content-ID: " << single_request->Get<json::String>("name")
-        << std::endl;
-    out << std::endl;
-    out << "POST " << publish_path << std::endl;
-    out << "Content-Type: application/json; charset=UTF-8" << std::endl;
-    out << "Content-Length: " << std::to_string(request_body.size())
-        << std::endl;
-    out << std::endl << request_body << std::endl;
+    const std::string request_body = single_request->ToString();
+    out << format::Substitute(kPartFormat, {
+      {"boundary", kMultipartBoundary},
+      {"name", single_request->Get<json::String>("name")},
+      {"path", publish_path},
+      {"length", std::to_string(request_body.size())},
+      {"body", request_body},
+    });
   }
   out << "--" << kMultipartBoundary << "--" << std::endl;
   std::string multipart_body = out.str();
@@ -134,13 +141,10 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
   request << boost::network::body(multipart_body);
 
   if (verbose_logging) {
-    LOG(INFO) << "About to send request: POST " << batch_uri;
+    LOG(INFO) << "About to send request: POST " << endpoint;
     LOG(INFO) << "Headers:";
     http::client::request::headers_container_type head = (headers(request));
     for (auto it = head.begin(); it != head.end(); ++it) {
-      if (it->first == "Authorization") {
-        continue;
-      }
       LOG(INFO) << it->first << ": " << it->second;
     }
     LOG(INFO) << "Body:" << std::endl << body(request);
@@ -173,11 +177,11 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 }
 
 const std::string MetadataReporter::FullyQualifiedResourceLocation(
-    const std::string location) const {
+    const std::string& location) const {
   int num_dashes = std::count(location.begin(), location.end(), '-');
   const std::string location_type = num_dashes == 2 ? "zones" : "regions";
   return format::Substitute(
-      std::string(kGcpLocationFormat),
+      kGcpLocationFormat,
       {{"location_type", location_type}, {"location", location}});
 }
 
@@ -195,7 +199,7 @@ void MetadataReporter::SendMetadata(
     LOG(INFO) << "Sending request to the server";
   }
   const std::string project_id = environment_.NumericProjectId();
-  const std::string& batch_uri = config_.MetadataIngestionEndpointFormat();
+  const std::string& endpoint = config_.MetadataIngestionEndpointFormat();
   const std::string& publish_path =
       format::Substitute(kPublishPathFormat, {{"project_id", project_id}});
   const std::string auth_header = auth_.GetAuthHeaderValue();
@@ -211,7 +215,7 @@ void MetadataReporter::SendMetadata(
   int total_size = empty_size;
 
   std::vector<json::value> entries;
-  for (auto& m: metadata) {
+  for (auto& m : metadata) {
     const std::string resource_location =
         FullyQualifiedResourceLocation(m.location);
     json::value metadata_entry =
@@ -241,7 +245,7 @@ void MetadataReporter::SendMetadata(
       continue;
     }
     if (entries.size() == limit_count || total_size + size > limit_bytes) {
-      SendMetadataRequest(std::move(entries), batch_uri, publish_path,
+      SendMetadataRequest(std::move(entries), endpoint, publish_path,
                           auth_header, user_agent, config_.VerboseLogging());
       entries.clear();
       total_size = empty_size;
@@ -250,7 +254,7 @@ void MetadataReporter::SendMetadata(
     total_size += size;
   }
   if (!entries.empty()) {
-    SendMetadataRequest(std::move(entries), batch_uri, publish_path,
+    SendMetadataRequest(std::move(entries), endpoint, publish_path,
                         auth_header, user_agent, config_.VerboseLogging());
   }
 }
