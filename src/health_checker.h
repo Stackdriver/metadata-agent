@@ -49,24 +49,23 @@ class HealthChecker {
 
 // Registers a component and then unregisters when it goes out of
 // scope.
-class ScopedHealthCheckRegistration {
+class CheckHealth {
  public:
-  ScopedHealthCheckRegistration(HealthChecker* health_checker,
-                                const std::string& component,
-                                std::function<bool()> callback)
+  CheckHealth(HealthChecker* health_checker, const std::string& component,
+              std::function<bool()> callback)
     : health_checker_(health_checker), component_(component) {
     if (health_checker_ != nullptr) {
       health_checker_->RegisterComponent(component_, callback);
     }
   }
-  ~ScopedHealthCheckRegistration() {
+  ~CheckHealth() {
     if (health_checker_ != nullptr) {
       health_checker_->UnregisterComponent(component_);
     }
   }
  private:
   HealthChecker* health_checker_;
-  const std::string& component_;
+  const std::string component_;
 };
 
 }  // namespace google

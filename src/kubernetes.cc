@@ -796,14 +796,13 @@ void KubernetesReader::WatchMaster(
   if (verbose) {
     LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint;
   }
-  std::mutex last_received_mutex;
-  auto last_received = std::chrono::high_resolution_clock::now();
-  auto timeout = std::chrono::seconds(config_.HealthCheckWatchTimeoutSeconds());
-  ScopedHealthCheckRegistration health_check_registration(
-      health_checker_, name, [&last_received_mutex, &last_received, timeout]{
-        std::lock_guard<std::mutex> last_received_lock(last_received_mutex);
-        return last_received > (std::chrono::high_resolution_clock::now()
-                                - timeout);
+  const int timeout = config_.HealthCheckWatchTimeoutSeconds();
+  std::mutex expiration_mutex;
+  auto expiration = std::chrono::steady_clock::now() + time::seconds(timeout);
+  CheckHealth check_health(
+      health_checker_, name, [&expiration_mutex, &expiration]{
+        std::lock_guard<std::mutex> expiration_lock(expiration_mutex);
+        return std::chrono::high_resolution_clock::now() < expiration;
       });
   try {
     if (verbose) {
@@ -814,10 +813,11 @@ void KubernetesReader::WatchMaster(
     std::unique_lock<std::mutex> watch_completion(completion_mutex);
     Watcher watcher(
       endpoint,
-      [=, &last_received_mutex, &last_received](json::value raw_watch) {
+      [=, &expiration_mutex, &expiration](json::value raw_watch) {
         {
-          std::lock_guard<std::mutex> last_received_lock(last_received_mutex);
-          last_received = std::chrono::high_resolution_clock::now();
+          std::lock_guard<std::mutex> expiration_lock(expiration_mutex);
+          expiration = std::chrono::steady_clock::now() +
+            time::seconds(timeout);
         }
         WatchEventCallback(callback, name, std::move(raw_watch));
       },

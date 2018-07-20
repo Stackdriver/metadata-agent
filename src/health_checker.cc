@@ -39,7 +39,7 @@ void HealthChecker::SetUnhealthy(const std::string& component) {
 
 bool HealthChecker::IsHealthy() const {
   std::lock_guard<std::mutex> lock(mutex_);
-  return !UnhealthyComponents().empty();
+  return unhealthy_components_.empty();
 }
 
 void HealthChecker::CleanupForTest() {
@@ -49,13 +49,13 @@ void HealthChecker::CleanupForTest() {
 
 std::set<std::string> HealthChecker::UnhealthyComponents() const {
   std::lock_guard<std::mutex> lock(mutex_);
-  std::set<std::string> result(unhealthy_components_);
+  std::set<std::string> result;
   for (auto& c : component_callbacks_) {
     if (c.second != nullptr && !c.second()) {
       result.insert(c.first);
     }
   }
-  return std::move(result);
+  return result;
 }
 
 void HealthChecker::RegisterComponent(const std::string& component,
