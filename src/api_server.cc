@@ -164,7 +164,8 @@ void MetadataApiServer::HandleHealthz(
     }));
     conn->write("healthy");
   } else {
-    LOG(WARNING) << "/healthz returning 500";
+    LOG(WARNING) << "/healthz returning 500; unhealthy components: "
+                 << boost::algorithm::join(unhealthy_components, ", ");
     conn->set_status(HttpServer::connection::internal_server_error);
     conn->set_headers(std::map<std::string, std::string>({
       {"Content-Type", "text/plain"},
