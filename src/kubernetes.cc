@@ -807,19 +807,18 @@ void KubernetesReader::WatchMaster(
         std::lock_guard<std::mutex> expiration_lock(expiration_mutex);
         return std::chrono::steady_clock::now() < expiration;
       });
-  try {
-    const bool verbose = config_.VerboseLogging();
-    if (verbose) {
-      LOG(INFO) << "WatchMaster(" << name << "): Will retry "
-                << config_.KubernetesUpdaterWatchRetries() << " times";
-    }
-    for (int i = 0; i < config_.KubernetesUpdaterWatchRetries(); ++i) {
+  const bool verbose = config_.VerboseLogging();
+  if (verbose) {
+    LOG(INFO) << "WatchMaster(" << name << "): Will retry "
+              << config_.KubernetesUpdaterWatchRetries() << " times";
+  }
+  int failures = 0;
+  std::string last_error;
+  while (failures < config_.KubernetesUpdaterWatchRetries()) {
+    try {
       if (verbose) {
-        if (i != 0) {
-          LOG(INFO) << "WatchMaster(" << name << "): Retrying; attempt #" << i
-                    << " of " << config_.KubernetesUpdaterWatchRetries();
-        }
-        LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint;
+        LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint
+                  << " after " << failures << " failures";
       }
       // A notification for watch completion.
       std::mutex completion_mutex;
@@ -837,24 +836,28 @@ void KubernetesReader::WatchMaster(
         std::move(watch_completion), verbose);
       http::client::response response = client.get(request, std::ref(watcher));
       if (verbose) {
-        LOG(INFO) << "Waiting for completion attempt #" << i;
+        LOG(INFO) << "Waiting for completion";
       }
       std::lock_guard<std::mutex> await_completion(completion_mutex);
       if (verbose) {
-        if (i != 0) {
-          LOG(INFO) << "WatchMaster(" << name << ") completed " << body(response)
-                    << "attempt #" << i;
-        }
+        LOG(INFO) << "WatchMaster(" << name << ") completed " << body(response);
       }
+      // Connection closed without an error; reset failure count.
+      failures = 0;
+    } catch (const boost::system::system_error& e) {
+      ++failures;
+      double backoff = fmin(pow(1.1, failures), 10);
+      LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what()
+                 << "; backing off for " << backoff << " seconds";
+      std::this_thread::sleep_for(time::seconds(backoff));
+      last_error = e.what();
     }
-    if (verbose) {
-      LOG(INFO) << "WatchMaster(" << name << "): Exiting after "
-                << config_.KubernetesUpdaterWatchRetries() << " retries";
-    }
-  } catch (const boost::system::system_error& e) {
-    LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
-    throw QueryException(endpoint + " -> " + e.what());
   }
+  if (verbose) {
+    LOG(INFO) << "WatchMaster(" << name << "): Exiting after "
+              << config_.KubernetesUpdaterWatchRetries() << " retries";
+  }
+  throw QueryException(endpoint + " -> " + last_error);
 }
 
 const std::string& KubernetesReader::KubernetesApiToken() const {
