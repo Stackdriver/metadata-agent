@@ -142,7 +142,7 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 
   if (verbose_logging) {
     LOG(INFO) << "About to send request: POST " << endpoint;
-    LOG(INFO) << "Headers:" << request.headers();
+    LOG(INFO) << "Headers: " << request.headers();
     LOG(INFO) << "Body:" << std::endl << body(request);
   }
 
@@ -168,7 +168,7 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 
 }
 
-const std::string MetadataReporter::FullyQualifiedResourceLocation(
+std::string MetadataReporter::FullyQualifiedResourceLocation(
     const std::string& location) const {
   int num_dashes = std::count(location.begin(), location.end(), '-');
   const std::string location_type = num_dashes == 2 ? "zones" : "regions";
