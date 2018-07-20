@@ -49,7 +49,7 @@ void HealthChecker::CleanupForTest() {
 
 std::set<std::string> HealthChecker::UnhealthyComponents() const {
   std::lock_guard<std::mutex> lock(mutex_);
-  std::set<std::string> result;
+  std::set<std::string> result(unhealthy_components_);
   for (auto& c : component_callbacks_) {
     if (c.second != nullptr && !c.second()) {
       result.insert(c.first);
