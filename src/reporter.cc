@@ -168,9 +168,6 @@ void MetadataReporter::SendMetadata(
 
   std::vector<json::value> entries;
   for (auto& m: metadata) {
-    if (m.ignore) {
-      continue;
-    }
     json::value metadata_entry =
         json::object({  // ResourceMetadata
           {"name", json::string(m.name)},
