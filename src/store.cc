@@ -48,6 +48,9 @@ void MetadataStore::UpdateResource(const std::vector<std::string>& resource_ids,
 }
 
 void MetadataStore::UpdateMetadata(Metadata&& entry) {
+  if (entry.ignore) {
+    return;
+  }
   std::lock_guard<std::mutex> lock(metadata_mu_);
   if (config_.VerboseLogging()) {
     LOG(INFO) << "Updating metadata map (" << entry.name
