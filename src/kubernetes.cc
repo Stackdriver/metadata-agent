@@ -810,10 +810,17 @@ void KubernetesReader::WatchMaster(
   const bool verbose = config_.VerboseLogging();
   int failures = 0;
   while (true) {
+    if (verbose) {
+      if (failures > 0) {
+        LOG(INFO) << "WatchMaster(" << name
+                  << "): Retrying; attempt #" << failures
+                  << " of " << config_.KubernetesUpdaterWatchConnectionRetries();
+      }
+      LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint;
+    }
     try {
       if (verbose) {
-        LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint
-                  << " after " << failures << " failures";
+        LOG(INFO) << "Locking completion mutex";
       }
       // A notification for watch completion.
       std::mutex completion_mutex;
@@ -843,10 +850,8 @@ void KubernetesReader::WatchMaster(
       LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
       ++failures;
       if (failures >= config_.KubernetesUpdaterWatchConnectionRetries()) {
-        if (verbose) {
-          LOG(INFO) << "WatchMaster(" << name << "): Exiting after "
-                    << config_.KubernetesUpdaterWatchConnectionRetries() << " retries";
-        }
+        LOG(ERROR) << "WatchMaster(" << name << "): Exiting after "
+                   << failures << " retries";
         throw QueryException(endpoint + " -> " + e.what());
       }
       double backoff = fmin(pow(1.1, failures), 10);
