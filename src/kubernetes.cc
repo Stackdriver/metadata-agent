@@ -808,13 +808,8 @@ void KubernetesReader::WatchMaster(
         return std::chrono::steady_clock::now() < expiration;
       });
   const bool verbose = config_.VerboseLogging();
-  if (verbose) {
-    LOG(INFO) << "WatchMaster(" << name << "): Will retry "
-              << config_.KubernetesUpdaterWatchRetries() << " times";
-  }
   int failures = 0;
-  std::string last_error;
-  while (failures < config_.KubernetesUpdaterWatchRetries()) {
+  while (true) {
     try {
       if (verbose) {
         LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint
@@ -845,19 +840,22 @@ void KubernetesReader::WatchMaster(
       // Connection closed without an error; reset failure count.
       failures = 0;
     } catch (const boost::system::system_error& e) {
+      LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
       ++failures;
+      if (failures >= config_.KubernetesUpdaterWatchConnectionRetries()) {
+        if (verbose) {
+          LOG(INFO) << "WatchMaster(" << name << "): Exiting after "
+                    << config_.KubernetesUpdaterWatchConnectionRetries() << " retries";
+        }
+        throw QueryException(endpoint + " -> " + e.what());
+      }
       double backoff = fmin(pow(1.1, failures), 10);
-      LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what()
-                 << "; backing off for " << backoff << " seconds";
+      if (verbose) {
+        LOG(INFO) << "Backing off for " << backoff << " seconds";
+      }
       std::this_thread::sleep_for(time::seconds(backoff));
-      last_error = e.what();
     }
   }
-  if (verbose) {
-    LOG(INFO) << "WatchMaster(" << name << "): Exiting after "
-              << config_.KubernetesUpdaterWatchRetries() << " retries";
-  }
-  throw QueryException(endpoint + " -> " + last_error);
 }
 
 const std::string& KubernetesReader::KubernetesApiToken() const {
