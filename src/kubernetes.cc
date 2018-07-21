@@ -66,6 +66,17 @@ constexpr const char kDockerIdPrefix[] = "docker://";
 
 constexpr const char kServiceAccountDirectory[] =
     "/var/run/secrets/kubernetes.io/serviceaccount";
+constexpr const char kKubernetesSchemaNameFormat[] =
+    "//container.googleapis.com/resourceTypes/{{type}}/versions/{{version}}";
+
+constexpr const char kClusterFullNameFormat[] =
+    "//container.googleapis.com/projects/{{project_id}}/{{location_type}}/"
+    "{{location}}/clusters/{{cluster_name}}";
+constexpr const char kNodeFullNameFormat[] =
+    "{{cluster_full_name}}/k8s/nodes/{{node_name}}";
+constexpr const char kPodFullNameFormat[] =
+    "{{cluster_full_name}}/k8s/namespaces/{{namespace_name}}/pods/{{pod_name}}";
+
 
 }
 
@@ -106,39 +117,39 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     const json::Object* node, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
   const std::string cluster_name = environment_.KubernetesClusterName();
-  const std::string location = environment_.KubernetesClusterLocation();
+  const std::string cluster_location = environment_.KubernetesClusterLocation();
 
   const json::Object* metadata = node->Get<json::Object>("metadata");
   const std::string node_name = metadata->Get<json::String>("name");
+  const std::string node_version = node->Get<json::String>("apiVersion");
+  const std::string node_type = "io.k8s.Node";
+  const std::string node_schema =
+      format::Substitute(kKubernetesSchemaNameFormat,
+                         {{"type", node_type}, {"version", node_version}});
 
   const MonitoredResource k8s_node("k8s_node", {
     {"cluster_name", cluster_name},
     {"node_name", node_name},
-    {"location", location},
+    {"location", cluster_location},
   });
 
-  json::value node_raw_metadata = json::object({
-    {"blobs", json::object({
-      {"api", json::object({
-        {"version", json::string(kKubernetesApiVersion)},
-        {"raw", node->Clone()},
-      })},
-    })},
-  });
   if (config_.VerboseLogging()) {
-    LOG(INFO) << "Raw node metadata: " << *node_raw_metadata;
+    LOG(INFO) << "Raw node metadata: " << *node;
   }
 
   const std::string k8s_node_name = boost::algorithm::join(
       std::vector<std::string>{kK8sNodeResourcePrefix, node_name},
       config_.MetadataApiResourceTypeSeparator());
+  const std::string node_full_name =
+      format::Substitute(kNodeFullNameFormat,
+                         {{"cluster_full_name", ClusterFullName()},
+                          {"node_name", node_name}});
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_node_name},
       k8s_node,
-      MetadataStore::Metadata(/*name=*/"", /*type=*/"", /*location=*/"",
-                              /*version=*/"", /*schema_name=*/"",
-                              is_deleted, collected_at,
-                              std::move(node_raw_metadata))
+      MetadataStore::Metadata(node_full_name, node_type, cluster_location,
+                              node_version, node_schema,
+                              is_deleted, collected_at, node->Clone())
   );
 }
 
@@ -146,30 +157,27 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
     const json::Object* pod, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
   const std::string cluster_name = environment_.KubernetesClusterName();
-  const std::string location = environment_.KubernetesClusterLocation();
+  const std::string cluster_location = environment_.KubernetesClusterLocation();
 
   const json::Object* metadata = pod->Get<json::Object>("metadata");
   const std::string namespace_name = metadata->Get<json::String>("namespace");
   const std::string pod_name = metadata->Get<json::String>("name");
   const std::string pod_id = metadata->Get<json::String>("uid");
+  const std::string pod_version = pod->Get<json::String>("apiVersion");
+  const std::string pod_type = "io.k8s.Pod";
+  const std::string pod_schema =
+      format::Substitute(kKubernetesSchemaNameFormat,
+                         {{"type", pod_type}, {"version", pod_version}});
 
   const MonitoredResource k8s_pod("k8s_pod", {
     {"cluster_name", cluster_name},
     {"namespace_name", namespace_name},
     {"pod_name", pod_name},
-    {"location", location},
+    {"location", cluster_location},
   });
 
-  json::value pod_raw_metadata = json::object({
-    {"blobs", json::object({
-      {"api", json::object({
-        {"version", json::string(kKubernetesApiVersion)},
-        {"raw", pod->Clone()},
-      })},
-    })},
-  });
   if (config_.VerboseLogging()) {
-    LOG(INFO) << "Raw pod metadata: " << *pod_raw_metadata;
+    LOG(INFO) << "Raw pod metadata: " << *pod;
   }
 
   const std::string k8s_pod_id = boost::algorithm::join(
@@ -178,13 +186,17 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
   const std::string k8s_pod_name = boost::algorithm::join(
       std::vector<std::string>{kK8sPodResourcePrefix, namespace_name, pod_name},
       config_.MetadataApiResourceTypeSeparator());
+  const std::string pod_full_name =
+      format::Substitute(kPodFullNameFormat,
+                         {{"cluster_full_name", ClusterFullName()},
+                          {"namespace_name", namespace_name},
+                          {"pod_name", pod_name}});
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_pod_id, k8s_pod_name},
       k8s_pod,
-      MetadataStore::Metadata(/*name=*/"", /*type=*/"", /*location=*/"",
-                              /*version=*/"", /*schema_name=*/"",
-                              is_deleted, collected_at,
-                              std::move(pod_raw_metadata))
+      MetadataStore::Metadata(pod_full_name, pod_type, cluster_location,
+                              pod_version, pod_schema,
+                              is_deleted, collected_at, pod->Clone())
   );
 }
 
@@ -501,6 +513,23 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
     LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
     throw QueryException(endpoint + " -> " + e.what());
   }
+}
+
+const std::string KubernetesReader::ClusterFullName() const {
+  const std::string project_id = environment_.ProjectId();
+  const std::string cluster_name = environment_.KubernetesClusterName();
+  const std::string location = environment_.KubernetesClusterLocation();
+
+  // The two lines below are GCP specific, and are used to distinguish between
+  // zones (e.g. "us-central1-a", "us-east1-b") and regions (e.g.
+  // "us-central1", "us-east1").
+  int num_dashes = std::count(location.begin(), location.end(), '-');
+  const std::string location_type = num_dashes == 2 ? "zones": "locations";
+  return format::Substitute(kClusterFullNameFormat,
+                            {{"project_id", project_id},
+                             {"location_type", location_type},
+                             {"location", location},
+                             {"cluster_name", cluster_name}});
 }
 
 namespace {

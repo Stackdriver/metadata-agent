@@ -92,8 +92,7 @@ Configuration::Configuration()
                 "metadata-agent/" STRINGIFY(AGENT_VERSION))},
         {"MetadataIngestionEndpointFormat",
          option(metadata_ingestion_endpoint_format_,
-                "https://stackdriver.googleapis.com/v1beta3/projects/"
-                "{{project_id}}/resourceMetadata:publish")},
+                "https://stackdriver.googleapis.com/batch/resourceMetadata")},
         {"MetadataIngestionRequestSizeLimitBytes",
          option(metadata_ingestion_request_size_limit_bytes_, 8*1024*1024)},
         {"MetadataIngestionRequestSizeLimitCount",
