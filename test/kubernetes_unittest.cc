@@ -114,9 +114,9 @@ class KubernetesTestNoInstance : public KubernetesTest {
   std::unique_ptr<Configuration> CreateConfig() override {
     return std::unique_ptr<Configuration>(
       new Configuration(std::istringstream(
+        "ProjectId: TestProjectId\n"
         "KubernetesClusterName: TestClusterName\n"
         "KubernetesClusterLocation: TestClusterLocation\n"
-        "MetadataIngestionRawContentVersion: TestVersion\n"
       )));
   }
 
@@ -125,6 +125,7 @@ class KubernetesTestNoInstance : public KubernetesTest {
 
 TEST_F(KubernetesTestNoInstance, GetNodeMetadata) {
   json::value node = json::object({
+    {"apiVersion", json::string("NodeVersion")},
     {"metadata", json::object({
       {"name", json::string("testname")},
       {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
@@ -139,19 +140,18 @@ TEST_F(KubernetesTestNoInstance, GetNodeMetadata) {
     {"node_name", "testname"},
     {"location", "TestClusterLocation"},
   }), m.resource());
-  EXPECT_EQ("", m.metadata().name);
-  EXPECT_EQ("", m.metadata().version);
+  EXPECT_EQ("//container.googleapis.com/projects/TestProjectId/locations/"
+            "TestClusterLocation/clusters/TestClusterName/k8s/nodes/testname",
+            m.metadata().name);
+  EXPECT_EQ("NodeVersion", m.metadata().version);
+  EXPECT_EQ("io.k8s.Node", m.metadata().type);
+  EXPECT_EQ("TestClusterLocation", m.metadata().location);
+  EXPECT_EQ(
+    "//container.googleapis.com/resourceTypes/io.k8s.Node/versions/NodeVersion",
+    m.metadata().schema_name);
   EXPECT_FALSE(m.metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
-  json::value big = json::object({
-    {"blobs", json::object({
-      {"api", json::object({
-        {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
-        {"raw", std::move(node)},
-      })},
-    })},
-  });
-  EXPECT_EQ(big->ToString(), m.metadata().metadata->ToString());
+  EXPECT_EQ(node->ToString(), m.metadata().metadata->ToString());
 }
 
 TEST_F(KubernetesTestNoInstance, GetLegacyResource) {
@@ -168,19 +168,8 @@ TEST_F(KubernetesTestNoInstance, GetLegacyResource) {
 }
 
 TEST_F(KubernetesTestNoInstance, GetPodAndContainerMetadata) {
-  json::value controller = json::object({
-    {"controller", json::boolean(true)},
-    {"apiVersion", json::string("1.2.3")},
-    {"kind", json::string("TestKind")},
-    {"name", json::string("TestName")},
-    {"uid", json::string("TestUID1")},
-    {"metadata", json::object({
-      {"name", json::string("InnerTestName")},
-      {"kind", json::string("InnerTestKind")},
-      {"uid", json::string("InnerTestUID1")},
-    })},
-  });
   json::value pod = json::object({
+    {"apiVersion", json::string("PodVersion")},
     {"metadata", json::object({
       {"name", json::string("TestPodName")},
       {"namespace", json::string("TestNamespace")},
@@ -230,39 +219,10 @@ TEST_F(KubernetesTestNoInstance, GetPodAndContainerMetadata) {
       {"pod_name", "TestPodName"},
   }), m[1].resource());
   EXPECT_FALSE(m[1].metadata().ignore);
-  EXPECT_EQ("", m[1].metadata().version);
+  EXPECT_EQ("PodVersion", m[1].metadata().version);
   EXPECT_FALSE(m[1].metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m[1].metadata().collected_at);
-  json::value pod_metadata = json::object({
-    {"blobs", json::object({
-      {"api", json::object({
-        {"raw", json::object({
-          {"metadata", json::object({
-            {"creationTimestamp",
-              json::string("2018-03-03T01:23:45.678901234Z")},
-            {"name", json::string("TestPodName")},
-            {"namespace", json::string("TestNamespace")},
-            {"uid", json::string("TestPodUid")},
-          })},
-          {"spec", json::object({
-            {"containers", json::array({
-              json::object({{"name", json::string("TestContainerName0")}})
-            })},
-            {"nodeName", json::string("TestSpecNodeName")},
-          })},
-          {"status", json::object({
-            {"containerID", json::string("docker://TestContainerID")},
-            {"containerStatuses", json::array({
-              json::object({{"name", json::string("TestContainerName0")}})
-            })},
-          })},
-        })},
-        {"version", json::string("1.6")},
-      })},
-    })},
-  });
-  EXPECT_EQ(pod_metadata->ToString(),
-            m[1].metadata().metadata->ToString());
+  EXPECT_EQ(pod->ToString(), m[1].metadata().metadata->ToString());
 }
 
 class KubernetesTestWithInstance : public KubernetesTestNoInstance {
@@ -272,15 +232,16 @@ class KubernetesTestWithInstance : public KubernetesTestNoInstance {
       new Configuration(std::istringstream(
         "InstanceId: TestID\n"
         "InstanceZone: TestZone\n"
+        "ProjectId: TestProjectId\n"
         "KubernetesClusterLocation: TestClusterLocation\n"
         "KubernetesClusterName: TestClusterName\n"
-        "MetadataIngestionRawContentVersion: TestVersion\n"
       )));
   }
 };
 
 TEST_F(KubernetesTestWithInstance, GetNodeMetadata) {
   json::value node = json::object({
+    {"apiVersion", json::string("NodeVersion")},
     {"metadata", json::object({
       {"name", json::string("testname")},
       {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
@@ -295,22 +256,15 @@ TEST_F(KubernetesTestWithInstance, GetNodeMetadata) {
     {"node_name", "testname"},
     {"location", "TestClusterLocation"},
   }), m.resource());
-  EXPECT_EQ("", m.metadata().version);
+  EXPECT_EQ("NodeVersion", m.metadata().version);
   EXPECT_FALSE(m.metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
-  json::value expected_metadata = json::object({
-    {"blobs", json::object({
-      {"api", json::object({
-        {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
-        {"raw", std::move(node)},
-      })},
-    })},
-  });
-  EXPECT_EQ(expected_metadata->ToString(), m.metadata().metadata->ToString());
+  EXPECT_EQ(node->ToString(), m.metadata().metadata->ToString());
 }
 
 TEST_F(KubernetesTestWithInstance, GetPodMetadata) {
   json::value pod = json::object({
+    {"apiVersion", json::string("PodVersion")},
     {"metadata", json::object({
       {"namespace", json::string("TestNamespace")},
       {"name", json::string("TestName")},
@@ -329,28 +283,20 @@ TEST_F(KubernetesTestWithInstance, GetPodMetadata) {
     {"location", "TestClusterLocation"},
     {"namespace_name", "TestNamespace"},
   }), m.resource());
-  EXPECT_EQ("", m.metadata().name);
-  EXPECT_EQ("", m.metadata().version);
+  EXPECT_EQ("//container.googleapis.com/projects/TestProjectId/locations/"
+            "TestClusterLocation/clusters/TestClusterName/k8s/namespaces/"
+            "TestNamespace/pods/TestName",
+            m.metadata().name);
+  EXPECT_EQ("PodVersion", m.metadata().version);
+  EXPECT_EQ("io.k8s.Pod", m.metadata().type);
+  EXPECT_EQ("TestClusterLocation", m.metadata().location);
+  EXPECT_EQ(
+    "//container.googleapis.com/resourceTypes/io.k8s.Pod/versions/PodVersion",
+    m.metadata().schema_name);
   EXPECT_FALSE(m.metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
   EXPECT_FALSE(m.metadata().ignore);
-  json::value expected_metadata = json::object({
-    {"blobs", json::object({
-      {"api", json::object({
-        {"raw", json::object({
-          {"metadata", json::object({
-            {"creationTimestamp",
-              json::string("2018-03-03T01:23:45.678901234Z")},
-            {"name", json::string("TestName")},
-            {"namespace", json::string("TestNamespace")},
-            {"uid", json::string("TestUid")},
-          })},
-        })},
-        {"version", json::string("1.6")},
-      })},
-    })},
-  });
-  EXPECT_EQ(expected_metadata->ToString(), m.metadata().metadata->ToString());
+  EXPECT_EQ(pod->ToString(), m.metadata().metadata->ToString());
 }
 
 TEST_F(KubernetesTestWithInstance, GetLegacyResource) {
@@ -417,6 +363,7 @@ TEST_F(KubernetesTestWithInstance, GetContainerMetadata) {
 
 TEST_F(KubernetesTestWithInstance, GetPodAndContainerMetadata) {
   json::value pod = json::object({
+    {"apiVersion", json::string("PodVersion")},
     {"metadata", json::object({
       {"name", json::string("TestPodName")},
       {"namespace", json::string("TestNamespace")},
@@ -480,40 +427,14 @@ TEST_F(KubernetesTestWithInstance, GetPodAndContainerMetadata) {
       {"pod_name", "TestPodName"},
   }), m[2].resource());
   EXPECT_FALSE(m[2].metadata().ignore);
-  EXPECT_EQ("", m[2].metadata().name);
-  EXPECT_EQ("", m[2].metadata().version);
+  EXPECT_EQ("//container.googleapis.com/projects/TestProjectId/locations/"
+            "TestClusterLocation/clusters/TestClusterName/k8s/namespaces/"
+            "TestNamespace/pods/TestPodName",
+            m[2].metadata().name);
+  EXPECT_EQ("PodVersion", m[2].metadata().version);
   EXPECT_FALSE(m[2].metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m[2].metadata().collected_at);
-  json::value pod_metadata = json::object({
-    {"blobs", json::object({
-      {"api", json::object({
-        {"raw", json::object({
-          {"metadata", json::object({
-            {"creationTimestamp",
-              json::string("2018-03-03T01:23:45.678901234Z")},
-            {"name", json::string("TestPodName")},
-            {"namespace", json::string("TestNamespace")},
-            {"uid", json::string("TestPodUid")},
-          })},
-          {"spec", json::object({
-            {"containers", json::array({
-              json::object({{"name", json::string("TestContainerName0")}})
-            })},
-            {"nodeName", json::string("TestSpecNodeName")},
-          })},
-          {"status", json::object({
-            {"containerID", json::string("docker://TestContainerID")},
-            {"containerStatuses", json::array({
-              json::object({{"name", json::string("TestContainerName0")}})
-            })},
-          })},
-        })},
-        {"version", json::string("1.6")},
-      })},
-    })},
-  });
-  EXPECT_EQ(pod_metadata->ToString(),
-            m[2].metadata().metadata->ToString());
+  EXPECT_EQ(pod->ToString(), m[2].metadata().metadata->ToString());
 }
 
 class KubernetesTestSecrets : public KubernetesTest {
@@ -565,7 +486,6 @@ class KubernetesTestFakeServer : public KubernetesTest {
         "KubernetesClusterName: TestClusterName\n"
         "KubernetesEndpointHost: " + server->GetUrl() + "\n"
         "KubernetesNodeName: TestNodeName\n"
-        "MetadataIngestionRawContentVersion: TestVersion\n"
       )));
   }
 
@@ -582,41 +502,48 @@ TEST_F(KubernetesTestFakeServer, QueryMaster) {
 
 TEST_F(KubernetesTestFakeServer, MetadataQuery) {
   json::value node = json::object({
+    {"apiVersion", json::string("NodeVersion")},
     {"metadata", json::object({
       {"name", json::string("TestNodeName")},
       {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
     })}
   });
-  json::value pod = json::object({
+  json::value a_pod = json::object({
+    {"apiVersion", json::string("PodVersion")},
+    {"kind", json::string("Pod")},
+    {"metadata", json::object({
+      {"namespace", json::string("TestNamespace")},
+      {"name", json::string("TestPodName")},
+      {"selfLink",
+       json::string("/api/v1/namespaces/TestNamespace/pods/TestPodName")},
+      {"uid", json::string("TestPodUid")},
+      {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
+    })},
+    {"spec", json::object({
+      {"nodeName", json::string("TestNodeName")},
+      {"containers", json::array({
+        json::object({{"name", json::string("TestContainerName0")}}),
+      })},
+    })},
+    {"status", json::object({
+      {"containerID", json::string("docker://TestContainerID")},
+      {"containerStatuses", json::array({
+        json::object({
+          {"name", json::string("TestContainerName0")},
+        }),
+      })},
+    })},
+  });
+
+  json::value pod_list = json::object({
     {"apiVersion", json::string("1.2.3")},
     {"items", json::array({
-      json::object({
-        {"metadata", json::object({
-          {"name", json::string("TestPodName")},
-          {"namespace", json::string("TestNamespace")},
-          {"uid", json::string("TestPodUid")},
-          {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
-        })},
-        {"spec", json::object({
-          {"nodeName", json::string("TestNodeName")},
-          {"containers", json::array({
-            json::object({{"name", json::string("TestContainerName0")}}),
-          })},
-        })},
-        {"status", json::object({
-          {"containerID", json::string("docker://TestContainerID")},
-          {"containerStatuses", json::array({
-            json::object({
-              {"name", json::string("TestContainerName0")},
-            }),
-          })},
-        })},
-      }),
+        a_pod->As<json::Object>()->Clone(),
     })},
   });
   server->SetResponse("/api/v1/nodes/TestNodeName", node->ToString());
   server->SetResponse("/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName",
-                      pod->ToString());
+                      pod_list->ToString());
 
   std::vector<KubernetesUpdater::ResourceMetadata> m = reader->MetadataQuery();
   EXPECT_EQ(4, m.size());
@@ -629,22 +556,9 @@ TEST_F(KubernetesTestFakeServer, MetadataQuery) {
     {"node_name", "TestNodeName"},
     {"location", "TestClusterLocation"},
   }), m[0].resource());
-  EXPECT_EQ("", m[0].metadata().version);
+  EXPECT_EQ("NodeVersion", m[0].metadata().version);
   EXPECT_FALSE(m[0].metadata().is_deleted);
-  json::value node_metadata = json::object({
-    {"blobs", json::object({
-      {"api", json::object({
-        {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
-        {"raw", json::object({
-          {"metadata", json::object({
-            {"name", json::string("TestNodeName")},
-            {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
-          })},
-        })},
-      })},
-    })},
-  });
-  EXPECT_EQ(node_metadata->ToString(), m[0].metadata().metadata->ToString());
+  EXPECT_EQ(node->ToString(), m[0].metadata().metadata->ToString());
 
   // Verify pod metadata.
   EXPECT_EQ(std::vector<std::string>({
@@ -685,37 +599,9 @@ TEST_F(KubernetesTestFakeServer, MetadataQuery) {
       {"pod_name", "TestPodName"},
   }), m[3].resource());
   EXPECT_FALSE(m[3].metadata().ignore);
-  EXPECT_EQ("", m[3].metadata().version);
+  EXPECT_EQ("PodVersion", m[3].metadata().version);
   EXPECT_FALSE(m[3].metadata().is_deleted);
-  json::value pod_metadata = json::object({
-    {"blobs", json::object({
-      {"api", json::object({
-        {"raw", json::object({
-          {"metadata", json::object({
-            {"creationTimestamp",
-              json::string("2018-03-03T01:23:45.678901234Z")},
-            {"name", json::string("TestPodName")},
-            {"namespace", json::string("TestNamespace")},
-            {"uid", json::string("TestPodUid")},
-          })},
-          {"spec", json::object({
-            {"containers", json::array({
-              json::object({{"name", json::string("TestContainerName0")}})
-            })},
-            {"nodeName", json::string("TestNodeName")},
-          })},
-          {"status", json::object({
-            {"containerID", json::string("docker://TestContainerID")},
-            {"containerStatuses", json::array({
-              json::object({{"name", json::string("TestContainerName0")}})
-            })},
-          })},
-        })},
-        {"version", json::string("1.6")},
-      })},
-    })},
-  });
-  EXPECT_EQ(pod_metadata->ToString(), m[3].metadata().metadata->ToString());
+  EXPECT_EQ(a_pod->ToString(), m[3].metadata().metadata->ToString());
 }
 
 }  // namespace google
