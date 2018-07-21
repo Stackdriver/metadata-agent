@@ -56,6 +56,10 @@ class MetadataReporter {
   void SendMetadata(std::vector<MetadataStore::Metadata>&& metadata)
       throw (boost::system::system_error);
 
+  // Create the fully qualified location based on the raw location reported by
+  // the metadata server.
+  std::string FullyQualifiedResourceLocation(const std::string& location) const;
+
   const Configuration& config_;
   MetadataStore* store_;
   Environment environment_;
