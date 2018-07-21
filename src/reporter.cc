@@ -170,6 +170,9 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 
 std::string MetadataReporter::FullyQualifiedResourceLocation(
     const std::string& location) const {
+  // The code below is GCP specific. It first distinguishes between zones (e.g.
+  // "us-central1-a", "us-east1-b") and regions (e.g. "us-central1", "us-east1")
+  // and builds the full resource location.
   int num_dashes = std::count(location.begin(), location.end(), '-');
   const std::string location_type = num_dashes == 2 ? "zones" : "regions";
   return format::Substitute(
