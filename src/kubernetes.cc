@@ -796,6 +796,21 @@ void KubernetesReader::WatchMaster(
   if (verbose) {
     LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint;
   }
+  // Initialize the expiration time.  This is the time by when the
+  // watcher has to receive some data to be considered healthy.  Each
+  // receipt of a new message bumps the expiration forward.
+  //
+  // TODO: Cache the expiration (or timestamp of last receipt) in the
+  // store instead of here.
+  const int max_data_age = config_.HealthCheckMaxDataAgeSeconds();
+  std::mutex expiration_mutex;
+  auto expiration =
+    std::chrono::steady_clock::now() + time::seconds(max_data_age);
+  CheckHealth check_health(
+      health_checker_, name, [&expiration_mutex, &expiration]{
+        std::lock_guard<std::mutex> expiration_lock(expiration_mutex);
+        return std::chrono::steady_clock::now() < expiration;
+      });
   try {
     if (verbose) {
       LOG(INFO) << "Locking completion mutex";
@@ -805,7 +820,12 @@ void KubernetesReader::WatchMaster(
     std::unique_lock<std::mutex> watch_completion(completion_mutex);
     Watcher watcher(
       endpoint,
-      [=](json::value raw_watch) {
+      [=, &expiration_mutex, &expiration](json::value raw_watch) {
+        {
+          std::lock_guard<std::mutex> expiration_lock(expiration_mutex);
+          expiration =
+            std::chrono::steady_clock::now() + time::seconds(max_data_age);
+        }
         WatchEventCallback(callback, name, std::move(raw_watch));
       },
       std::move(watch_completion), verbose);

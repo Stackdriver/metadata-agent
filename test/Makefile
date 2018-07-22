@@ -115,7 +115,7 @@ $(TESTS): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 # Some headers need CPP_NETLIB_LIBS and YAML_CPP_LIBS.
 $(TESTS:%=%.o): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 
-api_server_unittest: api_server_unittest.o $(SRC_DIR)/api_server.o $(SRC_DIR)/configuration.o $(SRC_DIR)/store.o $(SRC_DIR)/json.o $(SRC_DIR)/resource.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o
+api_server_unittest: api_server_unittest.o $(SRC_DIR)/api_server.o $(SRC_DIR)/configuration.o $(SRC_DIR)/store.o $(SRC_DIR)/json.o $(SRC_DIR)/resource.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/health_checker.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 base64_unittest: base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@

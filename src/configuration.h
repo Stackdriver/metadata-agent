@@ -162,6 +162,10 @@ class Configuration {
     std::lock_guard<std::mutex> lock(mutex_);
     return health_check_file_;
   }
+  int HealthCheckMaxDataAgeSeconds() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return health_check_max_data_age_seconds_;
+  }
 
  private:
   friend class ConfigurationArgumentParserTest;
@@ -208,6 +212,7 @@ class Configuration {
   std::string instance_id_;
   std::string instance_zone_;
   std::string health_check_file_;
+  int health_check_max_data_age_seconds_;
 };
 
 }

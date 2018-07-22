@@ -16,9 +16,10 @@
 #ifndef HEALTH_CHECKER_H_
 #define HEALTH_CHECKER_H_
 
-#include <string>
+#include <map>
 #include <mutex>
 #include <set>
+#include <string>
 
 #include "configuration.h"
 
@@ -29,6 +30,10 @@ class HealthChecker {
  public:
   HealthChecker(const Configuration& config);
   void SetUnhealthy(const std::string& component);
+  std::set<std::string> UnhealthyComponents() const;
+  void RegisterComponent(const std::string& component,
+                         std::function<bool()> callback);
+  void UnregisterComponent(const std::string& component);
 
  private:
   friend class HealthCheckerUnittest;
@@ -38,7 +43,29 @@ class HealthChecker {
 
   const Configuration& config_;
   std::set<std::string> unhealthy_components_;
+  std::map<std::string, std::function<bool()>> component_callbacks_;
   mutable std::mutex mutex_;
+};
+
+// Registers a component and then unregisters when it goes out of
+// scope.
+class CheckHealth {
+ public:
+  CheckHealth(HealthChecker* health_checker, const std::string& component,
+              std::function<bool()> callback)
+    : health_checker_(health_checker), component_(component) {
+    if (health_checker_ != nullptr) {
+      health_checker_->RegisterComponent(component_, callback);
+    }
+  }
+  ~CheckHealth() {
+    if (health_checker_ != nullptr) {
+      health_checker_->UnregisterComponent(component_);
+    }
+  }
+ private:
+  HealthChecker* health_checker_;
+  const std::string component_;
 };
 
 }  // namespace google

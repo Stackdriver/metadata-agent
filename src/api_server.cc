@@ -19,6 +19,7 @@
 #include <boost/range/irange.hpp>
 
 #include "configuration.h"
+#include "health_checker.h"
 #include "http_common.h"
 #include "logging.h"
 #include "store.h"
@@ -67,14 +68,21 @@ void MetadataApiServer::Dispatcher::log(const HttpServer::string_type& info) con
 
 
 MetadataApiServer::MetadataApiServer(const Configuration& config,
+                                     const HealthChecker* health_checker,
                                      const MetadataStore& store,
                                      int server_threads,
                                      const std::string& host, int port)
-    : config_(config), store_(store), dispatcher_({
+    : config_(config), health_checker_(health_checker), store_(store),
+      dispatcher_({
         {{"GET", "/monitoredResource/"},
          [=](const HttpServer::request& request,
              std::shared_ptr<HttpServer::connection> conn) {
              HandleMonitoredResource(request, conn);
+         }},
+        {{"GET", "/healthz"},
+         [=](const HttpServer::request& request,
+             std::shared_ptr<HttpServer::connection> conn) {
+             HandleHealthz(request, conn);
          }},
       }, config_.VerboseLogging()),
       server_(
@@ -136,6 +144,36 @@ void MetadataApiServer::HandleMonitoredResource(
       {"error", json::string("Not found")},
     });
     conn->write(json_response->ToString());
+  }
+}
+
+void MetadataApiServer::HandleHealthz(
+    const HttpServer::request& request,
+    std::shared_ptr<HttpServer::connection> conn) {
+  std::set<std::string> unhealthy_components;
+  if (health_checker_ != nullptr) {
+    unhealthy_components = health_checker_->UnhealthyComponents();
+  }
+  if (unhealthy_components.empty()) {
+    if (config_.VerboseLogging()) {
+      LOG(INFO) << "/healthz returning 200";
+    }
+    conn->set_status(HttpServer::connection::ok);
+    conn->set_headers(std::map<std::string, std::string>({
+      {"Content-Type", "text/plain"},
+    }));
+    conn->write("healthy");
+  } else {
+    LOG(WARNING) << "/healthz returning 500; unhealthy components: "
+                 << boost::algorithm::join(unhealthy_components, ", ");
+    conn->set_status(HttpServer::connection::internal_server_error);
+    conn->set_headers(std::map<std::string, std::string>({
+      {"Content-Type", "text/plain"},
+    }));
+    conn->write("unhealthy components:\n");
+    for (const auto& component : unhealthy_components) {
+      conn->write(component + "\n");
+    }
   }
 }
 

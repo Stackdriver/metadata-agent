@@ -47,4 +47,26 @@ void HealthChecker::CleanupForTest() {
       config_.HealthCheckFile()).parent_path());
 }
 
+std::set<std::string> HealthChecker::UnhealthyComponents() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  std::set<std::string> result(unhealthy_components_);
+  for (auto& c : component_callbacks_) {
+    if (c.second != nullptr && !c.second()) {
+      result.insert(c.first);
+    }
+  }
+  return result;
+}
+
+void HealthChecker::RegisterComponent(const std::string& component,
+                                      std::function<bool()> callback) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  component_callbacks_[component] = callback;
+}
+
+void HealthChecker::UnregisterComponent(const std::string& component) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  component_callbacks_.erase(component);
+}
+
 }  // namespace google
