@@ -180,8 +180,7 @@ void MetadataApiServer::HandleHealthz(
                  << boost::algorithm::join(unhealthy_components, ", ");
     conn->set_status(HttpServer::connection::internal_server_error);
 
-    std::ostringstream response_stream;
-    response_stream << "unhealthy components:\n";
+    std::ostringstream response_stream("unhealthy components:\n");
     for (const auto& component : unhealthy_components) {
       response_stream << component << "\n";
     }
