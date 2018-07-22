@@ -129,7 +129,7 @@ void MetadataApiServer::HandleMonitoredResource(
 
     conn->set_headers(std::map<std::string, std::string>({
       {"Content-Type", "application/json"},
-      {"Content-Length", std::to_string(response.length())},
+      {"Content-Length", std::to_string(response.size())},
     }));
     conn->write(response);
   } catch (const std::out_of_range& e) {
@@ -149,7 +149,7 @@ void MetadataApiServer::HandleMonitoredResource(
 
     conn->set_headers(std::map<std::string, std::string>({
       {"Content-Type", "application/json"},
-      {"Content-Length", std::to_string(response.length())},
+      {"Content-Length", std::to_string(response.size())},
     }));
     conn->write(response);
   }
@@ -172,7 +172,7 @@ void MetadataApiServer::HandleHealthz(
 
     conn->set_headers(std::map<std::string, std::string>({
       {"Content-Type", "text/plain"},
-      {"Content-Length", std::to_string(response.length())},
+      {"Content-Length", std::to_string(response.size())},
     }));
     conn->write(response);
   } else {
@@ -180,14 +180,17 @@ void MetadataApiServer::HandleHealthz(
                  << boost::algorithm::join(unhealthy_components, ", ");
     conn->set_status(HttpServer::connection::internal_server_error);
 
-    std::string response = "unhealthy components:\n";
+    std::ostringstream response_stream;
+    response_stream << "unhealthy components:\n";
     for (const auto& component : unhealthy_components) {
-      response.append(component + "\n");
+      response_stream << component << "\n";
     }
+
+    std::string response = response_stream.str();
 
     conn->set_headers(std::map<std::string, std::string>({
       {"Content-Type", "text/plain"},
-      {"Content-Length", std::to_string(response.length())},
+      {"Content-Length", std::to_string(response.size())},
     }));
     conn->write(response);
   }
