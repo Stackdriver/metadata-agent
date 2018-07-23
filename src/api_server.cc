@@ -128,9 +128,9 @@ void MetadataApiServer::HandleMonitoredResource(
     std::string response = resource.ToJSON()->ToString();
 
     conn->set_headers(std::map<std::string, std::string>({
-      {"Content-Type", "application/json"},
       {"Connection", "close"},
       {"Content-Length", std::to_string(response.size())},
+      {"Content-Type", "application/json"},
     }));
     conn->write(response);
   } catch (const std::out_of_range& e) {
@@ -149,9 +149,9 @@ void MetadataApiServer::HandleMonitoredResource(
     std::string response = json_response->ToString();
 
     conn->set_headers(std::map<std::string, std::string>({
-      {"Content-Type", "application/json"},
       {"Connection", "close"},
       {"Content-Length", std::to_string(response.size())},
+      {"Content-Type", "application/json"},
     }));
     conn->write(response);
   }
@@ -173,9 +173,9 @@ void MetadataApiServer::HandleHealthz(
     std::string response = "healthy";
 
     conn->set_headers(std::map<std::string, std::string>({
-      {"Content-Type", "text/plain"},
       {"Connection", "close"},
       {"Content-Length", std::to_string(response.size())},
+      {"Content-Type", "text/plain"},
     }));
     conn->write(response);
   } else {
@@ -191,9 +191,9 @@ void MetadataApiServer::HandleHealthz(
     std::string response = response_stream.str();
 
     conn->set_headers(std::map<std::string, std::string>({
-      {"Content-Type", "text/plain"},
       {"Connection", "close"},
       {"Content-Length", std::to_string(response.size())},
+      {"Content-Type", "text/plain"},
     }));
     conn->write(response);
   }
