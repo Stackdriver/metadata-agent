@@ -166,6 +166,17 @@ TEST_F(EnvironmentTest, GetMetadataStringWithFakeServer) {
   EXPECT_EQ("", environment.GetMetadataString("unknown/path"));
 }
 
+TEST_F(EnvironmentTest, IsGcpLocationZonal) {
+  Configuration config;
+  Environment environment(config);
+
+  EXPECT_TRUE(environment.IsGcpLocationZonal("us-central1-a"));
+  EXPECT_TRUE(environment.IsGcpLocationZonal("europe-east1-b"));
+  EXPECT_FALSE(environment.IsGcpLocationZonal("us-central1"));
+  EXPECT_FALSE(environment.IsGcpLocationZonal("europe-east1"));
+  EXPECT_FALSE(environment.IsGcpLocationZonal("global"));
+}
+
 TEST_F(EnvironmentTest, ValuesFromMetadataServer) {
   testing::FakeServer server;
   server.SetResponse("/instance/attributes/cluster-location",

@@ -105,6 +105,13 @@ std::string Environment::GetMetadataString(const std::string& path) const {
   }
 }
 
+bool Environment::IsGcpLocationZonal(const std::string& location) const {
+  // Use the number of dashes to distinguish between zones (e.g.
+  // "us-central1-a", "us-east1-b") and regions (e.g."us-central1", "us-east1").
+  int num_dashes = std::count(location.begin(), location.end(), '-');
+  return num_dashes == 2;
+}
+
 const std::string& Environment::NumericProjectId() const {
   std::lock_guard<std::mutex> lock(mutex_);
   if (project_id_.empty()) {
