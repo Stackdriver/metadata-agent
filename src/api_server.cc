@@ -88,7 +88,8 @@ MetadataApiServer::MetadataApiServer(const Configuration& config,
       server_(
           HttpServer::options(dispatcher_)
               .address(host)
-              .port(std::to_string(port))),
+              .port(std::to_string(port))
+              .reuse_address(true)),
       server_pool_()
 {
   for (int i : boost::irange(0, server_threads)) {
