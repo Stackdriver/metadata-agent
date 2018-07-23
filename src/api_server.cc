@@ -124,10 +124,14 @@ void MetadataApiServer::HandleMonitoredResource(
       LOG(INFO) << "Found resource for " << id << ": " << resource;
     }
     conn->set_status(HttpServer::connection::ok);
+
+    std::string response = resource.ToJSON()->ToString();
+
     conn->set_headers(std::map<std::string, std::string>({
       {"Content-Type", "application/json"},
+      {"Content-Length", std::to_string(response.size())},
     }));
-    conn->write(resource.ToJSON()->ToString());
+    conn->write(response);
   } catch (const std::out_of_range& e) {
     // TODO: This could be considered log spam.
     // As we add more resource mappings, these will become less and less
@@ -136,14 +140,18 @@ void MetadataApiServer::HandleMonitoredResource(
       LOG(WARNING) << "No matching resource for " << id;
     }
     conn->set_status(HttpServer::connection::not_found);
-    conn->set_headers(std::map<std::string, std::string>({
-      {"Content-Type", "application/json"},
-    }));
     json::value json_response = json::object({
       {"status_code", json::number(404)},
       {"error", json::string("Not found")},
     });
-    conn->write(json_response->ToString());
+
+    std::string response = json_response->ToString();
+
+    conn->set_headers(std::map<std::string, std::string>({
+      {"Content-Type", "application/json"},
+      {"Content-Length", std::to_string(response.size())},
+    }));
+    conn->write(response);
   }
 }
 
@@ -159,21 +167,31 @@ void MetadataApiServer::HandleHealthz(
       LOG(INFO) << "/healthz returning 200";
     }
     conn->set_status(HttpServer::connection::ok);
+
+    std::string response = "healthy";
+
     conn->set_headers(std::map<std::string, std::string>({
       {"Content-Type", "text/plain"},
+      {"Content-Length", std::to_string(response.size())},
     }));
-    conn->write("healthy");
+    conn->write(response);
   } else {
     LOG(WARNING) << "/healthz returning 500; unhealthy components: "
                  << boost::algorithm::join(unhealthy_components, ", ");
     conn->set_status(HttpServer::connection::internal_server_error);
+
+    std::ostringstream response_stream("unhealthy components:\n");
+    for (const auto& component : unhealthy_components) {
+      response_stream << component << "\n";
+    }
+
+    std::string response = response_stream.str();
+
     conn->set_headers(std::map<std::string, std::string>({
       {"Content-Type", "text/plain"},
+      {"Content-Length", std::to_string(response.size())},
     }));
-    conn->write("unhealthy components:\n");
-    for (const auto& component : unhealthy_components) {
-      conn->write(component + "\n");
-    }
+    conn->write(response);
   }
 }
 
