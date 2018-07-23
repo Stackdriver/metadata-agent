@@ -52,9 +52,9 @@ class Configuration {
     std::lock_guard<std::mutex> lock(mutex_);
     return metadata_api_port_;
   }
-  const std::string& MetadataApiHostAddress() const {
+  const std::string& MetadataApiBindAddress() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    return metadata_api_host_address_;
+    return metadata_api_bind_address_;
   }
   const std::string& MetadataApiResourceTypeSeparator() const {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -190,7 +190,7 @@ class Configuration {
   bool verbose_logging_;
   int metadata_api_num_threads_;
   int metadata_api_port_;
-  std::string metadata_api_host_address_;
+  std::string metadata_api_bind_address_;
   std::string metadata_api_resource_type_separator_;
   int metadata_reporter_interval_seconds_;
   bool metadata_reporter_purge_deleted_;

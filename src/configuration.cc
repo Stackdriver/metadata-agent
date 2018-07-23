@@ -41,7 +41,7 @@ constexpr const char kDefaultProjectId[] = "";
 constexpr const char kDefaultCredentialsFile[] = "";
 constexpr const int kMetadataApiDefaultNumThreads = 3;
 constexpr const int kMetadataApiDefaultPort = 8000;
-constexpr const char kMetadataApiDefaultHostAddress[] = "0.0.0.0";
+constexpr const char kMetadataApiDefaultBindAddress[] = "0.0.0.0";
 constexpr const char kMetadataApiDefaultResourceTypeSeparator[] = ".";
 constexpr const int kMetadataReporterDefaultIntervalSeconds = 60;
 constexpr const int kMetadataReporterDefaultPurgeDeleted = false;
@@ -86,7 +86,7 @@ Configuration::Configuration()
       verbose_logging_(false),
       metadata_api_num_threads_(kMetadataApiDefaultNumThreads),
       metadata_api_port_(kMetadataApiDefaultPort),
-      metadata_api_host_address_(kMetadataApiDefaultHostAddress),
+      metadata_api_bind_address_(kMetadataApiDefaultBindAddress),
       metadata_api_resource_type_separator_(
           kMetadataApiDefaultResourceTypeSeparator),
       metadata_reporter_interval_seconds_(
@@ -224,9 +224,9 @@ void Configuration::ParseConfiguration(std::istream& input) {
       config["MetadataApiNumThreads"].as<int>(metadata_api_num_threads_);
   metadata_api_port_ =
       config["MetadataApiPort"].as<int>(metadata_api_port_);
-  metadata_api_host_address_ =
-      config["MetadataApiHostAddress"].as<std::string>(
-          metadata_api_host_address_);
+  metadata_api_bind_address_ =
+      config["MetadataApiBindAddress"].as<std::string>(
+          metadata_api_bind_address_);
   metadata_api_resource_type_separator_ =
       config["MetadataApiResourceTypeSeparator"].as<std::string>(
           metadata_api_resource_type_separator_);
