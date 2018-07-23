@@ -30,8 +30,8 @@ MetadataAgent::~MetadataAgent() {}
 
 void MetadataAgent::Start() {
   metadata_api_server_.reset(new MetadataApiServer(
-      config_, &health_checker_, store_, config_.MetadataApiNumThreads(), "0.0.0.0",
-      config_.MetadataApiPort()));
+      config_, &health_checker_, store_, config_.MetadataApiNumThreads(),
+      config_.MetadataApiHostAddress(), config_.MetadataApiPort()));
   reporter_.reset(new MetadataReporter(
       config_, &store_, config_.MetadataReporterIntervalSeconds()));
 }
