@@ -174,7 +174,6 @@ TEST_F(EnvironmentTest, IsGcpLocationZonal) {
   EXPECT_TRUE(environment.IsGcpLocationZonal("europe-east1-b"));
   EXPECT_FALSE(environment.IsGcpLocationZonal("us-central1"));
   EXPECT_FALSE(environment.IsGcpLocationZonal("europe-east1"));
-  EXPECT_FALSE(environment.IsGcpLocationZonal("global"));
 }
 
 TEST_F(EnvironmentTest, ValuesFromMetadataServer) {

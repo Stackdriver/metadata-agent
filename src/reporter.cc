@@ -170,7 +170,6 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 
 std::string MetadataReporter::FullyQualifiedResourceLocation(
     const std::string& location) const {
-  bool is_zonal = environment_.IsGcpLocationZonal(location);
   const std::string location_type =
       environment_.IsGcpLocationZonal(location) ? "zones": "regions";
   return format::Substitute(
