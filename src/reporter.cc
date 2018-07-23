@@ -97,18 +97,9 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
     throw (boost::system::system_error) {
 
   if (entries.size() == 1) {
-    // Add a copy of the single entry, except for the `views` field. This allows
-    // us to sent a request to the batch endpoint when we have a single request.
-    // We're making use of the fact that duplicate metadata is ignored.
-    const json::Object* single_request = entries[0]->As<json::Object>();
-    json::value duplicate_request = json::object({  // ResourceMetadata
-      {"name", single_request->at("name")->Clone()},
-      {"type", single_request->at("type")->Clone()},
-      {"location", single_request->at("location")->Clone()},
-      {"state", single_request->at("state")->Clone()},
-      {"evenTime", single_request->at("evenTime")->Clone()},
-    });
-    entries.emplace_back(std::move(duplicate_request));
+    // Add a copy of the single entry. This allows us to sent a request to the
+    // batch endpoint when we have a single request.
+    entries.emplace_back(entries[0]->Clone());
   }
   const std::string content_type =
       std::string("multipart/mixed; boundary=") + kMultipartBoundary;
