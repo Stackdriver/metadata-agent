@@ -97,8 +97,8 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
     throw (boost::system::system_error) {
 
   if (entries.size() == 1) {
-    // Add a copy of the single entry. This allows us to sent a request to the
-    // batch endpoint when we have a single request.
+    // A single request cannot be sent to the batch endpoint. In order to work
+    // around this, we add a copy of this request.
     entries.emplace_back(entries[0]->Clone());
   }
   const std::string content_type =
