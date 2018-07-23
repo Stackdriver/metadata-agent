@@ -520,8 +520,8 @@ const std::string KubernetesReader::ClusterFullName() const {
   const std::string project_id = environment_.NumericProjectId();
   const std::string cluster_name = environment_.KubernetesClusterName();
   const std::string location = environment_.KubernetesClusterLocation();
-  bool is_zonal = environment_.IsGcpLocationZonal(location);
-  const std::string location_type = is_zonal ? "zones": "locations";
+  const std::string location_type =
+      environment_.IsGcpLocationZonal(location) ? "zones": "locations";
   return format::Substitute(kClusterFullNameFormat,
                             {{"project_id", project_id},
                              {"location_type", location_type},
