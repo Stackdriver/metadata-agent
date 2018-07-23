@@ -9,6 +9,7 @@ void VerifyDefaultConfig(const Configuration& config) {
   EXPECT_EQ("", config.CredentialsFile());
   EXPECT_EQ(3, config.MetadataApiNumThreads());
   EXPECT_EQ(8000, config.MetadataApiPort());
+  EXPECT_EQ("0.0.0.0", config.MetadataApiBindAddress());
   EXPECT_EQ(".", config.MetadataApiResourceTypeSeparator());
   EXPECT_EQ(60, config.MetadataReporterIntervalSeconds());
   EXPECT_EQ(false, config.MetadataReporterPurgeDeleted());
