@@ -129,6 +129,7 @@ void MetadataApiServer::HandleMonitoredResource(
 
     conn->set_headers(std::map<std::string, std::string>({
       {"Content-Type", "application/json"},
+      {"Connection", "close"},
       {"Content-Length", std::to_string(response.size())},
     }));
     conn->write(response);
@@ -149,6 +150,7 @@ void MetadataApiServer::HandleMonitoredResource(
 
     conn->set_headers(std::map<std::string, std::string>({
       {"Content-Type", "application/json"},
+      {"Connection", "close"},
       {"Content-Length", std::to_string(response.size())},
     }));
     conn->write(response);
@@ -172,6 +174,7 @@ void MetadataApiServer::HandleHealthz(
 
     conn->set_headers(std::map<std::string, std::string>({
       {"Content-Type", "text/plain"},
+      {"Connection", "close"},
       {"Content-Length", std::to_string(response.size())},
     }));
     conn->write(response);
@@ -189,6 +192,7 @@ void MetadataApiServer::HandleHealthz(
 
     conn->set_headers(std::map<std::string, std::string>({
       {"Content-Type", "text/plain"},
+      {"Connection", "close"},
       {"Content-Length", std::to_string(response.size())},
     }));
     conn->write(response);
