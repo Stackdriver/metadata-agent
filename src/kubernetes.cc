@@ -520,12 +520,8 @@ const std::string KubernetesReader::ClusterFullName() const {
   const std::string project_id = environment_.NumericProjectId();
   const std::string cluster_name = environment_.KubernetesClusterName();
   const std::string location = environment_.KubernetesClusterLocation();
-
-  // The two lines below are GCP specific, and are used to distinguish between
-  // zones (e.g. "us-central1-a", "us-east1-b") and regions (e.g.
-  // "us-central1", "us-east1").
-  int num_dashes = std::count(location.begin(), location.end(), '-');
-  const std::string location_type = num_dashes == 2 ? "zones": "locations";
+  const std::string location_type =
+      environment_.IsGcpLocationZonal(location) ? "zones": "locations";
   return format::Substitute(kClusterFullNameFormat,
                             {{"project_id", project_id},
                              {"location_type", location_type},
