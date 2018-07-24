@@ -98,7 +98,8 @@ void SendMetadataRequest(std::vector<json::value>&& entries,
 
   if (entries.size() == 1) {
     // A single request cannot be sent to the batch endpoint. In order to work
-    // around this, we add a copy of this request.
+    // around this, we add a copy of this request. We're making use of the fact
+    // that sending two identical requests is idempotent.
     entries.emplace_back(entries[0]->Clone());
   }
   const std::string content_type =
