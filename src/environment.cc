@@ -110,10 +110,10 @@ bool Environment::IsGcpLocationZonal(const std::string& location) const {
   // "us-central1-a", "us-east1-b") and regions (e.g."us-central1", "us-east1").
   int num_dashes = std::count(location.begin(), location.end(), '-');
   if (num_dashes > 2) {
-    LOG(WARNING) << "Found more than two dashes in the GCP location: "
+    LOG(ERROR) << "Found more than two dashes in the GCP location: "
                  << location;
   }
-  return num_dashes == 2;
+  return num_dashes >= 2;
 }
 
 const std::string& Environment::NumericProjectId() const {
