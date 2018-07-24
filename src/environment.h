@@ -42,6 +42,7 @@ class Environment {
   const std::string& CredentialsPrivateKey() const;
 
   std::string GetMetadataString(const std::string& path) const;
+  bool IsGcpLocationZonal(const std::string& location) const;
 
   const Configuration& config() const {
     return config_;
