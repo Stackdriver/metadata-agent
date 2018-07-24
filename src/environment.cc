@@ -111,7 +111,7 @@ bool Environment::IsGcpLocationZonal(const std::string& location) const {
   int num_dashes = std::count(location.begin(), location.end(), '-');
   if (num_dashes > 2) {
     LOG(ERROR) << "Found more than two dashes in the GCP location: "
-                 << location;
+               << location;
   }
   return num_dashes >= 2;
 }
