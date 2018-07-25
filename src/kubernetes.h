@@ -55,6 +55,10 @@ class KubernetesReader {
   void WatchPods(const std::string& node_name,
                  MetadataUpdater::UpdateCallback callback) const;
 
+  // Generic Kubernetes resource watcher.
+  void WatchResources(const std::string& api_path, const std::string& name,
+                      MetadataUpdater::UpdateCallback callback) const;
+
   // Gets the name of the node the agent is running on.
   // Returns an empty string if unable to find the current node.
   const std::string& CurrentNode() const;
@@ -96,9 +100,32 @@ class KubernetesReader {
       MetadataUpdater::UpdateCallback callback, const json::Object* pod,
       Timestamp collected_at, bool is_deleted) const throw(json::Exception);
 
+  // Kubernetes resource watch callback.
+  void ResourceCallback(
+      MetadataUpdater::UpdateCallback callback, const json::Object* resource,
+      Timestamp collected_at, bool is_deleted) const throw(json::Exception);
+
   // Builds the cluster full name from cluster related environment variables.
   const std::string ClusterFullName() const;
 
+  // Builds the resource type and version of a Kubernetes resource given its API
+  // version and kind.
+  const std::pair<std::string, std::string> TypeAndVersion(
+      const std::string& api_version, const std::string& kind) const;
+
+  // Computes the full resource name given the self link.
+  const std::string FullResourceName(const std::string& self_link) const;
+
+  // Given a generic Kubernetes object, return only the associated metadata. The
+  // local ID and MonitoredResource objects are not returned.
+  MetadataStore::Metadata GetMetadataOnly(
+      const json::Object* resource, Timestamp collected_at, bool is_deleted)
+      const throw(json::Exception);
+  // Given a generic Kubernetes object, return the associated metadata, with the
+  // local ID and MonitoredResource set to blank values.
+  MetadataUpdater::ResourceMetadata GetResourceMetadata(
+      const json::Object* resource, Timestamp collected_at, bool is_deleted)
+      const throw(json::Exception);
   // Given a node object, return the associated metadata.
   MetadataUpdater::ResourceMetadata GetNodeMetadata(
       const json::Object* node, Timestamp collected_at, bool is_deleted) const
