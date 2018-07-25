@@ -54,6 +54,11 @@ class MetadataStore {
           version(other.version), schema_name(other.schema_name),
           is_deleted(other.is_deleted), collected_at(other.collected_at),
           metadata(std::move(other.metadata)), ignore(other.ignore) {}
+    Metadata(const Metadata& other)
+        : name(other.name), type(other.type), location(other.location),
+          version(other.version), schema_name(other.schema_name),
+          is_deleted(other.is_deleted), collected_at(other.collected_at),
+          metadata(other.metadata->Clone()), ignore(other.ignore) {}
 
     Metadata Clone() const {
       if (ignore) {
