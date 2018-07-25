@@ -120,6 +120,9 @@ KubernetesReader::KubernetesReader(const Configuration& config,
 MetadataStore::Metadata KubernetesReader::GetMetadataOnly(
     const json::Object* resource, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
+#ifndef ENABLE_KUBERNETES_METADATA
+  return MetadataStore::Metadata::IGNORED();
+#else
   const std::string cluster_location = environment_.KubernetesClusterLocation();
 
   const std::string kind = resource->Get<json::String>("kind");
@@ -143,13 +146,9 @@ MetadataStore::Metadata KubernetesReader::GetMetadataOnly(
     LOG(INFO) << "Raw resource metadata for full name: " << resource_full_name
               << ": " << *resource;
   }
-
-#ifdef ENABLE_KUBERNETES_METADATA
   return MetadataStore::Metadata(resource_full_name, type, cluster_location,
                                  version, schema, is_deleted, collected_at,
                                  resource->Clone());
-#else
-  return MetadataStore::Metadata::IGNORED();
 #endif
 }
 
@@ -565,22 +564,29 @@ const std::string KubernetesReader::FullResourceName(
       slash_split, self_link, boost::algorithm::is_any_of("/"));
 
   std::vector<std::string> link_components;
-  if(slash_split[1] == "api") {
-    // Core resources, start with "/api/<version>/..."
-    link_components.assign(slash_split.begin() + 3, slash_split.end());
+  if (slash_split.size() >= 5 &&
+      (slash_split[1] == "api" || slash_split[1] == "apis")) {
+    // The logic here gets rid of the leading "/api" or "/apis" along with the
+    // resource version.
+    if(slash_split[1] == "api") {
+      // Core resources, start with "/api/<version>/..."
+      link_components.assign(slash_split.begin() + 3, slash_split.end());
+    } else {
+      // Non-core resources, start with "/apis/<group-name>/<version>/..."
+      // The <group-name> is part of the resource type, and hence the full name
+      const std::string group_name = slash_split[2];
+      link_components.push_back(group_name);
+      link_components.insert(link_components.end(),
+                             slash_split.begin() + 4, slash_split.end());
+    }
+    const std::string relative_link =
+        boost::algorithm::join(link_components, "/");
+    return format::Substitute(kK8sFullNameFormat,
+                              {{"cluster_full_name", ClusterFullName()},
+                               {"relative_link", relative_link}});
   } else {
-    // Non-core resources, start with "/apis/<group-name>/<version>/..."
-    const std::string group_name = slash_split[2];
-    link_components.push_back(group_name);
-    link_components.insert(link_components.end(),
-                           slash_split.begin() + 4, slash_split.end());
-
+    LOG(ERROR) << "Invalid selfLink: " << self_link;
   }
-  const std::string relative_link =
-      boost::algorithm::join(link_components, "/");
-  return format::Substitute(kK8sFullNameFormat,
-                            {{"cluster_full_name", ClusterFullName()},
-                             {"relative_link", relative_link}});
 }
 
 namespace {

@@ -53,8 +53,10 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
   KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
   json::value node = json::object({
     {"apiVersion", json::string("NodeVersion")},
+    {"kind", json::string("Node")},
     {"metadata", json::object({
       {"name", json::string("testname")},
+      {"selfLink", json::string("/api/v1/nodes/testname")},
       {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
     })}
   });
@@ -93,9 +95,12 @@ TEST_F(KubernetesTest, GetPodMetadata) {
 
   json::value pod = json::object({
     {"apiVersion", json::string("PodVersion")},
+    {"kind", json::string("Pod")},
     {"metadata", json::object({
       {"namespace", json::string("TestNamespace")},
       {"name", json::string("TestName")},
+      {"selfLink",
+       json::string("/api/v1/namespaces/TestNamespace/pods/TestName")},
       {"uid", json::string("TestUid")},
       {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
     })},
@@ -217,8 +222,11 @@ TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
 
   json::value pod = json::object({
     {"apiVersion", json::string("PodVersion")},
+    {"kind", json::string("Pod")},
     {"metadata", json::object({
       {"name", json::string("TestPodName")},
+      {"selfLink",
+       json::string("/api/v1/namespaces/TestNamespace/pods/TestPodName")},
       {"namespace", json::string("TestNamespace")},
       {"uid", json::string("TestPodUid")},
       {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
@@ -280,8 +288,11 @@ TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
       {"pod_name", "TestPodName"},
   }), m[2].resource());
   EXPECT_FALSE(m[2].metadata().ignore);
-  EXPECT_EQ("", m[2].metadata().name);
-  EXPECT_EQ("", m[2].metadata().version);
+  EXPECT_EQ("//container.googleapis.com/projects//locations/"
+            "TestClusterLocation/clusters/TestClusterName/k8s/namespaces/"
+            "TestNamespace/pods/TestPodName",
+            m[2].metadata().name);
+  EXPECT_EQ("PodVersion", m[2].metadata().version);
   EXPECT_FALSE(m[2].metadata().is_deleted);
   EXPECT_EQ(Timestamp(), m[2].metadata().collected_at);
   EXPECT_EQ(pod->ToString(), m[2].metadata().metadata->ToString());
