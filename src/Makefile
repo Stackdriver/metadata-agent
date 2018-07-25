@@ -18,7 +18,7 @@ SED_I=/usr/bin/env sed -i
 CMAKE=cmake
 CPPFLAGS=\
     -DAGENT_VERSION='$(PKG_VERSION)-$(PKG_RELEASE)' \
-    -DENABLE_DOCKER_METADATA -DENABLE_KUBERNETES_METADATA \
+    -DENABLE_DOCKER_METADATA \
     -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include
 CXXFLAGS=\
     -std=c++11 -g -pthread -Wno-write-strings -Wno-deprecated

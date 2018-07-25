@@ -149,13 +149,9 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_node_name},
       k8s_node,
-#ifdef ENABLE_KUBERNETES_METADATA
       MetadataStore::Metadata(config_.MetadataIngestionRawContentVersion(),
                               is_deleted, created_at, collected_at,
                               std::move(node_raw_metadata))
-#else
-      MetadataStore::Metadata::IGNORED()
-#endif
   );
 }
 
@@ -262,13 +258,9 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_pod_id, k8s_pod_name},
       k8s_pod,
-#ifdef ENABLE_KUBERNETES_METADATA
       MetadataStore::Metadata(config_.MetadataIngestionRawContentVersion(),
                               is_deleted, created_at, collected_at,
                               std::move(pod_raw_metadata))
-#else
-      MetadataStore::Metadata::IGNORED()
-#endif
   );
 }
 
@@ -370,13 +362,9 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
   return MetadataUpdater::ResourceMetadata(
       std::move(local_resource_ids),
       k8s_container,
-#ifdef ENABLE_KUBERNETES_METADATA
       MetadataStore::Metadata(kKubernetesApiVersion,
                               is_deleted, created_at, collected_at,
                               std::move(container_raw_metadata))
-#else
-      MetadataStore::Metadata::IGNORED()
-#endif
   );
 }
 
@@ -533,13 +521,9 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetClusterMetadata(
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{},
       k8s_cluster,
-#ifdef ENABLE_KUBERNETES_METADATA
       MetadataStore::Metadata(config_.MetadataIngestionRawContentVersion(),
                               /*is_deleted=*/false, created_at, collected_at,
                               std::move(cluster_raw_metadata))
-#else
-      MetadataStore::Metadata::IGNORED()
-#endif
   );
 }
 

@@ -22,7 +22,6 @@ CPP_NETLIB_LIBS=\
 YAML_CPP_LIBS=$(YAML_CPP_LIBDIR)/libyaml-cpp.a
 
 CPPFLAGS+= \
-    -DENABLE_KUBERNETES_METADATA \
     -isystem $(GTEST_DIR)/include -I$(GMOCK_DIR)/include \
     -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include
 CXXFLAGS=\
