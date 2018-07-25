@@ -211,6 +211,7 @@ TEST_F(KubernetesTest, GetContainerMetadata) {
 
 TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
   Configuration config(std::stringstream(
+    "ProjectId: TestProjectId\n"
     "KubernetesClusterName: TestClusterName\n"
     "KubernetesClusterLocation: TestClusterLocation\n"
     "MetadataApiResourceTypeSeparator: \".\"\n"
@@ -288,7 +289,7 @@ TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
       {"pod_name", "TestPodName"},
   }), m[2].resource());
   EXPECT_FALSE(m[2].metadata().ignore);
-  EXPECT_EQ("//container.googleapis.com/projects//locations/"
+  EXPECT_EQ("//container.googleapis.com/projects/TestProjectId/locations/"
             "TestClusterLocation/clusters/TestClusterName/k8s/namespaces/"
             "TestNamespace/pods/TestPodName",
             m[2].metadata().name);

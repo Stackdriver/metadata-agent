@@ -102,7 +102,7 @@ class KubernetesReader {
 
   // Kubernetes resource watch callback.
   void ResourceCallback(
-      MetadataUpdater::UpdateCallback callback, const json::Object* resource,
+      MetadataUpdater::UpdateCallback callback, const json::Object* object,
       Timestamp collected_at, bool is_deleted) const throw(json::Exception);
 
   // Builds the cluster full name from cluster related environment variables.
@@ -118,13 +118,13 @@ class KubernetesReader {
 
   // Given a generic Kubernetes object, return only the associated metadata. The
   // local ID and MonitoredResource objects are not returned.
-  MetadataStore::Metadata GetMetadataOnly(
-      const json::Object* resource, Timestamp collected_at, bool is_deleted)
+  MetadataStore::Metadata GetMetadata(
+      const json::Object* object, Timestamp collected_at, bool is_deleted)
       const throw(json::Exception);
   // Given a generic Kubernetes object, return the associated metadata, with the
   // local ID and MonitoredResource set to blank values.
   MetadataUpdater::ResourceMetadata GetResourceMetadata(
-      const json::Object* resource, Timestamp collected_at, bool is_deleted)
+      const json::Object* object, Timestamp collected_at, bool is_deleted)
       const throw(json::Exception);
   // Given a node object, return the associated metadata.
   MetadataUpdater::ResourceMetadata GetNodeMetadata(

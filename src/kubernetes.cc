@@ -117,17 +117,17 @@ KubernetesReader::KubernetesReader(const Configuration& config,
                                    HealthChecker* health_checker)
     : config_(config), environment_(config), health_checker_(health_checker) {}
 
-MetadataStore::Metadata KubernetesReader::GetMetadataOnly(
-    const json::Object* resource, Timestamp collected_at, bool is_deleted) const
+MetadataStore::Metadata KubernetesReader::GetMetadata(
+    const json::Object* object, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
 #ifndef ENABLE_KUBERNETES_METADATA
   return MetadataStore::Metadata::IGNORED();
 #else
   const std::string cluster_location = environment_.KubernetesClusterLocation();
 
-  const std::string kind = resource->Get<json::String>("kind");
-  const std::string api_version = resource->Get<json::String>("apiVersion");
-  const json::Object* metadata = resource->Get<json::Object>("metadata");
+  const std::string kind = object->Get<json::String>("kind");
+  const std::string api_version = object->Get<json::String>("apiVersion");
+  const json::Object* metadata = object->Get<json::Object>("metadata");
   const std::string self_link = metadata->Get<json::String>("selfLink");
   const std::pair<std::string, std::string> type_and_version =
       TypeAndVersion(api_version, kind);
@@ -144,19 +144,19 @@ MetadataStore::Metadata KubernetesReader::GetMetadataOnly(
 
   if (config_.VerboseLogging()) {
     LOG(INFO) << "Raw resource metadata for full name: " << resource_full_name
-              << ": " << *resource;
+              << ": " << *object;
   }
   return MetadataStore::Metadata(resource_full_name, type, cluster_location,
                                  version, schema, is_deleted, collected_at,
-                                 resource->Clone());
+                                 object->Clone());
 #endif
 }
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetResourceMetadata(
-    const json::Object* resource, Timestamp collected_at, bool is_deleted) const
+    const json::Object* object, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
   MetadataStore::Metadata metadata =
-      GetMetadataOnly(resource, collected_at, is_deleted);
+      GetMetadata(object, collected_at, is_deleted);
   return MetadataUpdater::ResourceMetadata(
       /*ids=*/std::vector<std::string>{},
       MonitoredResource("", {}),
@@ -181,7 +181,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
       config_.MetadataApiResourceTypeSeparator());
 
   MetadataStore::Metadata node_metadata =
-      GetMetadataOnly(node, collected_at, is_deleted);
+      GetMetadata(node, collected_at, is_deleted);
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_node_name},
       k8s_node,
@@ -213,7 +213,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
       config_.MetadataApiResourceTypeSeparator());
 
   MetadataStore::Metadata pod_metadata =
-      GetMetadataOnly(pod, collected_at, is_deleted);
+      GetMetadata(pod, collected_at, is_deleted);
   return MetadataUpdater::ResourceMetadata(
       std::vector<std::string>{k8s_pod_id, k8s_pod_name},
       k8s_pod,
@@ -558,7 +558,7 @@ const std::pair<std::string, std::string> KubernetesReader::TypeAndVersion(
                            {{"group_name", group_name}, {"kind", kind}});
     return std::make_pair(resource_type, version);
   } else {
-      LOG(ERROR) << "Invalid apiVersion: " << api_version;
+    LOG(ERROR) << "Invalid apiVersion: " << api_version;
   }
 }
 
@@ -573,12 +573,12 @@ const std::string KubernetesReader::FullResourceName(
       (slash_split[1] == "api" || slash_split[1] == "apis")) {
     // The logic here gets rid of the leading "/api" or "/apis" along with the
     // resource version.
-    if(slash_split[1] == "api") {
+    if (slash_split[1] == "api") {
       // Core resources, start with "/api/<version>/..."
       link_components.assign(slash_split.begin() + 3, slash_split.end());
     } else {
       // Non-core resources, start with "/apis/<group-name>/<version>/..."
-      // The <group-name> is part of the resource type, and hence the full name
+      // The <group-name> is part of the resource type, and hence the full name.
       const std::string group_name = slash_split[2];
       link_components.push_back(group_name);
       link_components.insert(link_components.end(),
@@ -910,11 +910,11 @@ void KubernetesReader::WatchNodes(
 
 void KubernetesReader::ResourceCallback(
     MetadataUpdater::UpdateCallback callback,
-    const json::Object* resource, Timestamp collected_at, bool is_deleted) const
+    const json::Object* object, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
   std::vector<MetadataUpdater::ResourceMetadata> result_vector;
   result_vector.emplace_back(
-      GetResourceMetadata(resource, collected_at, is_deleted));
+      GetResourceMetadata(object, collected_at, is_deleted));
   callback(std::move(result_vector));
 }
 
@@ -924,7 +924,6 @@ void KubernetesReader::WatchResources(
   LOG(INFO) << "Watch thread (" << name << ") started";
 
   try {
-    // TODO: There seems to be a Kubernetes API bug with watch=true.
     WatchMaster(
         name, api_path,
         [=](const json::Object* resource, Timestamp collected_at,
