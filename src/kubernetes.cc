@@ -155,10 +155,12 @@ MetadataStore::Metadata KubernetesReader::GetMetadataOnly(
 MetadataUpdater::ResourceMetadata KubernetesReader::GetResourceMetadata(
     const json::Object* resource, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
+  MetadataStore::Metadata metadata =
+      GetMetadataOnly(resource, collected_at, is_deleted);
   return MetadataUpdater::ResourceMetadata(
       /*ids=*/std::vector<std::string>{},
       MonitoredResource("", {}),
-      GetMetadataOnly(resource, collected_at, is_deleted));
+      metadata.Clone());
 }
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
@@ -181,7 +183,9 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
   MetadataStore::Metadata node_metadata =
       GetMetadataOnly(node, collected_at, is_deleted);
   return MetadataUpdater::ResourceMetadata(
-      std::vector<std::string>{k8s_node_name}, k8s_node, node_metadata);
+      std::vector<std::string>{k8s_node_name},
+      k8s_node,
+      node_metadata.Clone());
 }
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
@@ -211,8 +215,9 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
   MetadataStore::Metadata pod_metadata =
       GetMetadataOnly(pod, collected_at, is_deleted);
   return MetadataUpdater::ResourceMetadata(
-      std::vector<std::string>{k8s_pod_id, k8s_pod_name}, k8s_pod, pod_metadata
-  );
+      std::vector<std::string>{k8s_pod_id, k8s_pod_name},
+      k8s_pod,
+      pod_metadata.Clone());
 }
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
