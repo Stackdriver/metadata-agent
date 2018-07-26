@@ -56,8 +56,9 @@ class KubernetesReader {
                  MetadataUpdater::UpdateCallback callback) const;
 
   // Generic Kubernetes resource watcher.
-  void WatchResources(const std::string& api_path, const std::string& name,
-                      MetadataUpdater::UpdateCallback callback) const;
+  void WatchResources(
+      const std::string& plural_kind, const std::string& version,
+      MetadataUpdater::UpdateCallback callback) const;
 
   // Gets the name of the node the agent is running on.
   // Returns an empty string if unable to find the current node.
@@ -107,11 +108,6 @@ class KubernetesReader {
 
   // Builds the cluster full name from cluster related environment variables.
   const std::string ClusterFullName() const;
-
-  // Builds the resource type and version of a Kubernetes resource given its API
-  // version and kind.
-  const std::pair<std::string, std::string> TypeAndVersion(
-      const std::string& api_version, const std::string& kind) const;
 
   // Computes the full resource name given the self link.
   const std::string FullResourceName(const std::string& self_link) const;

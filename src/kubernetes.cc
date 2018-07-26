@@ -51,7 +51,6 @@ constexpr const int kKubernetesValidationRetryDelaySeconds = 1;
 #if 0
 constexpr const char kKubernetesEndpointHost[] = "https://kubernetes.default.svc";
 #endif
-constexpr const char kKubernetesApiVersion[] = "1.6";
 constexpr const char kKubernetesEndpointPath[] = "/api/v1";
 
 constexpr const char kGkeContainerResourcePrefix[] = "gke_container";
@@ -60,8 +59,6 @@ constexpr const char kK8sPodResourcePrefix[] = "k8s_pod";
 constexpr const char kK8sNodeResourcePrefix[] = "k8s_node";
 
 constexpr const char kNodeSelectorPrefix[] = "?fieldSelector=spec.nodeName%3D";
-
-constexpr const char kWatchParam[] = "watch=true";
 
 constexpr const char kDockerIdPrefix[] = "docker://";
 
@@ -73,12 +70,20 @@ constexpr const char kKubernetesSchemaNameFormat[] =
 constexpr const char kClusterFullNameFormat[] =
     "//container.googleapis.com/projects/{{project_id}}/{{location_type}}/"
     "{{location}}/clusters/{{cluster_name}}";
-constexpr const char kK8sCoreGroupResourceTypeFormat[] = "io.k8s.{{kind}}";
-constexpr const char kK8sNamedGroupsResourceTypeFormat[] =
-    "io.k8s.{{group_name}}.{{kind}}";
 constexpr const char kK8sFullNameFormat[] =
     "{{cluster_full_name}}/k8s/{{relative_link}}";
 
+constexpr const char kK8sCoreGroup[] = "core";
+constexpr const char kK8sCoreGroupResourceTypeFormat[] = "io.k8s.{{kind}}";
+constexpr const char kK8sNamedGroupsResourceTypeFormat[] =
+    "io.k8s.{{group_name}}.{{kind}}";
+
+// TODO: There seems to be a Kubernetes API bug with watch=true, so we
+// explicitly add "watch" to the path.
+constexpr const char kK8sCoreGroupWatchEndpointPathFormat[] =
+    "/api/{{version}}/watch/{{plural_kind}}";
+constexpr const char kK8sNamedGroupsWatchEndpointPathFormat[] =
+    "/apis/{{group_name}}/{{version}}/watch/{{plural_kind}}";
 
 // Returns the full path to the secret filename.
 std::string SecretPath(const std::string& secret) {
@@ -102,6 +107,68 @@ bool ReadServiceAccountSecret(
   }
   std::getline(input, destination);
   return !input.fail();
+}
+
+// Extracts the API group and version from the api_version.
+const std::pair<std::string, std::string> ApiGroupAndVersion(
+    const std::string& api_version) {
+  std::vector<std::string> slash_split;
+  boost::algorithm::split(
+      slash_split, api_version, boost::algorithm::is_any_of("/"));
+  if (slash_split.size() == 1) {
+    // api_version has the format "<version>". E.g. "v1".
+    return std::make_pair(std::string(kK8sCoreGroup), slash_split[0]);
+  } else if (slash_split.size() == 2) {
+    // api_version has the format "<group-name>/<version>". E.g. "apps/v1".
+    return std::make_pair(slash_split[0], slash_split[1]);
+  } else {
+    LOG(ERROR) << "Invalid apiVersion: " << api_version;
+  }
+}
+
+// Builds the resource type and version of a Kubernetes resource given its API
+// version and kind.
+const std::pair<std::string, std::string> TypeAndVersion(
+    const std::string& api_version, const std::string& kind) {
+  const std::pair<std::string, std::string> group_and_version =
+      ApiGroupAndVersion(api_version);
+  const std::string group_name = group_and_version.first;
+  std::string resource_type;
+  if (group_name == kK8sCoreGroup) {
+    resource_type =
+        format::Substitute(kK8sCoreGroupResourceTypeFormat, {{"kind", kind}});
+  } else {
+    const std::string resource_type =
+        format::Substitute(kK8sNamedGroupsResourceTypeFormat,
+                           {{"group_name", group_name}, {"kind", kind}});
+  }
+  return std::make_pair(resource_type, group_and_version.second);
+}
+
+// Build the watch path given the Kubernetes resource kind and API version.
+const std::string WatchPath(
+    const std::string& plural_kind, const std::string& api_version,
+    const std::string& selector) {
+  const std::pair<std::string, std::string> group_and_version =
+      ApiGroupAndVersion(api_version);
+  const std::string group_name = group_and_version.first;
+  const std::string version = group_and_version.second;
+  std::string api_path;
+  if (group_name == kK8sCoreGroup) {
+    api_path = format::Substitute(
+        kK8sCoreGroupWatchEndpointPathFormat,
+        {{"version", version}, {"plural_kind", plural_kind}});
+  } else {
+    api_path = format::Substitute(
+        kK8sNamedGroupsWatchEndpointPathFormat,
+        {{"group_name", group_name},
+         {"version", version}, {"plural_kind", plural_kind}});
+  }
+  if (selector.empty()) {
+    return std::string(api_path);
+  } else {
+    return api_path + "/" + selector;
+  }
 }
 
 }
@@ -135,7 +202,7 @@ MetadataStore::Metadata KubernetesReader::GetMetadata(
   const std::string version = type_and_version.second;
 
   const std::string schema =
-      format::Substitute(std::string(kKubernetesSchemaNameFormat),
+      format::Substitute(kKubernetesSchemaNameFormat,
                          {{"type", type}, {"version", version}});
   const std::string created_str =
       metadata->Get<json::String>("creationTimestamp");
@@ -539,29 +606,6 @@ const std::string KubernetesReader::ClusterFullName() const {
                              {"cluster_name", cluster_name}});
 }
 
-const std::pair<std::string, std::string> KubernetesReader::TypeAndVersion(
-    const std::string& api_version, const std::string& kind) const {
-  size_t num_slashes = std::count(api_version.begin(), api_version.end(), '/');
-  if (num_slashes == 0) {
-    // api_version has the format "<version>". E.g. "v1".
-    const std::string resource_type =
-        format::Substitute(kK8sCoreGroupResourceTypeFormat, {{"kind", kind}});
-    return std::make_pair(resource_type, api_version);
-  } else if (num_slashes == 1) {
-    // api_version has the format "<group-name>/<version>". E.g. "apps/v1".
-    size_t slash_position = api_version.find('/');
-    const std::string group_name = api_version.substr(0, slash_position);
-    const std::string version =
-        api_version.substr(slash_position + 1, std::string::npos);
-    const std::string resource_type =
-        format::Substitute(kK8sNamedGroupsResourceTypeFormat,
-                           {{"group_name", group_name}, {"kind", kind}});
-    return std::make_pair(resource_type, version);
-  } else {
-    LOG(ERROR) << "Invalid apiVersion: " << api_version;
-  }
-}
-
 const std::string KubernetesReader::FullResourceName(
     const std::string& self_link) const {
   std::vector<std::string> slash_split;
@@ -677,10 +721,7 @@ void KubernetesReader::WatchMaster(
     const std::string& path,
     std::function<void(const json::Object*, Timestamp, bool)> callback) const
     throw(QueryException, json::Exception) {
-  const std::string prefix((path.find('?') == std::string::npos) ? "?" : "&");
-  const std::string watch_param(prefix + kWatchParam);
-  const std::string endpoint(
-      config_.KubernetesEndpointHost() + path + watch_param);
+  const std::string endpoint(config_.KubernetesEndpointHost() + path);
   http::client client(
       http::client::options()
       .openssl_certificate(SecretPath("ca.crt")));
@@ -852,12 +893,12 @@ void KubernetesReader::WatchPods(
   const std::string pod_label_selector(
       config_.KubernetesPodLabelSelector().empty()
       ? "" : "&" + config_.KubernetesPodLabelSelector());
+  const std::string api_path =
+      WatchPath("pods", "v1", node_selector + pod_label_selector);
 
   try {
     WatchMaster(
-        "Pods",
-        std::string(kKubernetesEndpointPath) + "/pods" + node_selector
-        + pod_label_selector,
+        "pods", api_path,
         [=](const json::Object* pod, Timestamp collected_at, bool is_deleted) {
           PodCallback(callback, pod, collected_at, is_deleted);
         });
@@ -887,12 +928,11 @@ void KubernetesReader::WatchNodes(
     MetadataUpdater::UpdateCallback callback) const {
   LOG(INFO) << "Watch thread (node) started for node "
             << (node_name.empty() ? "<all>" : node_name);
+  const std::string api_path = WatchPath("nodes", "v1", node_name);
 
   try {
-    // TODO: There seems to be a Kubernetes API bug with watch=true.
     WatchMaster(
-        "Node",
-        std::string(kKubernetesEndpointPath) + "/watch/nodes/" + node_name,
+        "nodes", api_path,
         [=](const json::Object* node, Timestamp collected_at, bool is_deleted) {
           NodeCallback(callback, node, collected_at, is_deleted);
         });
@@ -919,27 +959,28 @@ void KubernetesReader::ResourceCallback(
 }
 
 void KubernetesReader::WatchResources(
-    const std::string& api_path, const std::string& name,
+    const std::string& plural_kind, const std::string& api_version,
     MetadataUpdater::UpdateCallback callback) const {
-  LOG(INFO) << "Watch thread (" << name << ") started";
-
+  LOG(INFO) << "Watch thread (" << plural_kind << ") started";
+  const std::string api_path =
+      WatchPath(plural_kind, api_version, /*selector=*/"");
   try {
     WatchMaster(
-        name, api_path,
+        plural_kind, api_path,
         [=](const json::Object* resource, Timestamp collected_at,
             bool is_deleted) {
           ResourceCallback(callback, resource, collected_at, is_deleted);
         });
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
-    LOG(ERROR) << "No more " << name << " metadata will be collected";
+    LOG(ERROR) << "No more " << plural_kind << " metadata will be collected";
   } catch (const KubernetesReader::QueryException& e) {
-    LOG(ERROR) << "No more " << name << " metadata will be collected";
+    LOG(ERROR) << "No more " << plural_kind << " metadata will be collected";
   }
   if (health_checker_) {
-    health_checker_->SetUnhealthy("kubernetes_" + name + "_thread");
+    health_checker_->SetUnhealthy("kubernetes_" + plural_kind + "_thread");
   }
-  LOG(INFO) << "Watch thread (" << name << ") exiting";
+  LOG(INFO) << "Watch thread (" << plural_kind << ") exiting";
 }
 
 KubernetesUpdater::KubernetesUpdater(const Configuration& config,
@@ -991,10 +1032,10 @@ void KubernetesUpdater::StartUpdater() {
     if (config().KubernetesClusterLevelMetadata() &&
         config().KubernetesServiceMetadata()) {
       service_watch_thread_ = std::thread([=]() {
-        reader_.WatchResources("/api/v1/services", "Service", cb);
+        reader_.WatchResources("services", "v1", cb);
       });
       endpoints_watch_thread_ = std::thread([=]() {
-        reader_.WatchResources("/api/v1/endpoints", "Endpoints", cb);
+        reader_.WatchResources("endpoints", "v1", cb);
       });
     }
   } else {
