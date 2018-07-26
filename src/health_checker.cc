@@ -23,8 +23,9 @@
 
 namespace google {
 
-HealthChecker::HealthChecker(const Configuration& config)
-    : config_(config) {
+HealthChecker::HealthChecker(const Configuration& config,
+                             const MetadataStore& store)
+    : config_(config), store_(store) {
   boost::filesystem::create_directories(
       boost::filesystem::path(config_.HealthCheckFile()).parent_path());
   std::remove(config_.HealthCheckFile().c_str());
@@ -50,23 +51,18 @@ void HealthChecker::CleanupForTest() {
 std::set<std::string> HealthChecker::UnhealthyComponents() const {
   std::lock_guard<std::mutex> lock(mutex_);
   std::set<std::string> result(unhealthy_components_);
-  for (auto& c : component_callbacks_) {
-    if (c.second != nullptr && !c.second()) {
-      result.insert(c.first);
+
+  Timestamp cutoff = std::chrono::system_clock::now()
+    - std::chrono::seconds(config_.HealthCheckMaxDataAgeSeconds());
+  auto last_collection_map = store_.GetLastCollectionMap();
+  for (auto& kv : last_collection_map) {
+    const std::string& watch_name = kv.first;
+    const Timestamp& collected_at = kv.second;
+    if (collected_at < cutoff) {
+      result.insert(watch_name);
     }
   }
   return result;
-}
-
-void HealthChecker::RegisterComponent(const std::string& component,
-                                      std::function<bool()> callback) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  component_callbacks_[component] = callback;
-}
-
-void HealthChecker::UnregisterComponent(const std::string& component) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  component_callbacks_.erase(component);
 }
 
 }  // namespace google

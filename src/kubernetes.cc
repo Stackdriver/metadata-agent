@@ -774,21 +774,6 @@ void KubernetesReader::WatchMaster(
   http::client::request request(endpoint);
   request << boost::network::header(
       "Authorization", "Bearer " + KubernetesApiToken());
-  // Initialize the expiration time.  This is the time by when the
-  // watcher has to receive some data to be considered healthy.  Each
-  // receipt of a new message bumps the expiration forward.
-  //
-  // TODO: Cache the expiration (or timestamp of last receipt) in the
-  // store instead of here.
-  const int max_data_age = config_.HealthCheckMaxDataAgeSeconds();
-  std::mutex expiration_mutex;
-  auto expiration =
-    std::chrono::steady_clock::now() + time::seconds(max_data_age);
-  CheckHealth check_health(
-      health_checker_, name, [&expiration_mutex, &expiration]{
-        std::lock_guard<std::mutex> expiration_lock(expiration_mutex);
-        return std::chrono::steady_clock::now() < expiration;
-      });
   const bool verbose = config_.VerboseLogging();
   int failures = 0;
   while (true) {
@@ -809,12 +794,7 @@ void KubernetesReader::WatchMaster(
       std::unique_lock<std::mutex> watch_completion(completion_mutex);
       Watcher watcher(
         endpoint,
-        [=, &expiration_mutex, &expiration](json::value raw_watch) {
-          {
-            std::lock_guard<std::mutex> expiration_lock(expiration_mutex);
-            expiration =
-              std::chrono::steady_clock::now() + time::seconds(max_data_age);
-          }
+        [=](json::value raw_watch) {
           WatchEventCallback(callback, name, std::move(raw_watch));
         },
         std::move(watch_completion), verbose);
@@ -1156,7 +1136,7 @@ void KubernetesReader::PodCallback(
     throw(json::Exception) {
   std::vector<MetadataUpdater::ResourceMetadata> result_vector =
       GetPodAndContainerMetadata(pod, collected_at, is_deleted);
-  callback(std::move(result_vector));
+  callback("Pods", collected_at, std::move(result_vector));
 }
 
 void KubernetesReader::WatchPods(
@@ -1196,7 +1176,7 @@ void KubernetesReader::NodeCallback(
     throw(json::Exception) {
   std::vector<MetadataUpdater::ResourceMetadata> result_vector;
   result_vector.emplace_back(GetNodeMetadata(node, collected_at, is_deleted));
-  callback(std::move(result_vector));
+  callback("Node", collected_at, std::move(result_vector));
 }
 
 void KubernetesReader::WatchNodes(
@@ -1234,7 +1214,7 @@ void KubernetesReader::ServiceCallback(
   // TODO: using a temporary did not work here.
   std::vector<MetadataUpdater::ResourceMetadata> result_vector;
   result_vector.emplace_back(GetClusterMetadata(collected_at));
-  callback(std::move(result_vector));
+  callback("Service", collected_at, std::move(result_vector));
 }
 
 void KubernetesReader::WatchServices(MetadataUpdater::UpdateCallback callback) {
@@ -1267,7 +1247,7 @@ void KubernetesReader::EndpointsCallback(
   // TODO: using a temporary did not work here.
   std::vector<MetadataUpdater::ResourceMetadata> result_vector;
   result_vector.emplace_back(GetClusterMetadata(collected_at));
-  callback(std::move(result_vector));
+  callback("Endpoints", collected_at, std::move(result_vector));
 }
 
 void KubernetesReader::WatchEndpoints(
@@ -1329,8 +1309,9 @@ void KubernetesUpdater::StartUpdater() {
     const std::string watched_node(
         config().KubernetesClusterLevelMetadata() ? "" : current_node);
 
-    auto cb = [=](std::vector<MetadataUpdater::ResourceMetadata>&& results) {
-      MetadataCallback(std::move(results));
+    auto cb = [=](const std::string& watch_name, const Timestamp& collected_at,
+                  std::vector<MetadataUpdater::ResourceMetadata>&& results) {
+      MetadataCallback(watch_name, collected_at, std::move(results));
     };
     node_watch_thread_ = std::thread([=]() {
       reader_.WatchNodes(watched_node, cb);
@@ -1363,8 +1344,10 @@ void KubernetesUpdater::NotifyStopUpdater() {
 }
 
 void KubernetesUpdater::MetadataCallback(
+    const std::string& watch_name, const Timestamp& collected_at,
     std::vector<MetadataUpdater::ResourceMetadata>&& result_vector) {
   for (MetadataUpdater::ResourceMetadata& result : result_vector) {
+    UpdateLastCollection(watch_name, collected_at);
     UpdateResourceCallback(result);
     UpdateMetadataCallback(std::move(result));
   }

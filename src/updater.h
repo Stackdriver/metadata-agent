@@ -76,7 +76,8 @@ class MetadataUpdater {
   void NotifyStop();
 
   using UpdateCallback =
-      std::function<void(std::vector<MetadataUpdater::ResourceMetadata>&&)>;
+      std::function<void(const std::string&, const Timestamp&,
+                         std::vector<MetadataUpdater::ResourceMetadata>&&)>;
 
  protected:
   friend class UpdaterTest;
@@ -106,6 +107,12 @@ class MetadataUpdater {
   // Internal method for notifying the updater's to stop its logic.
   // This method should not perform any blocking operations (e.g., wait).
   virtual void NotifyStopUpdater() = 0;
+
+  // Updates the last collection map in the store.
+  void UpdateLastCollection(const std::string& watch_name,
+                            const Timestamp& collected_at) {
+    store_->UpdateLastCollection(watch_name, collected_at);
+  }
 
   // Updates the resource map in the store.
   void UpdateResourceCallback(const ResourceMetadata& result) {

@@ -248,7 +248,9 @@ class KubernetesUpdater : public PollingMetadataUpdater {
 
  private:
   // Metadata watcher callback.
-  void MetadataCallback(std::vector<ResourceMetadata>&& result_vector);
+  void MetadataCallback(const std::string& watch_name,
+                        const Timestamp& collected_at,
+                        std::vector<ResourceMetadata>&& result_vector);
 
   KubernetesReader reader_;
   HealthChecker* health_checker_;

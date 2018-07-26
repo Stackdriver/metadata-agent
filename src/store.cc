@@ -28,10 +28,33 @@ MetadataStore::Metadata MetadataStore::Metadata::IGNORED() {
 
 MetadataStore::MetadataStore(const Configuration& config) : config_(config) {}
 
+std::map<std::string, Timestamp>
+    MetadataStore::GetLastCollectionMap() const {
+  std::lock_guard<std::mutex> lock(last_collection_mu_);
+
+  std::map<std::string, Timestamp> result;
+  for (const auto& kv : last_collection_map_) {
+    const std::string& watch_name = kv.first;
+    const Timestamp& collected_at = kv.second;
+    result.emplace(watch_name, collected_at);
+  }
+  return result;
+}
+
 const MonitoredResource& MetadataStore::LookupResource(
     const std::string& resource_id) const throw(std::out_of_range) {
   std::lock_guard<std::mutex> lock(resource_mu_);
   return resource_map_.at(resource_id);
+}
+
+void MetadataStore::UpdateLastCollection(const std::string& watch_name,
+                                         const Timestamp& collected_at) {
+  std::lock_guard<std::mutex> lock(last_collection_mu_);
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Updating last collection '" << watch_name << "'->"
+              << time::rfc3339::ToString(collected_at);
+  }
+  last_collection_map_.emplace(watch_name, collected_at);
 }
 
 void MetadataStore::UpdateResource(const std::vector<std::string>& resource_ids,

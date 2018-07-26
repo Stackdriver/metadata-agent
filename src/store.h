@@ -74,6 +74,10 @@ class MetadataStore {
 
   MetadataStore(const Configuration& config);
 
+  // Returns a copy of the mapping from a watch name to the last
+  // collection time for that watch stream.
+  std::map<std::string, Timestamp> GetLastCollectionMap() const;
+
   // Returns a copy of the mapping from a monitored resource to the metadata
   // associated with that resource.
   std::map<MonitoredResource, Metadata> GetMetadataMap() const;
@@ -82,6 +86,10 @@ class MetadataStore {
   // Throws an exception if the resource is not found.
   const MonitoredResource& LookupResource(const std::string& resource_id) const
       throw(std::out_of_range);
+
+  // Updates the last collection time for the given watch stream.
+  void UpdateLastCollection(const std::string& watch_name,
+                            const Timestamp& collected_at);
 
   // Updates the local resource map entry for a given resource.
   // Each local id in `resource_ids` is effectively an alias for `resource`.
@@ -102,6 +110,10 @@ class MetadataStore {
 
   const Configuration& config_;
 
+  // A lock that guards access to the last collection map.
+  mutable std::mutex last_collection_mu_;
+  // A map from watch name to last collection time.
+  std::map<std::string, Timestamp> last_collection_map_;
   // A lock that guards access to the local resource map.
   mutable std::mutex resource_mu_;
   // A map from a locally unique id to MonitoredResource.

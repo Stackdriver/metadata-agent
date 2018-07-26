@@ -1,4 +1,5 @@
 #include "../src/health_checker.h"
+#include "../src/store.h"
 #include "gtest/gtest.h"
 #include <sstream>
 #include <boost/filesystem.hpp>
@@ -31,14 +32,16 @@ std::istringstream IsolationPathConfig(const std::string& test_name) {
 
 TEST_F(HealthCheckerUnittest, DefaultHealthy) {
   Configuration config(IsolationPathConfig(test_info_->name()));
-  HealthChecker health_checker(config);
+  MetadataStore store(config);
+  HealthChecker health_checker(config, store);
   EXPECT_TRUE(IsHealthy(health_checker));
   Cleanup(&health_checker);
 }
 
 TEST_F(HealthCheckerUnittest, SimpleFailure) {
   Configuration config(IsolationPathConfig(test_info_->name()));
-  HealthChecker health_checker(config);
+  MetadataStore store(config);
+  HealthChecker health_checker(config, store);
   SetUnhealthy(&health_checker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(health_checker));
   Cleanup(&health_checker);
@@ -46,7 +49,8 @@ TEST_F(HealthCheckerUnittest, SimpleFailure) {
 
 TEST_F(HealthCheckerUnittest, MultiFailure) {
   Configuration config(IsolationPathConfig(test_info_->name()));
-  HealthChecker health_checker(config);
+  MetadataStore store(config);
+  HealthChecker health_checker(config, store);
   EXPECT_TRUE(IsHealthy(health_checker));
   SetUnhealthy(&health_checker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(health_checker));
@@ -57,7 +61,8 @@ TEST_F(HealthCheckerUnittest, MultiFailure) {
 
 TEST_F(HealthCheckerUnittest, FailurePersists) {
   Configuration config(IsolationPathConfig(test_info_->name()));
-  HealthChecker health_checker(config);
+  MetadataStore store(config);
+  HealthChecker health_checker(config, store);
   EXPECT_TRUE(IsHealthy(health_checker));
   SetUnhealthy(&health_checker, "kubernetes_pod_thread");
   EXPECT_FALSE(IsHealthy(health_checker));
