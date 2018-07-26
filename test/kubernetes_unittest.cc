@@ -8,6 +8,13 @@ namespace google {
 
 class KubernetesTest : public ::testing::Test {
  protected:
+  static MetadataUpdater::ResourceMetadata GetResourceMetadata(
+      const KubernetesReader& reader, const json::Object *object,
+      Timestamp collected_at, bool is_deleted)
+      throw(json::Exception) {
+    return reader.GetResourceMetadata(object, collected_at, is_deleted);
+  }
+
   static MetadataUpdater::ResourceMetadata GetNodeMetadata(
       const KubernetesReader& reader, const json::Object *node,
       Timestamp collected_at, bool is_deleted)
@@ -42,6 +49,94 @@ class KubernetesTest : public ::testing::Test {
   }
 
 };
+
+TEST_F(KubernetesTest, GetResourceMetadataService) {
+  Configuration config(std::stringstream(
+    "ProjectId: TestProjectId\n"
+    "KubernetesClusterName: TestClusterName\n"
+    "KubernetesClusterLocation: TestClusterLocation\n"
+    "MetadataApiResourceTypeSeparator: \".\"\n"
+  ));
+  Environment environment(config);
+  KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
+
+  json::value service = json::object({
+    {"apiVersion", json::string("ServiceVersion")},
+    {"kind", json::string("Service")},
+    {"metadata", json::object({
+      {"namespace", json::string("TestNamespace")},
+      {"name", json::string("TestName")},
+      {"selfLink",
+       json::string("/api/v1/namespaces/TestNamespace/services/TestName")},
+      {"uid", json::string("TestUid")},
+      {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
+    })},
+  });
+  const auto m = GetResourceMetadata(reader, service->As<json::Object>(),
+                                     Timestamp(), false);
+
+  EXPECT_TRUE(m.ids().empty());
+  EXPECT_EQ(MonitoredResource("", {}), m.resource());
+  EXPECT_EQ("//container.googleapis.com/projects/TestProjectId/locations/"
+            "TestClusterLocation/clusters/TestClusterName/k8s/namespaces/"
+            "TestNamespace/services/TestName",
+            m.metadata().name);
+  EXPECT_EQ("ServiceVersion", m.metadata().version);
+  EXPECT_EQ("io.k8s.Service", m.metadata().type);
+  EXPECT_EQ("TestClusterLocation", m.metadata().location);
+  EXPECT_EQ(
+    "//container.googleapis.com/resourceTypes/io.k8s.Service/versions/"
+    "ServiceVersion",
+    m.metadata().schema_name);
+  EXPECT_FALSE(m.metadata().is_deleted);
+  EXPECT_EQ(Timestamp(), m.metadata().collected_at);
+  EXPECT_FALSE(m.metadata().ignore);
+  EXPECT_EQ(service->ToString(), m.metadata().metadata->ToString());
+}
+
+TEST_F(KubernetesTest, GetResourceMetadataEndpoints) {
+  Configuration config(std::stringstream(
+    "ProjectId: TestProjectId\n"
+    "KubernetesClusterName: TestClusterName\n"
+    "KubernetesClusterLocation: TestClusterLocation\n"
+    "MetadataApiResourceTypeSeparator: \".\"\n"
+  ));
+  Environment environment(config);
+  KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
+
+  json::value service = json::object({
+    {"apiVersion", json::string("EndpointsVersion")},
+    {"kind", json::string("Endpoints")},
+    {"metadata", json::object({
+      {"namespace", json::string("TestNamespace")},
+      {"name", json::string("TestName")},
+      {"selfLink",
+       json::string("/api/v1/namespaces/TestNamespace/endpoints/TestName")},
+      {"uid", json::string("TestUid")},
+      {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
+    })},
+  });
+  const auto m = GetResourceMetadata(reader, service->As<json::Object>(),
+                                     Timestamp(), false);
+
+  EXPECT_TRUE(m.ids().empty());
+  EXPECT_EQ(MonitoredResource("", {}), m.resource());
+  EXPECT_EQ("//container.googleapis.com/projects/TestProjectId/locations/"
+            "TestClusterLocation/clusters/TestClusterName/k8s/namespaces/"
+            "TestNamespace/endpoints/TestName",
+            m.metadata().name);
+  EXPECT_EQ("EndpointsVersion", m.metadata().version);
+  EXPECT_EQ("io.k8s.Endpoints", m.metadata().type);
+  EXPECT_EQ("TestClusterLocation", m.metadata().location);
+  EXPECT_EQ(
+    "//container.googleapis.com/resourceTypes/io.k8s.Endpoints/versions/"
+    "EndpointsVersion",
+    m.metadata().schema_name);
+  EXPECT_FALSE(m.metadata().is_deleted);
+  EXPECT_EQ(Timestamp(), m.metadata().collected_at);
+  EXPECT_FALSE(m.metadata().ignore);
+  EXPECT_EQ(service->ToString(), m.metadata().metadata->ToString());
+}
 
 TEST_F(KubernetesTest, GetNodeMetadata) {
   Configuration config(std::istringstream(
