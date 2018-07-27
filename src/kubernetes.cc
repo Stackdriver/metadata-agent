@@ -207,15 +207,6 @@ void KubernetesReader::NodeMetadataCallback(
   ids_and_mr.second = k8s_node;
 }
 
-MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
-    const json::Object* node, Timestamp collected_at, bool is_deleted) const
-    throw(json::Exception) {
-  auto cb = [=](const json::Object* node, IdsAndMR& ids_and_mr) {
-    NodeMetadataCallback(std::move(node), ids_and_mr);
-  };
-  return GetObjectMetadata(node, collected_at, is_deleted, cb);
-}
-
 void KubernetesReader::PodMetadataCallback(
     const json::Object* pod, KubernetesReader::IdsAndMR& ids_and_mr) const
     throw(json::Exception) {
@@ -242,15 +233,6 @@ void KubernetesReader::PodMetadataCallback(
 
   ids_and_mr.first = std::vector<std::string>{k8s_pod_id, k8s_pod_name};
   ids_and_mr.second = k8s_pod;
-}
-
-MetadataUpdater::ResourceMetadata KubernetesReader::GetPodMetadata(
-    const json::Object* pod, Timestamp collected_at, bool is_deleted) const
-    throw(json::Exception) {
-  auto cb = [=](const json::Object* pod, IdsAndMR& ids_and_mr) {
-    PodMetadataCallback(std::move(pod), ids_and_mr);
-  };
-  return GetObjectMetadata(pod, collected_at, is_deleted, cb);
 }
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
@@ -880,14 +862,14 @@ void KubernetesReader::WatchNodes(
   auto metadata_cb = [=](const json::Object* node, IdsAndMR& ids_and_mr) {
     NodeMetadataCallback(std::move(node), ids_and_mr);
   };
-  const std::string endpoint = GetWatchEndpoint("nodes", "v1", node_name);
+  const std::string endpoint = GetWatchEndpoint("nodes", "v1", "/" + node_name);
   WatchEndpoint("nodes", endpoint, metadata_cb, update_cb);
 }
 
 void KubernetesReader::WatchObjects(
     const std::string& plural_kind, const std::string& api_version,
     MetadataUpdater::UpdateCallback update_cb) const {
-  auto metadata_cb = [=](const json::Object* object, IdsAndMR& ids_mr) {};
+  auto metadata_cb = [](const json::Object* object, IdsAndMR& ids_mr) {};
   const std::string endpoint =
         GetWatchEndpoint(plural_kind, api_version, /*selector=*/"");
   WatchEndpoint(plural_kind, endpoint, metadata_cb, update_cb);

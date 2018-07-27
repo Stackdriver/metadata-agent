@@ -14,20 +14,26 @@ class KubernetesTest : public ::testing::Test {
       throw(json::Exception) {
     return reader.GetObjectMetadata(
         object, collected_at, is_deleted,
-        [=](const json::Object* object, KubernetesReader::IdsAndMR& ids_mr) {});
+        [](const json::Object* object, KubernetesReader::IdsAndMR& ids_mr) {});
   }
 
   static MetadataUpdater::ResourceMetadata GetNodeMetadata(
       const KubernetesReader& reader, const json::Object *node,
       Timestamp collected_at, bool is_deleted)
       throw(json::Exception) {
-    return reader.GetNodeMetadata(node, collected_at, is_deleted);
+    auto cb = [&](const json::Object* node, KubernetesReader::IdsAndMR& ids_and_mr) {
+      reader.NodeMetadataCallback(std::move(node), ids_and_mr);
+    };
+    return reader.GetObjectMetadata(node, collected_at, is_deleted, cb);
   }
 
   static MetadataUpdater::ResourceMetadata GetPodMetadata(
       const KubernetesReader& reader, const json::Object* pod,
       Timestamp collected_at, bool is_deleted) throw(json::Exception) {
-    return reader.GetPodMetadata(pod, collected_at, is_deleted);
+    auto cb = [&](const json::Object* node, KubernetesReader::IdsAndMR& ids_and_mr) {
+      reader.PodMetadataCallback(std::move(pod), ids_and_mr);
+    };
+    return reader.GetObjectMetadata(pod, collected_at, is_deleted, cb);
   }
 
   static MetadataUpdater::ResourceMetadata GetContainerMetadata(
