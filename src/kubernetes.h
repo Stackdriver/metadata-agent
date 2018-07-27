@@ -26,6 +26,7 @@
 #include "environment.h"
 #include "health_checker.h"
 #include "json.h"
+#include "resource.h"
 #include "updater.h"
 
 namespace google {
@@ -49,16 +50,16 @@ class KubernetesReader {
 
   // Node watcher.
   void WatchNodes(const std::string& node_name,
-                  MetadataUpdater::UpdateCallback callback) const;
+                  MetadataUpdater::UpdateCallback update_cb) const;
 
   // Pod watcher.
   void WatchPods(const std::string& node_name,
-                 MetadataUpdater::UpdateCallback callback) const;
+                 MetadataUpdater::UpdateCallback update_cb) const;
 
   // Generic Kubernetes object watcher.
   void WatchObjects(
       const std::string& plural_kind, const std::string& version,
-      MetadataUpdater::UpdateCallback callback) const;
+      MetadataUpdater::UpdateCallback update_cb) const;
 
   // Gets the name of the node the agent is running on.
   // Returns an empty string if unable to find the current node.
@@ -78,7 +79,7 @@ class KubernetesReader {
 
   // Build the watch endpoint given the Kubernetes resource kind and API
   // version.
-  const std::string WatchEndpoint(
+  const std::string GetWatchEndpoint(
       const std::string& plural_kind, const std::string& api_version,
       const std::string& selector) const;
 
@@ -97,20 +98,21 @@ class KubernetesReader {
     std::function<void(const json::Object*, Timestamp, bool)> callback) const
     throw(QueryException, json::Exception);
 
-  // Node watch callback.
-  void NodeCallback(
-      MetadataUpdater::UpdateCallback callback, const json::Object* node,
-      Timestamp collected_at, bool is_deleted) const throw(json::Exception);
-
-  // Pod watch callback.
-  void PodCallback(
-      MetadataUpdater::UpdateCallback callback, const json::Object* pod,
-      Timestamp collected_at, bool is_deleted) const throw(json::Exception);
+  using IdsAndMR = std::pair<std::vector<std::string>, MonitoredResource>;
+  using MetadataCallback = std::function<void(const json::Object*, IdsAndMR&)>;
 
   // Kubernetes resource watch callback.
-  void ObjectCallback(
-      MetadataUpdater::UpdateCallback callback, const json::Object* object,
-      Timestamp collected_at, bool is_deleted) const throw(json::Exception);
+  void ObjectWatchCallback(
+      MetadataCallback metadata_cb,
+      MetadataUpdater::UpdateCallback update_cb,
+      const json::Object* object, Timestamp collected_at, bool is_deleted) const
+      throw(json::Exception);
+
+  // Watches the specified endpoint.
+  void WatchEndpoint(
+      const std::string& plural_kind, const std::string& endpoint,
+      MetadataCallback metadata_cb,
+      MetadataUpdater::UpdateCallback update_cb) const;
 
   // Builds the cluster full name from cluster related environment variables.
   const std::string ClusterFullName() const;
@@ -118,16 +120,11 @@ class KubernetesReader {
   // Computes the full resource name given the self link.
   const std::string FullResourceName(const std::string& self_link) const;
 
-  // Given a generic Kubernetes object, return only the associated metadata. The
-  // local ID and MonitoredResource objects are not returned.
-  MetadataStore::Metadata GetMetadata(
-      const json::Object* object, Timestamp collected_at, bool is_deleted)
-      const throw(json::Exception);
   // Given a generic Kubernetes object, return the associated metadata, with the
   // local ID and MonitoredResource set to blank values.
   MetadataUpdater::ResourceMetadata GetObjectMetadata(
-      const json::Object* object, Timestamp collected_at, bool is_deleted)
-      const throw(json::Exception);
+      const json::Object* object, Timestamp collected_at, bool is_deleted,
+      MetadataCallback metadata_cb) const throw(json::Exception);
   // Given a node object, return the associated metadata.
   MetadataUpdater::ResourceMetadata GetNodeMetadata(
       const json::Object* node, Timestamp collected_at, bool is_deleted) const
@@ -150,6 +147,13 @@ class KubernetesReader {
   std::vector<MetadataUpdater::ResourceMetadata> GetPodAndContainerMetadata(
       const json::Object* pod, Timestamp collected_at, bool is_deleted) const
       throw(json::Exception);
+
+  // Node Metadata Callback.
+  void NodeMetadataCallback(const json::Object* node, IdsAndMR& ids_and_mr)
+      const throw(json::Exception);
+  // Pod Metadata Callback.
+  void PodMetadataCallback(const json::Object* pod, IdsAndMR& ids_and_mr)
+      const throw(json::Exception);
 
   // Gets the Kubernetes master API token.
   // Returns an empty string if unable to find the token.

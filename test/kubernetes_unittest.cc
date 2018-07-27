@@ -12,7 +12,9 @@ class KubernetesTest : public ::testing::Test {
       const KubernetesReader& reader, const json::Object *object,
       Timestamp collected_at, bool is_deleted)
       throw(json::Exception) {
-    return reader.GetObjectMetadata(object, collected_at, is_deleted);
+    return reader.GetObjectMetadata(
+        object, collected_at, is_deleted,
+        [=](const json::Object* object, KubernetesReader::IdsAndMR& ids_mr) {});
   }
 
   static MetadataUpdater::ResourceMetadata GetNodeMetadata(
