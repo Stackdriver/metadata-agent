@@ -578,9 +578,9 @@ const std::string KubernetesReader::FullResourceName(
       // Non-core resources start with "/apis/<group-name>/<version>/...".
       // The <group-name> is part of the resource type, and hence the full name.
       const std::string group_name = slash_split[2];
-      link_components.push_back(group_name);
-      link_components.insert(link_components.end(),
-                             slash_split.begin() + 4, slash_split.end());
+      link_components.assign(slash_split.begin() + 4, slash_split.end());
+      // group name needs to go before the type. E.g. ".../deployments/dep".
+      link_components.insert(link_components.end() - 2, group_name);
     }
     const std::string relative_link =
         boost::algorithm::join(link_components, "/");
@@ -887,13 +887,13 @@ void KubernetesReader::ObjectWatchCallback(
 }
 
 void KubernetesReader::WatchEndpoint(
-    const std::string& plural_kind, const std::string& endpoint,
+    const std::string& name, const std::string& endpoint,
     KubernetesReader::MetadataCallback metadata_cb,
     MetadataUpdater::UpdateCallback update_cb) const {
-  LOG(INFO) << "Watch thread (" << plural_kind << ") started";
+  LOG(INFO) << "Watch thread (" << name << ") started";
   try {
     WatchMaster(
-        plural_kind, endpoint,
+        name, endpoint,
         [=](const json::Object* resource, Timestamp collected_at,
             bool is_deleted) {
           ObjectWatchCallback(
@@ -901,14 +901,14 @@ void KubernetesReader::WatchEndpoint(
         });
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
-    LOG(ERROR) << "No more " << plural_kind << " metadata will be collected";
+    LOG(ERROR) << "No more " << name << " metadata will be collected";
   } catch (const KubernetesReader::QueryException& e) {
-    LOG(ERROR) << "No more " << plural_kind << " metadata will be collected";
+    LOG(ERROR) << "No more " << name << " metadata will be collected";
   }
   if (health_checker_) {
-    health_checker_->SetUnhealthy("kubernetes_" + plural_kind + "_thread");
+    health_checker_->SetUnhealthy("kubernetes_" + name + "_thread");
   }
-  LOG(INFO) << "Watch thread (" << plural_kind << ") exiting";
+  LOG(INFO) << "Watch thread (" << name << ") exiting";
 }
 
 KubernetesUpdater::KubernetesUpdater(const Configuration& config,

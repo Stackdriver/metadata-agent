@@ -110,7 +110,7 @@ class KubernetesReader {
 
   // Watches the specified endpoint.
   void WatchEndpoint(
-      const std::string& plural_kind, const std::string& endpoint,
+      const std::string& name, const std::string& endpoint,
       MetadataCallback metadata_cb,
       MetadataUpdater::UpdateCallback update_cb) const;
 

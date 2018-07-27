@@ -8,6 +8,21 @@ namespace google {
 
 class KubernetesTest : public ::testing::Test {
  protected:
+  static const std::string ClusterFullName(const KubernetesReader& reader) {
+    return reader.ClusterFullName();
+  }
+
+  static const std::string FullResourceName(
+      const KubernetesReader& reader, const std::string& self_link) {
+    return reader.FullResourceName(self_link);
+  }
+
+  static const std::string GetWatchEndpoint(
+      const KubernetesReader& reader, const std::string& plural_kind,
+      const std::string& api_version, const std::string& selector) {
+    return reader.GetWatchEndpoint(plural_kind, api_version, selector);
+  }
+
   static MetadataUpdater::ResourceMetadata GetObjectMetadata(
       const KubernetesReader& reader, const json::Object *object,
       Timestamp collected_at, bool is_deleted)
@@ -21,7 +36,8 @@ class KubernetesTest : public ::testing::Test {
       const KubernetesReader& reader, const json::Object *node,
       Timestamp collected_at, bool is_deleted)
       throw(json::Exception) {
-    auto cb = [&](const json::Object* node, KubernetesReader::IdsAndMR& ids_and_mr) {
+    auto cb = [&](
+        const json::Object* node, KubernetesReader::IdsAndMR& ids_and_mr) {
       reader.NodeMetadataCallback(std::move(node), ids_and_mr);
     };
     return reader.GetObjectMetadata(node, collected_at, is_deleted, cb);
@@ -30,7 +46,8 @@ class KubernetesTest : public ::testing::Test {
   static MetadataUpdater::ResourceMetadata GetPodMetadata(
       const KubernetesReader& reader, const json::Object* pod,
       Timestamp collected_at, bool is_deleted) throw(json::Exception) {
-    auto cb = [&](const json::Object* node, KubernetesReader::IdsAndMR& ids_and_mr) {
+    auto cb = [&](
+        const json::Object* node, KubernetesReader::IdsAndMR& ids_and_mr) {
       reader.PodMetadataCallback(std::move(pod), ids_and_mr);
     };
     return reader.GetObjectMetadata(pod, collected_at, is_deleted, cb);
@@ -55,8 +72,72 @@ class KubernetesTest : public ::testing::Test {
       const std::string& container_name) throw(json::Exception) {
     return reader.GetLegacyResource(pod, container_name);
   }
-
 };
+
+TEST_F(KubernetesTest, RegionalClusterAndFullResourceName) {
+  Configuration config(std::stringstream(
+    "ProjectId: TestProjectId\n"
+    "KubernetesClusterName: TestClusterName\n"
+    "KubernetesClusterLocation: us-central1\n"
+  ));
+  Environment environment(config);
+  KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
+
+  const std::string cluster_full_name =
+      "//container.googleapis.com/projects/TestProjectId/locations/us-central1/"
+      "clusters/TestClusterName";
+
+  EXPECT_EQ(cluster_full_name, ClusterFullName(reader));
+  EXPECT_EQ(
+      cluster_full_name + "/k8s/namespaces/ns",
+      FullResourceName(reader, "/api/v1/namespaces/ns"));
+  EXPECT_EQ(
+      cluster_full_name + "/k8s/nodes/node-name",
+      FullResourceName(reader, "/api/v1/nodes/node-name"));
+  EXPECT_EQ(
+      cluster_full_name + "/k8s/namespaces/ns/pods/pod-name",
+      FullResourceName(reader, "/api/v1/namespaces/ns/pods/pod-name"));
+  EXPECT_EQ(
+      cluster_full_name + "/k8s/namespaces/ns/apps/deployments/dep-name",
+      FullResourceName(
+          reader, "/apis/apps/v1beta1/namespaces/ns/deployments/dep-name"));
+}
+
+TEST_F(KubernetesTest, ZonalClusterAndFullResourceName) {
+  Configuration config(std::stringstream(
+    "ProjectId: TestProjectId\n"
+    "KubernetesClusterName: TestClusterName\n"
+    "KubernetesClusterLocation: us-central1-a\n"
+  ));
+  Environment environment(config);
+  KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
+
+  const std::string cluster_full_name =
+      "//container.googleapis.com/projects/TestProjectId/zones/us-central1-a/"
+      "clusters/TestClusterName";
+
+  EXPECT_EQ(cluster_full_name, ClusterFullName(reader));
+  EXPECT_EQ(
+      cluster_full_name + "/k8s/nodes/node-name",
+      FullResourceName(reader, "/api/v1/nodes/node-name"));
+}
+
+TEST_F(KubernetesTest, GetWatchEndpoint) {
+  Configuration config(std::stringstream(
+    "KubernetesEndpointHost: https://kubernetes.host\n"
+  ));
+  Environment environment(config);
+  KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
+
+  EXPECT_EQ("https://kubernetes.host/api/v1/watch/nodes",
+            GetWatchEndpoint(reader, "nodes", "v1", ""));
+  EXPECT_EQ("https://kubernetes.host/api/v1/watch/nodes/node-name",
+            GetWatchEndpoint(reader, "nodes", "v1", "/node-name"));
+  EXPECT_EQ("https://kubernetes.host/api/v1/watch/nodes?selector=Name%3Dname",
+            GetWatchEndpoint(reader, "nodes", "v1", "?selector=Name%3Dname"));
+  EXPECT_EQ("https://kubernetes.host/apis/apps/v1/watch/deployments",
+            GetWatchEndpoint(reader, "deployments", "apps/v1", ""));
+}
 
 TEST_F(KubernetesTest, GetObjectMetadataService) {
   Configuration config(std::stringstream(
