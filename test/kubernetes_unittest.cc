@@ -8,11 +8,11 @@ namespace google {
 
 class KubernetesTest : public ::testing::Test {
  protected:
-  static MetadataUpdater::ResourceMetadata GetResourceMetadata(
+  static MetadataUpdater::ResourceMetadata GetObjectMetadata(
       const KubernetesReader& reader, const json::Object *object,
       Timestamp collected_at, bool is_deleted)
       throw(json::Exception) {
-    return reader.GetResourceMetadata(object, collected_at, is_deleted);
+    return reader.GetObjectMetadata(object, collected_at, is_deleted);
   }
 
   static MetadataUpdater::ResourceMetadata GetNodeMetadata(
@@ -50,7 +50,7 @@ class KubernetesTest : public ::testing::Test {
 
 };
 
-TEST_F(KubernetesTest, GetResourceMetadataService) {
+TEST_F(KubernetesTest, GetObjectMetadataService) {
   Configuration config(std::stringstream(
     "ProjectId: TestProjectId\n"
     "KubernetesClusterName: TestClusterName\n"
@@ -72,7 +72,7 @@ TEST_F(KubernetesTest, GetResourceMetadataService) {
       {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
     })},
   });
-  const auto m = GetResourceMetadata(reader, service->As<json::Object>(),
+  const auto m = GetObjectMetadata(reader, service->As<json::Object>(),
                                      Timestamp(), false);
 
   EXPECT_TRUE(m.ids().empty());
@@ -94,7 +94,7 @@ TEST_F(KubernetesTest, GetResourceMetadataService) {
   EXPECT_EQ(service->ToString(), m.metadata().metadata->ToString());
 }
 
-TEST_F(KubernetesTest, GetResourceMetadataEndpoints) {
+TEST_F(KubernetesTest, GetObjectMetadataEndpoints) {
   Configuration config(std::stringstream(
     "ProjectId: TestProjectId\n"
     "KubernetesClusterName: TestClusterName\n"
@@ -116,7 +116,7 @@ TEST_F(KubernetesTest, GetResourceMetadataEndpoints) {
       {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
     })},
   });
-  const auto m = GetResourceMetadata(reader, service->As<json::Object>(),
+  const auto m = GetObjectMetadata(reader, service->As<json::Object>(),
                                      Timestamp(), false);
 
   EXPECT_TRUE(m.ids().empty());
