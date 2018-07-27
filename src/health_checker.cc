@@ -16,6 +16,8 @@
 
 #include "health_checker.h"
 
+#include "store.h"
+
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <vector>
@@ -56,10 +58,10 @@ std::set<std::string> HealthChecker::UnhealthyComponents() const {
     - std::chrono::seconds(config_.HealthCheckMaxDataAgeSeconds());
   auto last_collection_map = store_.GetLastCollectionMap();
   for (auto& kv : last_collection_map) {
-    const std::string& watch_name = kv.first;
+    const std::string& object_type = kv.first;
     const Timestamp& collected_at = kv.second;
     if (collected_at < cutoff) {
-      result.insert(watch_name);
+      result.insert(object_type);
     }
   }
   return result;

@@ -22,9 +22,10 @@
 #include <string>
 
 #include "configuration.h"
-#include "store.h"
 
 namespace google {
+
+class MetadataStore;
 
 // Collects and reports health information about the metadata agent.
 class HealthChecker {

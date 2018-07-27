@@ -1136,7 +1136,7 @@ void KubernetesReader::PodCallback(
     throw(json::Exception) {
   std::vector<MetadataUpdater::ResourceMetadata> result_vector =
       GetPodAndContainerMetadata(pod, collected_at, is_deleted);
-  callback("Pods", collected_at, std::move(result_vector));
+  callback(std::move(result_vector));
 }
 
 void KubernetesReader::WatchPods(
@@ -1176,7 +1176,7 @@ void KubernetesReader::NodeCallback(
     throw(json::Exception) {
   std::vector<MetadataUpdater::ResourceMetadata> result_vector;
   result_vector.emplace_back(GetNodeMetadata(node, collected_at, is_deleted));
-  callback("Node", collected_at, std::move(result_vector));
+  callback(std::move(result_vector));
 }
 
 void KubernetesReader::WatchNodes(
@@ -1214,7 +1214,7 @@ void KubernetesReader::ServiceCallback(
   // TODO: using a temporary did not work here.
   std::vector<MetadataUpdater::ResourceMetadata> result_vector;
   result_vector.emplace_back(GetClusterMetadata(collected_at));
-  callback("Service", collected_at, std::move(result_vector));
+  callback(std::move(result_vector));
 }
 
 void KubernetesReader::WatchServices(MetadataUpdater::UpdateCallback callback) {
@@ -1247,7 +1247,7 @@ void KubernetesReader::EndpointsCallback(
   // TODO: using a temporary did not work here.
   std::vector<MetadataUpdater::ResourceMetadata> result_vector;
   result_vector.emplace_back(GetClusterMetadata(collected_at));
-  callback("Endpoints", collected_at, std::move(result_vector));
+  callback(std::move(result_vector));
 }
 
 void KubernetesReader::WatchEndpoints(
@@ -1309,9 +1309,8 @@ void KubernetesUpdater::StartUpdater() {
     const std::string watched_node(
         config().KubernetesClusterLevelMetadata() ? "" : current_node);
 
-    auto cb = [=](const std::string& watch_name, const Timestamp& collected_at,
-                  std::vector<MetadataUpdater::ResourceMetadata>&& results) {
-      MetadataCallback(watch_name, collected_at, std::move(results));
+    auto cb = [=](std::vector<MetadataUpdater::ResourceMetadata>&& results) {
+      MetadataCallback(std::move(results));
     };
     node_watch_thread_ = std::thread([=]() {
       reader_.WatchNodes(watched_node, cb);
@@ -1344,10 +1343,8 @@ void KubernetesUpdater::NotifyStopUpdater() {
 }
 
 void KubernetesUpdater::MetadataCallback(
-    const std::string& watch_name, const Timestamp& collected_at,
     std::vector<MetadataUpdater::ResourceMetadata>&& result_vector) {
   for (MetadataUpdater::ResourceMetadata& result : result_vector) {
-    UpdateLastCollection(watch_name, collected_at);
     UpdateResourceCallback(result);
     UpdateMetadataCallback(std::move(result));
   }

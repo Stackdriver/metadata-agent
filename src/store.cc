@@ -34,9 +34,9 @@ std::map<std::string, Timestamp>
 
   std::map<std::string, Timestamp> result;
   for (const auto& kv : last_collection_map_) {
-    const std::string& watch_name = kv.first;
+    const std::string& resource_type = kv.first;
     const Timestamp& collected_at = kv.second;
-    result.emplace(watch_name, collected_at);
+    result.emplace(resource_type, collected_at);
   }
   return result;
 }
@@ -45,16 +45,6 @@ const MonitoredResource& MetadataStore::LookupResource(
     const std::string& resource_id) const throw(std::out_of_range) {
   std::lock_guard<std::mutex> lock(resource_mu_);
   return resource_map_.at(resource_id);
-}
-
-void MetadataStore::UpdateLastCollection(const std::string& watch_name,
-                                         const Timestamp& collected_at) {
-  std::lock_guard<std::mutex> lock(last_collection_mu_);
-  if (config_.VerboseLogging()) {
-    LOG(INFO) << "Updating last collection '" << watch_name << "'->"
-              << time::rfc3339::ToString(collected_at);
-  }
-  last_collection_map_.emplace(watch_name, collected_at);
 }
 
 void MetadataStore::UpdateResource(const std::vector<std::string>& resource_ids,
@@ -91,6 +81,9 @@ void MetadataStore::UpdateMetadata(const MonitoredResource& resource,
   // be a huge deal.
   metadata_map_.erase(resource);
   metadata_map_.emplace(resource, std::move(entry));
+
+  std::lock_guard<std::mutex> last_collection_lock(last_collection_mu_);
+  last_collection_map_.emplace(resource.type(), entry.collected_at);
 }
 
 std::map<MonitoredResource, MetadataStore::Metadata>
