@@ -156,4 +156,26 @@ TEST(TimeTest, FromStringScientificSeconds) {
   );
 }
 
+TEST(TimeTest, SecondsSinceEpoch) {
+  const time_point t =
+      time::rfc3339::FromString("2017-07-14T02:40:00Z");
+  EXPECT_EQ(1500000000, time::SecondsSinceEpoch(t));
+}
+
+TEST(TimeTest, SafeLocaltime) {
+  const std::time_t now_c =
+    std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  std::tm local_time = time::safe_localtime(&now_c);
+  EXPECT_EQ(std::mktime(std::localtime(&now_c)),
+            std::mktime(&local_time));
+}
+
+TEST(TimeTest, SafeGmtime) {
+  const std::time_t now_c =
+    std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  std::tm gm_time = time::safe_gmtime(&now_c);
+  EXPECT_EQ(std::mktime(std::gmtime(&now_c)),
+            std::mktime(&gm_time));
+}
+
 }
