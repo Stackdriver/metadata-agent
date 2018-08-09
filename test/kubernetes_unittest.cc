@@ -84,7 +84,7 @@ class KubernetesTest : public ::testing::Test {
 
   static void SetServiceAccountDirectoryForTest(
       KubernetesReader* reader, const std::string& directory) {
-    reader ->SetServiceAccountDirectoryForTest(directory);
+    reader->SetServiceAccountDirectoryForTest(directory);
   }
 };
 
