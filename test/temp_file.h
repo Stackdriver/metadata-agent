@@ -1,8 +1,8 @@
 #ifndef TEMP_FILE_H_
 #define TEMP_FILE_H_
 
-#include <fstream>
 #include <boost/filesystem.hpp>
+#include <fstream>
 
 namespace google {
 namespace testing {

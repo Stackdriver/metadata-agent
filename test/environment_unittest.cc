@@ -1,5 +1,6 @@
 #include "../src/environment.h"
 #include "fake_http_server.h"
+#include "temp_file.h"
 #include "gtest/gtest.h"
 #include "temp_file.h"
 

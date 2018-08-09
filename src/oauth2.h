@@ -26,28 +26,31 @@
 
 namespace google {
 
+constexpr const char kDefaultTokenEndpoint[] =
+  "https://www.googleapis.com/oauth2/v3/token";
+
 class OAuth2 {
  public:
-  OAuth2(const Environment& environment) : environment_(environment) {}
+  OAuth2(const Environment& environment)
+    : environment_(environment), token_endpoint_(kDefaultTokenEndpoint) {}
 
   std::string GetAuthHeaderValue();
 
-  template<class Request>
-  void AddAuthHeader(Request* request);
-
  private:
+  friend class OAuth2Test;
+
   json::value ComputeTokenFromCredentials() const;
   json::value GetMetadataToken() const;
+
+  void SetTokenEndpointForTest(const std::string& endpoint) {
+    token_endpoint_ = endpoint;
+  }
 
   const Environment& environment_;
   std::string auth_header_value_;
   time_point token_expiration_;
+  std::string token_endpoint_;
 };
-
-template<class Request>
-void OAuth2::AddAuthHeader(Request* request) {
-  (*request) << boost::network::header("Authorization", GetAuthHeaderValue());
-}
 
 }
 
