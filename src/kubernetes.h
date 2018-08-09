@@ -77,6 +77,14 @@ class KubernetesReader {
   };
   class NonRetriableError;
 
+  // Returns the full path to the secret filename.
+  std::string SecretPath(const std::string& secret) const;
+
+  // Reads a Kubernetes service account secret file into the provided string.
+  // Returns true if the file was read successfully.
+  bool ReadServiceAccountSecret(
+      const std::string& secret, std::string& destination, bool verbose) const;
+
   // Issues a Kubernetes master API query at a given path and
   // returns a parsed JSON response. The path has to start with "/".
   json::value QueryMaster(const std::string& path) const
@@ -176,6 +184,10 @@ class KubernetesReader {
   void UpdateServiceToPodsCache(
       const json::Object* endpoints, bool is_deleted) throw(json::Exception);
 
+  void SetServiceAccountDirectoryForTest(const std::string& directory) {
+    service_account_directory_ = directory;
+  }
+
   // An empty vector value for endpoints that have no pods.
   const std::vector<std::string> kNoPods;
 
@@ -205,6 +217,7 @@ class KubernetesReader {
   const Configuration& config_;
   HealthChecker* health_checker_;
   Environment environment_;
+  std::string service_account_directory_;
 };
 
 class KubernetesUpdater : public PollingMetadataUpdater {
