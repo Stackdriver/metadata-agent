@@ -130,7 +130,7 @@ instance_unittest: instance_unittest.o $(SRC_DIR)/instance.o $(SRC_DIR)/configur
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 json_unittest: json_unittest.o $(SRC_DIR)/json.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-kubernetes_unittest: kubernetes_unittest.o $(SRC_DIR)/kubernetes.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/environment.o $(SRC_DIR)/time.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o $(SRC_DIR)/updater.o $(SRC_DIR)/instance.o $(SRC_DIR)/format.o $(SRC_DIR)/configuration.o $(SRC_DIR)/health_checker.o
+kubernetes_unittest: kubernetes_unittest.o fake_http_server.o $(SRC_DIR)/kubernetes.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/environment.o $(SRC_DIR)/time.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o $(SRC_DIR)/updater.o $(SRC_DIR)/instance.o $(SRC_DIR)/format.o $(SRC_DIR)/configuration.o $(SRC_DIR)/health_checker.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 resource_unittest: resource_unittest.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
