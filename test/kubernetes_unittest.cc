@@ -723,7 +723,7 @@ TEST_F(KubernetesTest, KubernetesApiToken) {
 
   EXPECT_EQ("the-api-token", KubernetesApiToken(reader));
 
-  // Check that value is cached.
+  // Check that the value is cached.
   token_file.SetContents("updated-api-token");
   EXPECT_EQ("the-api-token", KubernetesApiToken(reader));
 }
@@ -739,7 +739,7 @@ TEST_F(KubernetesTest, KubernetesNamespace) {
 
   EXPECT_EQ("the-namespace", KubernetesNamespace(reader));
 
-  // Check that value is cached.
+  // Check that the value is cached.
   namespace_file.SetContents("updated-namespace");
   EXPECT_EQ("the-namespace", KubernetesNamespace(reader));
 }
