@@ -3,6 +3,7 @@
 #include "../src/kubernetes.h"
 #include "../src/updater.h"
 #include "gtest/gtest.h"
+#include "temp_file.h"
 
 namespace google {
 
@@ -61,6 +62,14 @@ class KubernetesTest : public ::testing::Test {
     return reader.GetClusterMetadata(collected_at);
   }
 
+  static const std::string& KubernetesApiToken(const KubernetesReader& reader) {
+    return reader.KubernetesApiToken();
+  }
+
+  static const std::string& KubernetesNamespace(const KubernetesReader& reader) {
+    return reader.KubernetesNamespace();
+  }
+
   static void UpdateServiceToMetadataCache(
       KubernetesReader* reader, const json::Object* service, bool is_deleted)
       throw(json::Exception) {
@@ -71,6 +80,11 @@ class KubernetesTest : public ::testing::Test {
       KubernetesReader* reader, const json::Object* endpoints, bool is_deleted)
       throw(json::Exception) {
     return reader->UpdateServiceToPodsCache(endpoints, is_deleted);
+  }
+
+  static void SetServiceAccountDirectoryForTest(
+      KubernetesReader* reader, const std::string& directory) {
+    reader->SetServiceAccountDirectoryForTest(directory);
   }
 };
 
@@ -515,6 +529,7 @@ TEST_F(KubernetesTest, GetContainerMetadata) {
   });
   EXPECT_EQ(expected_metadata->ToString(), m.metadata().metadata->ToString());
 }
+
 TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
   Configuration config(std::stringstream(
     "KubernetesClusterName: TestClusterName\n"
@@ -696,4 +711,37 @@ TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
   EXPECT_EQ(pod_metadata->ToString(),
             m[2].metadata().metadata->ToString());
 }
+
+TEST_F(KubernetesTest, KubernetesApiToken) {
+  testing::TemporaryFile token_file("token", "the-api-token");
+
+  Configuration config;
+  Environment environment(config);
+  KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
+  SetServiceAccountDirectoryForTest(
+      &reader, token_file.FullPath().parent_path().native());
+
+  EXPECT_EQ("the-api-token", KubernetesApiToken(reader));
+
+  // Check that the value is cached.
+  token_file.SetContents("updated-api-token");
+  EXPECT_EQ("the-api-token", KubernetesApiToken(reader));
+}
+
+TEST_F(KubernetesTest, KubernetesNamespace) {
+  testing::TemporaryFile namespace_file("namespace", "the-namespace");
+
+  Configuration config;
+  Environment environment(config);
+  KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
+  SetServiceAccountDirectoryForTest(
+      &reader, namespace_file.FullPath().parent_path().native());
+
+  EXPECT_EQ("the-namespace", KubernetesNamespace(reader));
+
+  // Check that the value is cached.
+  namespace_file.SetContents("updated-namespace");
+  EXPECT_EQ("the-namespace", KubernetesNamespace(reader));
+}
+
 }  // namespace google

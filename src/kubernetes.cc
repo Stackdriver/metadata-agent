@@ -67,15 +67,26 @@ constexpr const char kDockerIdPrefix[] = "docker://";
 constexpr const char kServiceAccountDirectory[] =
     "/var/run/secrets/kubernetes.io/serviceaccount";
 
-// Returns the full path to the secret filename.
-std::string SecretPath(const std::string& secret) {
-  return std::string(kServiceAccountDirectory) + "/" + secret;
 }
 
-// Reads a Kubernetes service account secret file into the provided string.
-// Returns true if the file was read successfully.
-bool ReadServiceAccountSecret(
-    const std::string& secret, std::string& destination, bool verbose) {
+// A subclass of QueryException to represent non-retriable errors.
+class KubernetesReader::NonRetriableError
+    : public KubernetesReader::QueryException {
+ public:
+  NonRetriableError(const std::string& what) : QueryException(what) {}
+};
+
+KubernetesReader::KubernetesReader(const Configuration& config,
+                                   HealthChecker* health_checker)
+    : config_(config), environment_(config), health_checker_(health_checker),
+      service_account_directory_(kServiceAccountDirectory) {}
+
+std::string KubernetesReader::SecretPath(const std::string& secret) const {
+  return service_account_directory_ + "/" + secret;
+}
+
+bool KubernetesReader::ReadServiceAccountSecret(
+    const std::string& secret, std::string& destination, bool verbose) const {
   std::string filename(SecretPath(secret));
   std::ifstream input(filename);
   if (!input.good()) {
@@ -90,19 +101,6 @@ bool ReadServiceAccountSecret(
   std::getline(input, destination);
   return !input.fail();
 }
-
-}
-
-// A subclass of QueryException to represent non-retriable errors.
-class KubernetesReader::NonRetriableError
-    : public KubernetesReader::QueryException {
- public:
-  NonRetriableError(const std::string& what) : QueryException(what) {}
-};
-
-KubernetesReader::KubernetesReader(const Configuration& config,
-                                   HealthChecker* health_checker)
-    : config_(config), environment_(config), health_checker_(health_checker) {}
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     const json::Object* node, Timestamp collected_at, bool is_deleted) const
