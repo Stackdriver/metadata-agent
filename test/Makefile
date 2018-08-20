@@ -55,6 +55,7 @@ TESTS=\
       instance_unittest \
       json_unittest \
       kubernetes_unittest \
+      logging_unittest \
       resource_unittest \
       store_unittest \
       time_unittest \
@@ -131,6 +132,8 @@ instance_unittest: instance_unittest.o $(SRC_DIR)/instance.o $(SRC_DIR)/configur
 json_unittest: json_unittest.o $(SRC_DIR)/json.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 kubernetes_unittest: kubernetes_unittest.o $(SRC_DIR)/kubernetes.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/environment.o $(SRC_DIR)/time.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o $(SRC_DIR)/updater.o $(SRC_DIR)/instance.o $(SRC_DIR)/format.o $(SRC_DIR)/configuration.o $(SRC_DIR)/health_checker.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+logging_unittest: logging_unittest.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 resource_unittest: resource_unittest.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
