@@ -854,7 +854,7 @@ void KubernetesReader::WatchMaster(
                    << failures << " retries";
         throw QueryException(endpoint + " -> " + e.what());
       }
-      double backoff = fmin(pow(1.1, failures), 10);
+      double backoff = fmin(pow(1.5, failures), 30);
       if (verbose) {
         LOG(INFO) << "Backing off for " << backoff << " seconds";
       }
