@@ -157,8 +157,7 @@ TEST(TimeTest, FromStringScientificSeconds) {
 }
 
 TEST(TimeTest, SecondsSinceEpoch) {
-  const time_point t =
-      time::rfc3339::FromString("2017-07-14T02:40:00Z");
+  const time_point t = time_point() + std::chrono::seconds(1500000000);
   EXPECT_EQ(1500000000, time::SecondsSinceEpoch(t));
 }
 
