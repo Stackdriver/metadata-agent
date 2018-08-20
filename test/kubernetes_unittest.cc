@@ -764,29 +764,28 @@ bool WaitForNewerCollectionTimestamp(const MetadataStore& store,
   return false;
 }
 
-void TestKubernetesUpdater(bool cluster_level_metadata, bool service_metadata) {
-  const std::string nodes_path = cluster_level_metadata ?
+void TestKubernetesUpdater(bool cluster_level_metadata) {
+  const std::string nodes_watch_path = cluster_level_metadata ?
     "/api/v1/watch/nodes/?watch=true" :
     "/api/v1/watch/nodes/TestNodeName?watch=true";
-  const std::string pods_path = cluster_level_metadata ?
+  const std::string pods_watch_path = cluster_level_metadata ?
     "/api/v1/pods?fieldSelector=spec.nodeName%3D&watch=true" :
     "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true";
-  // These 2 paths only used when both cluster_level_metadata and
-  // service_metadata are true.
-  const std::string services_path =
+  // These 2 paths only used when cluster_level_metadata is true.
+  const std::string services_watch_path =
     "/api/v1/watch/services/?watch=true";
-  const std::string endpoints_path =
+  const std::string endpoints_watch_path =
     "/api/v1/watch/endpoints/?watch=true";
 
   // Create a fake server representing the Kubernetes master.
   testing::FakeServer server;
   server.SetResponse("/api/v1/nodes?limit=1", "{}");
   server.SetResponse("/api/v1/pods?limit=1", "{}");
-  server.AllowStream(nodes_path);
-  server.AllowStream(pods_path);
-  if (cluster_level_metadata && service_metadata) {
-    server.AllowStream(services_path);
-    server.AllowStream(endpoints_path);
+  server.AllowStream(nodes_watch_path);
+  server.AllowStream(pods_watch_path);
+  if (cluster_level_metadata) {
+    server.AllowStream(services_watch_path);
+    server.AllowStream(endpoints_watch_path);
   }
 
   // Start the updater with a config that points to the fake server.
@@ -800,8 +799,6 @@ void TestKubernetesUpdater(bool cluster_level_metadata, bool service_metadata) {
       "KubernetesClusterName: TestClusterName\n"
       "KubernetesEndpointHost: " + server.GetUrl() + "\n"
       "KubernetesNodeName: TestNodeName\n"
-      "KubernetesServiceMetadata: "
-      + std::string(service_metadata ? "true" : "false") + "\n"
       "KubernetesUseWatch: true\n"
       "MetadataIngestionRawContentVersion: TestVersion\n"
   ));
@@ -810,18 +807,18 @@ void TestKubernetesUpdater(bool cluster_level_metadata, bool service_metadata) {
   std::thread updater_thread([&updater] { updater.Start(); });
 
   // Wait for updater's watchers to connect to the server (hanging GETs).
-  server.WaitForOneStreamWatcher(nodes_path);
-  server.WaitForOneStreamWatcher(pods_path);
-  if (cluster_level_metadata && service_metadata) {
-    server.WaitForOneStreamWatcher(services_path);
-    server.WaitForOneStreamWatcher(endpoints_path);
+  server.WaitForOneStreamWatcher(nodes_watch_path);
+  server.WaitForOneStreamWatcher(pods_watch_path);
+  if (cluster_level_metadata) {
+    server.WaitForOneStreamWatcher(services_watch_path);
+    server.WaitForOneStreamWatcher(endpoints_watch_path);
   }
 
   // Tests for:
   // - nodes     (always)
   // - pods      (always)
-  // - services  (only when cluster_level_metadata & service_metadata are true)
-  // - endpoints (only when cluster_level_metadata & service_metadata are true)
+  // - services  (only when cluster_level_metadata is true)
+  // - endpoints (only when cluster_level_metadata is true)
   //
   // For each type, send 3 stream responses from the fake Kubernetes
   // master and verify that the updater propagates them to the store.
@@ -839,7 +836,7 @@ void TestKubernetesUpdater(bool cluster_level_metadata, bool service_metadata) {
         })}
       })}
     });
-    server.SendStreamResponse(nodes_path, resp->ToString());
+    server.SendStreamResponse(nodes_watch_path, resp->ToString());
 
     // Wait until watcher has processed response (by polling the store).
     MonitoredResource resource("k8s_node",
@@ -917,7 +914,7 @@ void TestKubernetesUpdater(bool cluster_level_metadata, bool service_metadata) {
         })},
       })}
     });
-    server.SendStreamResponse(pods_path, resp->ToString());
+    server.SendStreamResponse(pods_watch_path, resp->ToString());
 
     // Wait until watcher has processed response (by polling the store.)
     MonitoredResource gke_container_resource(
@@ -1063,7 +1060,7 @@ void TestKubernetesUpdater(bool cluster_level_metadata, bool service_metadata) {
               k8s_pod_metadata.metadata->ToString());
   }
 
-  if (cluster_level_metadata && service_metadata) {
+  if (cluster_level_metadata) {
     // Test services.
     Timestamp last_services_timestamp = std::chrono::system_clock::now();
     for (int i = 0; i < 3; i++) {
@@ -1077,7 +1074,7 @@ void TestKubernetesUpdater(bool cluster_level_metadata, bool service_metadata) {
           })}
         })}
       });
-      server.SendStreamResponse(services_path, resp->ToString());
+      server.SendStreamResponse(services_watch_path, resp->ToString());
 
       // Wait until watcher has processed response (by polling the store).
       MonitoredResource resource("k8s_cluster",
@@ -1141,7 +1138,7 @@ void TestKubernetesUpdater(bool cluster_level_metadata, bool service_metadata) {
           })},
         })}
       });
-      server.SendStreamResponse(endpoints_path, resp->ToString());
+      server.SendStreamResponse(endpoints_watch_path, resp->ToString());
 
       // Wait until watcher has processed response (by polling the store).
       MonitoredResource resource("k8s_cluster",
@@ -1195,14 +1192,8 @@ void TestKubernetesUpdater(bool cluster_level_metadata, bool service_metadata) {
 }
 
 TEST_F(KubernetesTest, KubernetesUpdater) {
-  TestKubernetesUpdater(/*cluster_level_metadata=*/false,
-                        /*service_metadata=*/true);
-
-  TestKubernetesUpdater(/*cluster_level_metadata=*/true,
-                        /*service_metadata=*/false);
-
-  TestKubernetesUpdater(/*cluster_level_metadata=*/true,
-                        /*service_metadata=*/true);
+  TestKubernetesUpdater(/*cluster_level_metadata=*/false);
+  TestKubernetesUpdater(/*cluster_level_metadata=*/true);
 }
 
 }  // namespace google
