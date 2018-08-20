@@ -17,10 +17,10 @@ class KubernetesTest : public ::testing::Test {
     return reader.FullResourceName(self_link);
   }
 
-  static const std::string GetWatchEndpoint(
+  static const std::string GetWatchPath(
       const KubernetesReader& reader, const std::string& plural_kind,
       const std::string& api_version, const std::string& selector) {
-    return reader.GetWatchEndpoint(plural_kind, api_version, selector);
+    return reader.GetWatchPath(plural_kind, api_version, selector);
   }
 
   static MetadataUpdater::ResourceMetadata GetObjectMetadata(
@@ -29,16 +29,19 @@ class KubernetesTest : public ::testing::Test {
       throw(json::Exception) {
     return reader.GetObjectMetadata(
         object, collected_at, is_deleted,
-        [](const json::Object* object, KubernetesReader::IdsAndMR& ids_mr) {});
+        [](const json::Object* object) {
+          return KubernetesReader::IdsAndMR{
+            std::vector<std::string>{}, MonitoredResource("", {})};
+        }
+    );
   }
 
   static MetadataUpdater::ResourceMetadata GetNodeMetadata(
       const KubernetesReader& reader, const json::Object *node,
       Timestamp collected_at, bool is_deleted)
       throw(json::Exception) {
-    auto cb = [&](
-        const json::Object* node, KubernetesReader::IdsAndMR& ids_and_mr) {
-      reader.NodeMetadataCallback(std::move(node), ids_and_mr);
+    auto cb = [&](const json::Object* node) {
+      return reader.NodeResourceMappingCallback(node);
     };
     return reader.GetObjectMetadata(node, collected_at, is_deleted, cb);
   }
@@ -46,9 +49,8 @@ class KubernetesTest : public ::testing::Test {
   static MetadataUpdater::ResourceMetadata GetPodMetadata(
       const KubernetesReader& reader, const json::Object* pod,
       Timestamp collected_at, bool is_deleted) throw(json::Exception) {
-    auto cb = [&](
-        const json::Object* node, KubernetesReader::IdsAndMR& ids_and_mr) {
-      reader.PodMetadataCallback(std::move(pod), ids_and_mr);
+    auto cb = [&](const json::Object* pod) {
+      return reader.PodResourceMappingCallback(pod);
     };
     return reader.GetObjectMetadata(pod, collected_at, is_deleted, cb);
   }
@@ -122,21 +124,21 @@ TEST_F(KubernetesTest, ZonalClusterAndFullResourceName) {
       FullResourceName(reader, "/api/v1/nodes/node-name"));
 }
 
-TEST_F(KubernetesTest, GetWatchEndpoint) {
+TEST_F(KubernetesTest, GetWatchPath) {
   Configuration config(std::stringstream(
     "KubernetesEndpointHost: https://kubernetes.host\n"
   ));
   Environment environment(config);
   KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
 
-  EXPECT_EQ("https://kubernetes.host/api/v1/watch/nodes",
-            GetWatchEndpoint(reader, "nodes", "v1", ""));
-  EXPECT_EQ("https://kubernetes.host/api/v1/watch/nodes/node-name",
-            GetWatchEndpoint(reader, "nodes", "v1", "/node-name"));
-  EXPECT_EQ("https://kubernetes.host/api/v1/watch/nodes?selector=Name%3Dname",
-            GetWatchEndpoint(reader, "nodes", "v1", "?selector=Name%3Dname"));
-  EXPECT_EQ("https://kubernetes.host/apis/apps/v1/watch/deployments",
-            GetWatchEndpoint(reader, "deployments", "apps/v1", ""));
+  EXPECT_EQ("/api/v1/watch/nodes",
+            GetWatchPath(reader, "nodes", "v1", ""));
+  EXPECT_EQ("/api/v1/watch/nodes/node-name",
+            GetWatchPath(reader, "nodes", "v1", "/node-name"));
+  EXPECT_EQ("/api/v1/watch/nodes?selector=Name%3Dname",
+            GetWatchPath(reader, "nodes", "v1", "?selector=Name%3Dname"));
+  EXPECT_EQ("/apis/apps/v1/watch/deployments",
+            GetWatchPath(reader, "deployments", "apps/v1", ""));
 }
 
 TEST_F(KubernetesTest, GetObjectMetadataService) {
