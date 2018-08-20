@@ -28,19 +28,6 @@ MetadataStore::Metadata MetadataStore::Metadata::IGNORED() {
 
 MetadataStore::MetadataStore(const Configuration& config) : config_(config) {}
 
-std::map<std::string, Timestamp>
-    MetadataStore::GetLastCollectionMap() const {
-  std::lock_guard<std::mutex> lock(last_collection_mu_);
-
-  std::map<std::string, Timestamp> result;
-  for (const auto& kv : last_collection_map_) {
-    const std::string& resource_type = kv.first;
-    const Timestamp& collected_at = kv.second;
-    result.emplace(resource_type, collected_at);
-  }
-  return result;
-}
-
 const MonitoredResource& MetadataStore::LookupResource(
     const std::string& resource_id) const throw(std::out_of_range) {
   std::lock_guard<std::mutex> lock(resource_mu_);
@@ -82,8 +69,14 @@ void MetadataStore::UpdateMetadata(const MonitoredResource& resource,
   metadata_map_.erase(resource);
   metadata_map_.emplace(resource, std::move(entry));
 
-  std::lock_guard<std::mutex> last_collection_lock(last_collection_mu_);
-  last_collection_map_.emplace(resource.type(), entry.collected_at);
+  auto t = last_collection_times_.find(resource.type());
+  if (t == last_collection_times_.end()) {
+    last_collection_times_.emplace(resource.type(), entry.collected_at);
+  } else {
+    if (t->second < entry.collected_at) {
+      t->second = entry.collected_at;
+    }
+  }
 }
 
 std::map<MonitoredResource, MetadataStore::Metadata>
@@ -97,6 +90,11 @@ std::map<MonitoredResource, MetadataStore::Metadata>
     result.emplace(resource, metadata.Clone());
   }
   return result;
+}
+
+std::map<std::string, Timestamp> MetadataStore::GetLastCollectionTimes() const {
+  std::lock_guard<std::mutex> lock(metadata_mu_);
+  return last_collection_times_;
 }
 
 void MetadataStore::PurgeDeletedEntries() {

@@ -25,6 +25,7 @@
 
 namespace google {
 
+// Storage for the metadata mapping.
 class MetadataStore;
 
 // Collects and reports health information about the metadata agent.

@@ -56,8 +56,8 @@ std::set<std::string> HealthChecker::UnhealthyComponents() const {
 
   Timestamp cutoff = std::chrono::system_clock::now()
     - std::chrono::seconds(config_.HealthCheckMaxDataAgeSeconds());
-  auto last_collection_map = store_.GetLastCollectionMap();
-  for (auto& kv : last_collection_map) {
+  auto last_collection_times = store_.GetLastCollectionTimes();
+  for (auto& kv : last_collection_times) {
     const std::string& object_type = kv.first;
     const Timestamp& collected_at = kv.second;
     if (collected_at < cutoff) {
