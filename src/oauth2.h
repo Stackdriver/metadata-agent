@@ -26,8 +26,10 @@
 
 namespace google {
 
+namespace {
 constexpr const char kDefaultTokenEndpoint[] =
   "https://www.googleapis.com/oauth2/v3/token";
+}
 
 class OAuth2 {
  public:
