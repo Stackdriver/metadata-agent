@@ -141,11 +141,11 @@ class KubernetesReader {
       throw(json::Exception);
 
   // Node Resource Mapping Callback.
-  IdsAndMR NodeResourceMappingCallback(const json::Object* node)
-      const throw(json::Exception);
+  IdsAndMR NodeResourceMappingCallback(const json::Object* node) const
+      throw(json::Exception);
   // Pod Resource Mapping Callback.
-  IdsAndMR PodResourceMappingCallback(const json::Object* pod)
-      const throw(json::Exception);
+  IdsAndMR PodResourceMappingCallback(const json::Object* pod) const
+      throw(json::Exception);
   // Empty Resource Mapping Callback.
   IdsAndMR EmptyResourceMappingCallback(const json::Object* object) const;
 
