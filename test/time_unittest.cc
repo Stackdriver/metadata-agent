@@ -165,16 +165,14 @@ TEST(TimeTest, SafeLocaltime) {
   const std::time_t now_c =
     std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   std::tm local_time = time::safe_localtime(&now_c);
-  EXPECT_EQ(std::mktime(std::localtime(&now_c)),
-            std::mktime(&local_time));
+  EXPECT_EQ(std::mktime(std::localtime(&now_c)), std::mktime(&local_time));
 }
 
 TEST(TimeTest, SafeGmtime) {
   const std::time_t now_c =
     std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   std::tm gm_time = time::safe_gmtime(&now_c);
-  EXPECT_EQ(std::mktime(std::gmtime(&now_c)),
-            std::mktime(&gm_time));
+  EXPECT_EQ(std::mktime(std::gmtime(&now_c)), std::mktime(&gm_time));
 }
 
 }
