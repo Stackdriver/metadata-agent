@@ -78,8 +78,8 @@ class MetadataStore {
   // associated with that resource.
   std::map<MonitoredResource, Metadata> GetMetadataMap() const;
 
-  // Returns a copy of the mapping from a resource type to its last
-  // collection time.
+  // Returns a copy of the mapping from a monitored resource type to
+  // its last collection time.
   std::map<std::string, Timestamp> GetLastCollectionTimes() const;
 
   // Looks up the local resource map entry for a given resource id.
@@ -110,12 +110,11 @@ class MetadataStore {
   mutable std::mutex resource_mu_;
   // A map from a locally unique id to MonitoredResource.
   std::map<std::string, MonitoredResource> resource_map_;
-  // A lock that guards access to the metadata map and last collection
-  // times map.
+  // A lock that guards access to the metadata and last collection times maps.
   mutable std::mutex metadata_mu_;
   // A map from MonitoredResource to (JSON) resource metadata.
   std::map<MonitoredResource, Metadata> metadata_map_;
-  // A map from object type to last collection time.
+  // A map from monitored resource type to last collection time.
   std::map<std::string, Timestamp> last_collection_times_;
 };
 

@@ -69,13 +69,11 @@ void MetadataStore::UpdateMetadata(const MonitoredResource& resource,
   metadata_map_.erase(resource);
   metadata_map_.emplace(resource, std::move(entry));
 
-  auto t = last_collection_times_.find(resource.type());
-  if (t == last_collection_times_.end()) {
-    last_collection_times_.emplace(resource.type(), entry.collected_at);
-  } else {
-    if (t->second < entry.collected_at) {
-      t->second = entry.collected_at;
-    }
+  auto found = last_collection_times_.emplace(resource.type(),
+                                              entry.collected_at);
+  // Force timestamp update for existing entries.
+  if (!found.second && found.first->second < entry.collected_at) {
+    found.first->second = entry.collected_at;
   }
 }
 
