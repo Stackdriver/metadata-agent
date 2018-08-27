@@ -45,6 +45,7 @@ class Environment {
 
  private:
   friend class EnvironmentTest;
+  friend class OAuth2Test;
 
   void ReadApplicationDefaultCredentials() const;
 
