@@ -764,66 +764,10 @@ bool WaitForNewerCollectionTimestamp(const MetadataStore& store,
   return false;
 }
 
-void TestKubernetesUpdater(bool cluster_level_metadata) {
-  const std::string nodes_watch_path = cluster_level_metadata ?
-    "/api/v1/watch/nodes/?watch=true" :
-    "/api/v1/watch/nodes/TestNodeName?watch=true";
-  const std::string pods_watch_path = cluster_level_metadata ?
-    "/api/v1/pods?fieldSelector=spec.nodeName%3D&watch=true" :
-    "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true";
-  // These 2 paths only used when cluster_level_metadata is true.
-  const std::string services_watch_path =
-    "/api/v1/watch/services/?watch=true";
-  const std::string endpoints_watch_path =
-    "/api/v1/watch/endpoints/?watch=true";
-
-  // Create a fake server representing the Kubernetes master.
-  testing::FakeServer server;
-  server.SetResponse("/api/v1/nodes?limit=1", "{}");
-  server.SetResponse("/api/v1/pods?limit=1", "{}");
-  server.AllowStream(nodes_watch_path);
-  server.AllowStream(pods_watch_path);
-  if (cluster_level_metadata) {
-    server.AllowStream(services_watch_path);
-    server.AllowStream(endpoints_watch_path);
-  }
-
-  // Start the updater with a config that points to the fake server.
-  Configuration config(std::istringstream(
-      "InstanceId: TestID\n"
-      "InstanceResourceType: gce_instance\n"
-      "InstanceZone: TestZone\n"
-      "KubernetesClusterLevelMetadata: "
-      + std::string(cluster_level_metadata ? "true" : "false") + "\n"
-      "KubernetesClusterLocation: TestClusterLocation\n"
-      "KubernetesClusterName: TestClusterName\n"
-      "KubernetesEndpointHost: " + server.GetUrl() + "\n"
-      "KubernetesNodeName: TestNodeName\n"
-      "KubernetesUseWatch: true\n"
-      "MetadataIngestionRawContentVersion: TestVersion\n"
-  ));
-  MetadataStore store(config);
-  KubernetesUpdater updater(config, /*health_checker=*/nullptr, &store);
-  std::thread updater_thread([&updater] { updater.Start(); });
-
-  // Wait for updater's watchers to connect to the server (hanging GETs).
+void TestNodes(testing::FakeServer& server, MetadataStore& store,
+               const std::string& nodes_watch_path) {
   server.WaitForOneStreamWatcher(nodes_watch_path);
-  server.WaitForOneStreamWatcher(pods_watch_path);
-  if (cluster_level_metadata) {
-    server.WaitForOneStreamWatcher(services_watch_path);
-    server.WaitForOneStreamWatcher(endpoints_watch_path);
-  }
 
-  // Tests for:
-  // - nodes     (always)
-  // - pods      (always)
-  // - services  (only when cluster_level_metadata is true)
-  // - endpoints (only when cluster_level_metadata is true)
-  //
-  // For each type, send 3 stream responses from the fake Kubernetes
-  // master and verify that the updater propagates them to the store.
-  //
-  // First, test nodes.
   Timestamp last_nodes_timestamp = std::chrono::system_clock::now();
   for (int i = 0; i < 3; i++) {
     // Send a response to the watcher.
@@ -843,8 +787,8 @@ void TestKubernetesUpdater(bool cluster_level_metadata) {
                                {{"cluster_name", "TestClusterName"},
                                 {"location", "TestClusterLocation"},
                                 {"node_name", "TestNodeName"}});
-    EXPECT_TRUE(
-        WaitForNewerCollectionTimestamp(store, resource, last_nodes_timestamp));
+    EXPECT_TRUE(WaitForNewerCollectionTimestamp(
+        store, resource, last_nodes_timestamp));
 
     // Update last_nodes_timestamp.
     const auto metadata_map = store.GetMetadataMap();
@@ -876,7 +820,8 @@ void TestKubernetesUpdater(bool cluster_level_metadata) {
           {"raw", json::object({
             {"metadata", json::object({
               {"name", json::string("TestNodeName")},
-              {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
+              {"creationTimestamp",
+               json::string("2018-03-03T01:23:45.678901234Z")},
             })},
           })},
         })},
@@ -884,8 +829,12 @@ void TestKubernetesUpdater(bool cluster_level_metadata) {
     });
     EXPECT_EQ(big->ToString(), metadata.metadata->ToString());
   }
+}
 
-  // Test pods.
+void TestPods(testing::FakeServer& server, MetadataStore& store,
+              const std::string& pods_watch_path) {
+  server.WaitForOneStreamWatcher(pods_watch_path);
+
   Timestamp last_pods_timestamp = std::chrono::system_clock::now();
   for (int i = 0; i < 3; i++) {
     // Send a response to the watcher.
@@ -938,8 +887,8 @@ void TestKubernetesUpdater(bool cluster_level_metadata) {
          {"location", "TestClusterLocation"},
          {"namespace_name", "TestNamespace"},
          {"pod_name", "TestPodName"}});
-    EXPECT_TRUE(
-        WaitForNewerCollectionTimestamp(store, k8s_pod_resource, last_pods_timestamp));
+    EXPECT_TRUE(WaitForNewerCollectionTimestamp(
+        store, k8s_pod_resource, last_pods_timestamp));
 
     // Update last_pods_timestamp.
     const auto metadata_map = store.GetMetadataMap();
@@ -962,7 +911,8 @@ void TestKubernetesUpdater(bool cluster_level_metadata) {
 
     // TODO: Should this resource be present?
     //
-    // const auto& gke_container_metadata = metadata_map.at(gke_container_resource);
+    // const auto& gke_container_metadata =
+    //     metadata_map.at(gke_container_resource);
     // EXPECT_TRUE(gke_container_metadata.ignore);
 
     const auto& k8s_container_metadata = metadata_map.at(k8s_container_resource);
@@ -1061,141 +1011,234 @@ void TestKubernetesUpdater(bool cluster_level_metadata) {
     EXPECT_EQ(pod_metadata->ToString(),
               k8s_pod_metadata.metadata->ToString());
   }
+}
 
-  if (cluster_level_metadata) {
-    // Test services.
-    Timestamp last_services_timestamp = std::chrono::system_clock::now();
-    for (int i = 0; i < 3; i++) {
-      // Send a response to the watcher.
-      json::value resp = json::object({
-        {"type", json::string("ADDED")},
-        {"object", json::object({
-          {"metadata", json::object({
-            {"name", json::string("testname")},
-            {"namespace", json::string("testnamespace")},
-          })}
+void TestServices(testing::FakeServer& server, MetadataStore& store,
+                  const std::string& services_watch_path) {
+  server.WaitForOneStreamWatcher(services_watch_path);
+
+  Timestamp last_services_timestamp = std::chrono::system_clock::now();
+  for (int i = 0; i < 3; i++) {
+    // Send a response to the watcher.
+    json::value resp = json::object({
+      {"type", json::string("ADDED")},
+      {"object", json::object({
+        {"metadata", json::object({
+          {"name", json::string("testname")},
+          {"namespace", json::string("testnamespace")},
         })}
-      });
-      server.SendStreamResponse(services_watch_path, resp->ToString());
+      })}
+    });
+    server.SendStreamResponse(services_watch_path, resp->ToString());
 
-      // Wait until watcher has processed response (by polling the store).
-      MonitoredResource resource("k8s_cluster",
-                                 {{"cluster_name", "TestClusterName"},
-                                  {"location", "TestClusterLocation"}});
-      EXPECT_TRUE(
-          WaitForNewerCollectionTimestamp(store, resource, last_services_timestamp));
+    // Wait until watcher has processed response (by polling the store).
+    MonitoredResource resource("k8s_cluster",
+                               {{"cluster_name", "TestClusterName"},
+                                {"location", "TestClusterLocation"}});
+    EXPECT_TRUE(WaitForNewerCollectionTimestamp(
+        store, resource, last_services_timestamp));
 
-      // Update last_services_timestamp.
-      const auto metadata_map = store.GetMetadataMap();
-      const auto& metadata = metadata_map.at(resource);
-      last_services_timestamp = metadata.collected_at;
+    // Update last_services_timestamp.
+    const auto metadata_map = store.GetMetadataMap();
+    const auto& metadata = metadata_map.at(resource);
+    last_services_timestamp = metadata.collected_at;
 
-      // Verify values in the store.
-      EXPECT_EQ("TestVersion", metadata.version);
-      EXPECT_FALSE(metadata.is_deleted);
-      EXPECT_EQ(Timestamp(), metadata.created_at);
-      json::value expected_cluster = json::object({
-        {"blobs", json::object({
-          {"services", json::array({
-            json::object({
-              {"api", json::object({
-                {"pods", json::array({})},
-                {"raw", json::object({
-                  {"metadata", json::object({
-                    {"name", json::string("testname")},
-                    {"namespace", json::string("testnamespace")},
-                  })},
+    // Verify values in the store.
+    EXPECT_EQ("TestVersion", metadata.version);
+    EXPECT_FALSE(metadata.is_deleted);
+    EXPECT_EQ(Timestamp(), metadata.created_at);
+    json::value expected_cluster = json::object({
+      {"blobs", json::object({
+        {"services", json::array({
+          json::object({
+            {"api", json::object({
+              {"pods", json::array({})},
+              {"raw", json::object({
+                {"metadata", json::object({
+                  {"name", json::string("testname")},
+                  {"namespace", json::string("testnamespace")},
                 })},
-                {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
               })},
-            }),
-          })},
+              {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
+            })},
+          }),
         })},
-      });
-      EXPECT_EQ(expected_cluster->ToString(), metadata.metadata->ToString());
-    }
-
-    // Test endpoints.
-    Timestamp last_endpoints_timestamp = std::chrono::system_clock::now();
-    for (int i = 0; i < 3; i++) {
-      // Send a response to the watcher.
-      json::value resp = json::object({
-        {"type", json::string("ADDED")},
-        {"object", json::object({
-          {"metadata", json::object({
-            {"name", json::string("testname")},
-            {"namespace", json::string("testnamespace")},
-          })},
-          {"subsets", json::array({
-            json::object({
-              {"addresses", json::array({
-                json::object({
-                  {"targetRef", json::object({
-                    {"kind", json::string("Pod")},
-                    {"name", json::string("my-pod")},
-                  })},
-                }),
-              })},
-            }),
-          })},
-        })}
-      });
-      server.SendStreamResponse(endpoints_watch_path, resp->ToString());
-
-      // Wait until watcher has processed response (by polling the store).
-      MonitoredResource resource("k8s_cluster",
-                                 {{"cluster_name", "TestClusterName"},
-                                  {"location", "TestClusterLocation"}});
-      EXPECT_TRUE(
-          WaitForNewerCollectionTimestamp(store, resource, last_endpoints_timestamp));
-
-      // Update last_endpoints_timestamp.
-      const auto metadata_map = store.GetMetadataMap();
-      const auto& metadata = metadata_map.at(resource);
-      last_endpoints_timestamp = metadata.collected_at;
-
-      // Verify values in the store.
-      EXPECT_EQ("TestVersion", metadata.version);
-      EXPECT_FALSE(metadata.is_deleted);
-      EXPECT_EQ(Timestamp(), metadata.created_at);
-      MonitoredResource pod_mr = MonitoredResource("k8s_pod", {
-        {"cluster_name", "TestClusterName"},
-        {"namespace_name", "testnamespace"},
-        {"pod_name", "my-pod"},
-        {"location", "TestClusterLocation"},
-      });
-      json::value expected_cluster = json::object({
-        {"blobs", json::object({
-          {"services", json::array({
-            json::object({
-              {"api", json::object({
-                {"pods", json::array({
-                  pod_mr.ToJSON(),
-                })},
-                {"raw", json::object({
-                  {"metadata", json::object({
-                    {"name", json::string("testname")},
-                    {"namespace", json::string("testnamespace")},
-                  })},
-                })},
-                {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
-              })}
-            }),
-          })},
-        })},
-      });
-      EXPECT_EQ(expected_cluster->ToString(), metadata.metadata->ToString());
-    }
+      })},
+    });
+    EXPECT_EQ(expected_cluster->ToString(), metadata.metadata->ToString());
   }
+}
+
+void TestEndpoints(testing::FakeServer& server, MetadataStore& store,
+                   const std::string& endpoints_watch_path) {
+  server.WaitForOneStreamWatcher(endpoints_watch_path);
+
+  Timestamp last_endpoints_timestamp = std::chrono::system_clock::now();
+  for (int i = 0; i < 3; i++) {
+    // Send a response to the watcher.
+    json::value resp = json::object({
+      {"type", json::string("ADDED")},
+      {"object", json::object({
+        {"metadata", json::object({
+          {"name", json::string("testname")},
+          {"namespace", json::string("testnamespace")},
+        })},
+        {"subsets", json::array({
+          json::object({
+            {"addresses", json::array({
+              json::object({
+                {"targetRef", json::object({
+                  {"kind", json::string("Pod")},
+                  {"name", json::string("my-pod")},
+                })},
+              }),
+            })},
+          }),
+        })},
+      })}
+    });
+    server.SendStreamResponse(endpoints_watch_path, resp->ToString());
+
+    // Wait until watcher has processed response (by polling the store).
+    MonitoredResource resource("k8s_cluster",
+                               {{"cluster_name", "TestClusterName"},
+                                {"location", "TestClusterLocation"}});
+    EXPECT_TRUE(WaitForNewerCollectionTimestamp(
+        store, resource, last_endpoints_timestamp));
+
+    // Update last_endpoints_timestamp.
+    const auto metadata_map = store.GetMetadataMap();
+    const auto& metadata = metadata_map.at(resource);
+    last_endpoints_timestamp = metadata.collected_at;
+
+    // Verify values in the store.
+    EXPECT_EQ("TestVersion", metadata.version);
+    EXPECT_FALSE(metadata.is_deleted);
+    EXPECT_EQ(Timestamp(), metadata.created_at);
+    MonitoredResource pod_mr = MonitoredResource("k8s_pod", {
+      {"cluster_name", "TestClusterName"},
+      {"namespace_name", "testnamespace"},
+      {"pod_name", "my-pod"},
+      {"location", "TestClusterLocation"},
+    });
+    json::value expected_cluster = json::object({
+      {"blobs", json::object({
+        {"services", json::array({
+          json::object({
+            {"api", json::object({
+              {"pods", json::array({
+                pod_mr.ToJSON(),
+              })},
+              {"raw", json::object({
+                {"metadata", json::object({
+                  {"name", json::string("testname")},
+                  {"namespace", json::string("testnamespace")},
+                })},
+              })},
+              {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
+            })}
+          }),
+        })},
+      })},
+    });
+    EXPECT_EQ(expected_cluster->ToString(), metadata.metadata->ToString());
+  }
+}
+
+TEST_F(KubernetesTest, KubernetesUpdaterWithoutClusterLevelMetadata) {
+  const std::string nodes_watch_path =
+    "/api/v1/watch/nodes/TestNodeName?watch=true";
+  const std::string pods_watch_path =
+    "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true";
+
+  // Create a fake server representing the Kubernetes master.
+  testing::FakeServer server;
+  server.SetResponse("/api/v1/nodes?limit=1", "{}");
+  server.SetResponse("/api/v1/pods?limit=1", "{}");
+  server.AllowStream(nodes_watch_path);
+  server.AllowStream(pods_watch_path);
+
+  // Start the updater with a config that points to the fake server.
+  Configuration config(std::istringstream(
+      "InstanceId: TestID\n"
+      "InstanceResourceType: gce_instance\n"
+      "InstanceZone: TestZone\n"
+      "KubernetesClusterLevelMetadata: false\n"
+      "KubernetesClusterLocation: TestClusterLocation\n"
+      "KubernetesClusterName: TestClusterName\n"
+      "KubernetesEndpointHost: " + server.GetUrl() + "\n"
+      "KubernetesNodeName: TestNodeName\n"
+      "KubernetesUseWatch: true\n"
+      "MetadataIngestionRawContentVersion: TestVersion\n"
+  ));
+  MetadataStore store(config);
+  KubernetesUpdater updater(config, /*health_checker=*/nullptr, &store);
+  std::thread updater_thread([&updater] { updater.Start(); });
+
+  // Test nodes & pods (but not services & endpoints).
+  //
+  // For each type, wait for updater's watcher to connect to the
+  // server (hanging GET), then send 3 stream responses from the fake
+  // Kubernetes master and verify that the updater propagates them to
+  // the store.
+  TestNodes(server, store, nodes_watch_path);
+  TestPods(server, store, pods_watch_path);
 
   // Terminate the hanging GETs on the server so that the updater will finish.
   server.TerminateAllStreams();
   updater_thread.join();
 }
 
-TEST_F(KubernetesTest, KubernetesUpdater) {
-  TestKubernetesUpdater(/*cluster_level_metadata=*/false);
-  TestKubernetesUpdater(/*cluster_level_metadata=*/true);
+TEST_F(KubernetesTest, KubernetesUpdaterWithClusterLevelMetadata) {
+  const std::string nodes_watch_path =
+    "/api/v1/watch/nodes/?watch=true";
+  const std::string pods_watch_path =
+    "/api/v1/pods?fieldSelector=spec.nodeName%3D&watch=true";
+  const std::string services_watch_path =
+    "/api/v1/watch/services/?watch=true";
+  const std::string endpoints_watch_path =
+    "/api/v1/watch/endpoints/?watch=true";
+
+  // Create a fake server representing the Kubernetes master.
+  testing::FakeServer server;
+  server.SetResponse("/api/v1/nodes?limit=1", "{}");
+  server.SetResponse("/api/v1/pods?limit=1", "{}");
+  server.AllowStream(nodes_watch_path);
+  server.AllowStream(pods_watch_path);
+  server.AllowStream(services_watch_path);
+  server.AllowStream(endpoints_watch_path);
+
+  // Start the updater with a config that points to the fake server.
+  Configuration config(std::istringstream(
+      "InstanceId: TestID\n"
+      "InstanceResourceType: gce_instance\n"
+      "InstanceZone: TestZone\n"
+      "KubernetesClusterLevelMetadata: true\n"
+      "KubernetesClusterLocation: TestClusterLocation\n"
+      "KubernetesClusterName: TestClusterName\n"
+      "KubernetesEndpointHost: " + server.GetUrl() + "\n"
+      "KubernetesNodeName: TestNodeName\n"
+      "KubernetesUseWatch: true\n"
+      "MetadataIngestionRawContentVersion: TestVersion\n"
+  ));
+  MetadataStore store(config);
+  KubernetesUpdater updater(config, /*health_checker=*/nullptr, &store);
+  std::thread updater_thread([&updater] { updater.Start(); });
+
+  // Tests for nodes, pods, services, endpoints.
+  //
+  // For each type, wait for updater's watcher to connect to the
+  // server (hanging GET), then send 3 stream responses from the fake
+  // Kubernetes master and verify that the updater propagates them to
+  // the store.
+  TestNodes(server, store, nodes_watch_path);
+  TestPods(server, store, pods_watch_path);
+  TestServices(server, store, services_watch_path);
+  TestEndpoints(server, store, endpoints_watch_path);
+
+  // Terminate the hanging GETs on the server so that the updater will finish.
+  server.TerminateAllStreams();
+  updater_thread.join();
 }
 
 }  // namespace google
