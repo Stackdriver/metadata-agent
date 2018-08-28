@@ -898,10 +898,10 @@ void KubernetesReader::WatchEndpoint(
   try {
     WatchMaster(
         name, path,
-        [=](const json::Object* resource, Timestamp collected_at,
+        [=](const json::Object* object, Timestamp collected_at,
             bool is_deleted) {
           ObjectWatchCallback(
-              resource_mapping_cb, update_cb, resource, collected_at, is_deleted);
+              resource_mapping_cb, update_cb, object, collected_at, is_deleted);
         });
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
