@@ -10,6 +10,8 @@ namespace google {
 
 class KubernetesTest : public ::testing::Test {
  protected:
+  using QueryException = KubernetesReader::QueryException;
+
   static json::value QueryMaster(
       const KubernetesReader& reader, const std::string& path)
       throw(KubernetesReader::QueryException, json::Exception) {
@@ -92,15 +94,6 @@ class KubernetesTest : public ::testing::Test {
   static void SetServiceAccountDirectoryForTest(
       KubernetesReader* reader, const std::string& directory) {
     reader->SetServiceAccountDirectoryForTest(directory);
-  }
-
-  static bool ThrowsQueryException(std::function<void()> func) {
-    try {
-      func();
-      return false;
-    } catch (const KubernetesReader::QueryException& e) {
-      return true;
-    }
   }
 };
 
@@ -771,7 +764,7 @@ TEST_F(KubernetesTest, QueryMaster) {
   KubernetesReader reader(config, nullptr);  // Don't need HealthChecker.
   EXPECT_EQ(QueryMaster(reader, "/a/b/c")->ToString(), "{\"hello\":\"world\"}");
 
-  EXPECT_TRUE(ThrowsQueryException([&reader]{ QueryMaster(reader, "/d/e/f"); }));
+  EXPECT_THROW(QueryMaster(reader, "/d/e/f"), QueryException);
 }
 
 TEST_F(KubernetesTest, MetadataQuery) {
@@ -840,7 +833,7 @@ TEST_F(KubernetesTest, MetadataQuery) {
   EXPECT_FALSE(m[0].metadata().is_deleted);
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
             m[0].metadata().created_at);
-  json::value big = json::object({
+  json::value node_metadata = json::object({
     {"blobs", json::object({
       {"association", json::object({
         {"version", json::string("TestVersion")},
@@ -865,7 +858,7 @@ TEST_F(KubernetesTest, MetadataQuery) {
       })},
     })},
   });
-  EXPECT_EQ(big->ToString(), m[0].metadata().metadata->ToString());
+  EXPECT_EQ(node_metadata->ToString(), m[0].metadata().metadata->ToString());
 
   // Verify pod metadata.
   EXPECT_EQ(std::vector<std::string>({
@@ -993,8 +986,7 @@ TEST_F(KubernetesTest, MetadataQuery) {
       })},
     })},
   });
-  EXPECT_EQ(pod_metadata->ToString(),
-            m[3].metadata().metadata->ToString());
+  EXPECT_EQ(pod_metadata->ToString(), m[3].metadata().metadata->ToString());
 }
 
 }  // namespace google
