@@ -14,7 +14,7 @@ class KubernetesTest : public ::testing::Test {
 
   static json::value QueryMaster(
       const KubernetesReader& reader, const std::string& path)
-      throw(KubernetesReader::QueryException, json::Exception) {
+      throw(QueryException, json::Exception) {
     return reader.QueryMaster(path);
   }
 
