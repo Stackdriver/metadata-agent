@@ -106,7 +106,7 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
     {"metadata", json::object({
       {"name", json::string("testname")},
       {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
-    })}
+    })},
   });
   const auto m =
       GetNodeMetadata(reader, node->As<json::Object>(), Timestamp(), false);
@@ -122,7 +122,7 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
             m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
-  json::value big = json::object({
+  json::value node_metadata = json::object({
     {"blobs", json::object({
       {"association", json::object({
         {"version", json::string("TestVersion")},
@@ -142,7 +142,7 @@ TEST_F(KubernetesTest, GetNodeMetadata) {
       })},
     })},
   });
-  EXPECT_EQ(big->ToString(), m.metadata().metadata->ToString());
+  EXPECT_EQ(node_metadata->ToString(), m.metadata().metadata->ToString());
 }
 
 TEST_F(KubernetesTest, ComputePodAssociations) {
@@ -243,16 +243,16 @@ TEST_F(KubernetesTest, GetPodMetadata) {
   json::value expected_metadata = json::object({
     {"blobs", json::object({
       {"api", json::object({
+        {"version", json::string("1.6")},
         {"raw", json::object({
           {"metadata", json::object({
             {"creationTimestamp",
-              json::string("2018-03-03T01:23:45.678901234Z")},
+             json::string("2018-03-03T01:23:45.678901234Z")},
             {"name", json::string("TestName")},
             {"namespace", json::string("TestNamespace")},
             {"uid", json::string("TestUid")},
           })},
         })},
-        {"version", json::string("1.6")},
       })},
       {"association", json::string("TestAssociations")},
     })},
@@ -350,9 +350,9 @@ TEST_F(KubernetesTest, GetClusterMetadataEmptyService) {
       {"services", json::array({
         json::object({
           {"api", json::object({
+            {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
             {"pods", json::array({})},
             {"raw", std::move(service)},
-            {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
           })},
         }),
       })},
@@ -418,11 +418,11 @@ TEST_F(KubernetesTest, GetClusterMetadataServiceWithPods) {
       {"services", json::array({
         json::object({
           {"api", json::object({
+            {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
             {"pods", json::array({
               pod_mr.ToJSON(),
             })},
             {"raw", std::move(service)},
-            {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
           })},
         }),
       })},
@@ -669,28 +669,28 @@ TEST_F(KubernetesTest, GetPodAndContainerMetadata) {
   json::value pod_metadata = json::object({
     {"blobs", json::object({
       {"api", json::object({
+        {"version", json::string("1.6")},
         {"raw", json::object({
           {"metadata", json::object({
             {"creationTimestamp",
-              json::string("2018-03-03T01:23:45.678901234Z")},
+             json::string("2018-03-03T01:23:45.678901234Z")},
             {"name", json::string("TestPodName")},
             {"namespace", json::string("TestNamespace")},
             {"uid", json::string("TestPodUid")},
           })},
           {"spec", json::object({
             {"containers", json::array({
-              json::object({{"name", json::string("TestContainerName0")}})
+              json::object({{"name", json::string("TestContainerName0")}}),
             })},
             {"nodeName", json::string("TestSpecNodeName")},
           })},
           {"status", json::object({
             {"containerID", json::string("docker://TestContainerID")},
             {"containerStatuses", json::array({
-              json::object({{"name", json::string("TestContainerName0")}})
+              json::object({{"name", json::string("TestContainerName0")}}),
             })},
           })},
         })},
-        {"version", json::string("1.6")},
       })},
       {"association", json::object({
         {"raw", json::object({
@@ -764,6 +764,9 @@ bool WaitForNewerCollectionTimestamp(const MetadataStore& store,
   return false;
 }
 
+// Wait for updater's node watcher to connect to the server (hanging
+// GET), then send 3 stream responses from the fake Kubernetes master
+// and verify that the updater propagates them to the store.
 void TestNodes(testing::FakeServer& server, MetadataStore& store,
                const std::string& nodes_watch_path) {
   server.WaitForOneStreamWatcher(nodes_watch_path);
@@ -777,8 +780,8 @@ void TestNodes(testing::FakeServer& server, MetadataStore& store,
         {"metadata", json::object({
           {"name", json::string("TestNodeName")},
           {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
-        })}
-      })}
+        })},
+      })},
     });
     server.SendStreamResponse(nodes_watch_path, resp->ToString());
 
@@ -801,7 +804,7 @@ void TestNodes(testing::FakeServer& server, MetadataStore& store,
     EXPECT_FALSE(metadata.is_deleted);
     EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
               metadata.created_at);
-    json::value big = json::object({
+    json::value node_metadata = json::object({
       {"blobs", json::object({
         {"association", json::object({
           {"version", json::string("TestVersion")},
@@ -827,10 +830,13 @@ void TestNodes(testing::FakeServer& server, MetadataStore& store,
         })},
       })},
     });
-    EXPECT_EQ(big->ToString(), metadata.metadata->ToString());
+    EXPECT_EQ(node_metadata->ToString(), metadata.metadata->ToString());
   }
 }
 
+// Wait for updater's pod watcher to connect to the server (hanging
+// GET), then send 3 stream responses from the fake Kubernetes master
+// and verify that the updater propagates them to the store.
 void TestPods(testing::FakeServer& server, MetadataStore& store,
               const std::string& pods_watch_path) {
   server.WaitForOneStreamWatcher(pods_watch_path);
@@ -861,7 +867,7 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
             }),
           })},
         })},
-      })}
+      })},
     });
     server.SendStreamResponse(pods_watch_path, resp->ToString());
 
@@ -966,28 +972,28 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
     json::value pod_metadata = json::object({
       {"blobs", json::object({
         {"api", json::object({
+          {"version", json::string("1.6")},
           {"raw", json::object({
             {"metadata", json::object({
               {"creationTimestamp",
-                json::string("2018-03-03T01:23:45.678901234Z")},
+               json::string("2018-03-03T01:23:45.678901234Z")},
               {"name", json::string("TestPodName")},
               {"namespace", json::string("TestNamespace")},
               {"uid", json::string("TestPodUid")},
             })},
             {"spec", json::object({
               {"containers", json::array({
-                json::object({{"name", json::string("TestContainerName0")}})
+                json::object({{"name", json::string("TestContainerName0")}}),
               })},
               {"nodeName", json::string("TestSpecNodeName")},
             })},
             {"status", json::object({
               {"containerID", json::string("docker://TestContainerID")},
               {"containerStatuses", json::array({
-                json::object({{"name", json::string("TestContainerName0")}})
+                json::object({{"name", json::string("TestContainerName0")}}),
               })},
             })},
           })},
-          {"version", json::string("1.6")},
         })},
         {"association", json::object({
           {"raw", json::object({
@@ -1013,6 +1019,10 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
   }
 }
 
+// Wait for updater's service watcher to connect to the server
+// (hanging GET), then send 3 stream responses from the fake
+// Kubernetes master and verify that the updater propagates them to
+// the store.
 void TestServices(testing::FakeServer& server, MetadataStore& store,
                   const std::string& services_watch_path) {
   server.WaitForOneStreamWatcher(services_watch_path);
@@ -1026,8 +1036,8 @@ void TestServices(testing::FakeServer& server, MetadataStore& store,
         {"metadata", json::object({
           {"name", json::string("testname")},
           {"namespace", json::string("testnamespace")},
-        })}
-      })}
+        })},
+      })},
     });
     server.SendStreamResponse(services_watch_path, resp->ToString());
 
@@ -1052,6 +1062,7 @@ void TestServices(testing::FakeServer& server, MetadataStore& store,
         {"services", json::array({
           json::object({
             {"api", json::object({
+              {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
               {"pods", json::array({})},
               {"raw", json::object({
                 {"metadata", json::object({
@@ -1059,7 +1070,6 @@ void TestServices(testing::FakeServer& server, MetadataStore& store,
                   {"namespace", json::string("testnamespace")},
                 })},
               })},
-              {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
             })},
           }),
         })},
@@ -1069,6 +1079,10 @@ void TestServices(testing::FakeServer& server, MetadataStore& store,
   }
 }
 
+// Wait for updater's endpoint watcher to connect to the server
+// (hanging GET), then send 3 stream responses from the fake
+// Kubernetes master and verify that the updater propagates them to
+// the store.
 void TestEndpoints(testing::FakeServer& server, MetadataStore& store,
                    const std::string& endpoints_watch_path) {
   server.WaitForOneStreamWatcher(endpoints_watch_path);
@@ -1095,7 +1109,7 @@ void TestEndpoints(testing::FakeServer& server, MetadataStore& store,
             })},
           }),
         })},
-      })}
+      })},
     });
     server.SendStreamResponse(endpoints_watch_path, resp->ToString());
 
@@ -1126,6 +1140,7 @@ void TestEndpoints(testing::FakeServer& server, MetadataStore& store,
         {"services", json::array({
           json::object({
             {"api", json::object({
+              {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
               {"pods", json::array({
                 pod_mr.ToJSON(),
               })},
@@ -1135,8 +1150,7 @@ void TestEndpoints(testing::FakeServer& server, MetadataStore& store,
                   {"namespace", json::string("testnamespace")},
                 })},
               })},
-              {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
-            })}
+            })},
           }),
         })},
       })},
@@ -1145,7 +1159,7 @@ void TestEndpoints(testing::FakeServer& server, MetadataStore& store,
   }
 }
 
-TEST_F(KubernetesTest, KubernetesUpdaterWithoutClusterLevelMetadata) {
+TEST_F(KubernetesTest, KubernetesUpdaterNodeLevelMetadata) {
   const std::string nodes_watch_path =
     "/api/v1/watch/nodes/TestNodeName?watch=true";
   const std::string pods_watch_path =
@@ -1176,11 +1190,6 @@ TEST_F(KubernetesTest, KubernetesUpdaterWithoutClusterLevelMetadata) {
   std::thread updater_thread([&updater] { updater.Start(); });
 
   // Test nodes & pods (but not services & endpoints).
-  //
-  // For each type, wait for updater's watcher to connect to the
-  // server (hanging GET), then send 3 stream responses from the fake
-  // Kubernetes master and verify that the updater propagates them to
-  // the store.
   TestNodes(server, store, nodes_watch_path);
   TestPods(server, store, pods_watch_path);
 
@@ -1189,7 +1198,7 @@ TEST_F(KubernetesTest, KubernetesUpdaterWithoutClusterLevelMetadata) {
   updater_thread.join();
 }
 
-TEST_F(KubernetesTest, KubernetesUpdaterWithClusterLevelMetadata) {
+TEST_F(KubernetesTest, KubernetesUpdaterClusterLevelMetadata) {
   const std::string nodes_watch_path =
     "/api/v1/watch/nodes/?watch=true";
   const std::string pods_watch_path =
@@ -1226,11 +1235,6 @@ TEST_F(KubernetesTest, KubernetesUpdaterWithClusterLevelMetadata) {
   std::thread updater_thread([&updater] { updater.Start(); });
 
   // Tests for nodes, pods, services, endpoints.
-  //
-  // For each type, wait for updater's watcher to connect to the
-  // server (hanging GET), then send 3 stream responses from the fake
-  // Kubernetes master and verify that the updater propagates them to
-  // the store.
   TestNodes(server, store, nodes_watch_path);
   TestPods(server, store, pods_watch_path);
   TestServices(server, store, services_watch_path);
