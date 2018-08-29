@@ -62,10 +62,11 @@ class MetadataAgent {
 
  private:
   const Configuration& config_;
-  HealthChecker health_checker_;
 
   // The store for the metadata.
   MetadataStore store_;
+
+  HealthChecker health_checker_;
 
   // The Metadata API server.
   std::unique_ptr<MetadataApiServer> metadata_api_server_;

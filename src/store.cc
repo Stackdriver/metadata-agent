@@ -68,6 +68,13 @@ void MetadataStore::UpdateMetadata(const MonitoredResource& resource,
   // be a huge deal.
   metadata_map_.erase(resource);
   metadata_map_.emplace(resource, std::move(entry));
+
+  auto found = last_collection_times_.emplace(resource.type(),
+                                              entry.collected_at);
+  // Force timestamp update for existing entries.
+  if (!found.second && found.first->second < entry.collected_at) {
+    found.first->second = entry.collected_at;
+  }
 }
 
 std::map<MonitoredResource, MetadataStore::Metadata>
@@ -81,6 +88,11 @@ std::map<MonitoredResource, MetadataStore::Metadata>
     result.emplace(resource, metadata.Clone());
   }
   return result;
+}
+
+std::map<std::string, Timestamp> MetadataStore::GetLastCollectionTimes() const {
+  std::lock_guard<std::mutex> lock(metadata_mu_);
+  return last_collection_times_;
 }
 
 void MetadataStore::PurgeDeletedEntries() {

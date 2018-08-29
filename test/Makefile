@@ -126,7 +126,7 @@ environment_unittest: environment_unittest.o fake_http_server.o $(SRC_DIR)/envir
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 format_unittest: format_unittest.o $(SRC_DIR)/format.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-health_checker_unittest: health_checker_unittest.o $(SRC_DIR)/health_checker.o $(SRC_DIR)/configuration.o
+health_checker_unittest: health_checker_unittest.o $(SRC_DIR)/health_checker.o $(SRC_DIR)/configuration.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/resource.o $(SRC_DIR)/store.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lboost_filesystem -lboost_system -o $@
 instance_unittest: instance_unittest.o $(SRC_DIR)/instance.o $(SRC_DIR)/configuration.o $(SRC_DIR)/environment.o $(SRC_DIR)/format.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/resource.o $(SRC_DIR)/store.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
