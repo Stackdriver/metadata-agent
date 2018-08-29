@@ -18,7 +18,7 @@ FakeServer::~FakeServer() {
 
 std::string FakeServer::GetUrl() {
   network::uri_builder builder;
-  builder.scheme("http").host(server_.address()).port(server_.port()).path("/");
+  builder.scheme("http").host(server_.address()).port(server_.port());
   return builder.uri().string();
 }
 
