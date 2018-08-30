@@ -98,7 +98,7 @@ void PollingMetadataUpdater::PollForMetadata() {
       UpdateResourceCallback(result);
       UpdateMetadataCallback(std::move(result));
     }
-  } while (!timer_->Wait());
+  } while (timer_->Wait());
   if (config().VerboseLogging()) {
     LOG(INFO) << "Timer unlocked (stop polling) for " << name();
   }

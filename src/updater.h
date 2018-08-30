@@ -145,7 +145,7 @@ class Timer {
   // Initializes the timer.
   virtual void Init() = 0;
 
-  // Waits for one period to pass.  Returns true if the timer was
+  // Waits for one period to pass.  Returns false if the timer was
   // canceled while waiting.
   virtual bool Wait() = 0;
 
@@ -189,7 +189,7 @@ class TimerImpl : public Timer {
       wakeup = start + period_;
       done = false;
     }
-    return done;
+    return !done;
   }
   void Cancel() {
     timer_.unlock();
