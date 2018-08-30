@@ -228,12 +228,24 @@ bool WaitForResource(const MetadataStore& store,
   return false;
 }
 
+// PollingMetadataUpdater that uses a FakeClock.
+class FakePollingMetadataUpdater : public PollingMetadataUpdater {
+ public:
+  FakePollingMetadataUpdater(
+      const Configuration& config, MetadataStore* store,
+      const std::string& name, int period_s,
+      std::function<std::vector<ResourceMetadata>()> query_metadata)
+      : PollingMetadataUpdater(
+          config, store, name, period_s, query_metadata,
+          std::unique_ptr<Timer>(new TimerImpl<testing::FakeClock>(
+              config.VerboseLogging(), name))) {}
+};
+
 TEST_F(UpdaterTest, PollingMetadataUpdater) {
   // Start updater with 1 second polling interval, using fake clock
   // implementation.
   //
   // Each callback will return a new resource "test_resource_<i>".
-  std::unique_ptr<Timer> timer(new TimerImpl<testing::FakeClock>(1, false, "Test"));
   int i = 0;
   std::function<std::vector<MetadataUpdater::ResourceMetadata>()> query_metadata(
     [&i]() {
@@ -250,8 +262,7 @@ TEST_F(UpdaterTest, PollingMetadataUpdater) {
           std::move(m))));
       return result;
     });
-  PollingMetadataUpdater updater(
-      config, &store, "Test", std::move(timer), query_metadata);
+  FakePollingMetadataUpdater updater(config, &store, "Test", 1, query_metadata);
   std::thread updater_thread([&updater] { updater.Start(); });
 
   // Wait for 1st update, verify store.

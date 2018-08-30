@@ -22,7 +22,6 @@
 #include <thread>
 #include <vector>
 
-#include "format.h"
 #include "resource.h"
 #include "store.h"
 #include "time.h"
@@ -139,15 +138,12 @@ class MetadataUpdater {
 // Abstract class for a periodic timer.
 class Timer {
  public:
-  // Returns the period of the timer (in seconds).
-  virtual std::chrono::seconds Period() const = 0;
-
   // Initializes the timer.
   virtual void Init() = 0;
 
   // Waits for one period to pass.  Returns false if the timer was
   // canceled while waiting.
-  virtual bool Wait() = 0;
+  virtual bool Wait(std::chrono::seconds period) = 0;
 
   // Cancels the timer.
   virtual void Cancel() = 0;
@@ -157,24 +153,22 @@ class Timer {
 template<typename Clock>
 class TimerImpl : public Timer {
  public:
-  TimerImpl(int period_s, bool verbose, const std::string& name)
-      : period_(period_s), verbose_(verbose), name_(name) {}
-  std::chrono::seconds Period() const { return period_; }
-  void Init() {
+  TimerImpl(bool verbose, const std::string& name)
+      : verbose_(verbose), name_(name) {}
+  void Init() override {
     timer_.lock();
     if (verbose_) {
       LOG(INFO) << "Locked timer for " << name_;
     }
   }
-  bool Wait() {
-    // An unlocked timer means we should stop updating.
+  bool Wait(std::chrono::seconds period) override {
+    // An unlocked timer means the wait is cancelled.
+    auto start = Clock::now();
+    auto wakeup = start + period;
     if (verbose_) {
       LOG(INFO) << "Trying to unlock the timer for " << name_;
     }
-    auto start = Clock::now();
-    auto wakeup = start + period_;
-    bool valid_wakeup = false;
-    while (!valid_wakeup && !timer_.try_lock_until(wakeup)) {
+    while (!timer_.try_lock_until(wakeup)) {
       auto now = Clock::now();
       // Detect spurious wakeups.
       if (now < wakeup) {
@@ -186,12 +180,12 @@ class TimerImpl : public Timer {
                   << "s (good) for " << name_;
       }
       start = now;
-      wakeup = start + period_;
-      valid_wakeup = true;
+      wakeup = start + period;
+      return true;
     }
-    return valid_wakeup;
+    return false;
   }
-  void Cancel() {
+  void Cancel() override {
     timer_.unlock();
     if (verbose_) {
       LOG(INFO) << "Unlocked timer for " << name_;
@@ -199,7 +193,6 @@ class TimerImpl : public Timer {
   }
  private:
   std::timed_mutex timer_;
-  std::chrono::seconds period_;
   bool verbose_;
   std::string name_;
 };
@@ -209,16 +202,18 @@ class PollingMetadataUpdater : public MetadataUpdater {
  public:
   PollingMetadataUpdater(
       const Configuration& config, MetadataStore* store,
-      const std::string& name, double period_s,
-      std::function<std::vector<ResourceMetadata>()> query_metadata);
-  PollingMetadataUpdater(
-      const Configuration& config, MetadataStore* store,
-      const std::string& name, std::unique_ptr<Timer> timer,
+      const std::string& name, int period_s,
       std::function<std::vector<ResourceMetadata>()> query_metadata);
   ~PollingMetadataUpdater();
 
  protected:
   friend class UpdaterTest;
+
+  PollingMetadataUpdater(
+      const Configuration& config, MetadataStore* store,
+      const std::string& name, int period_s,
+      std::function<std::vector<ResourceMetadata>()> query_metadata,
+      std::unique_ptr<Timer> timer);
 
   void ValidateStaticConfiguration() const throw(ConfigurationValidationError);
   using MetadataUpdater::ValidateDynamicConfiguration;
@@ -231,6 +226,9 @@ class PollingMetadataUpdater : public MetadataUpdater {
 
   // Metadata poller.
   void PollForMetadata();
+
+  // The polling period in seconds.
+  std::chrono::seconds period_;
 
   // The function to actually query for metadata.
   std::function<std::vector<ResourceMetadata>()> query_metadata_;

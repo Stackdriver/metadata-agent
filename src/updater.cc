@@ -19,6 +19,7 @@
 #include <chrono>
 
 #include "configuration.h"
+#include "format.h"
 #include "logging.h"
 
 namespace google {
@@ -46,21 +47,22 @@ void MetadataUpdater::NotifyStop() {
 
 PollingMetadataUpdater::PollingMetadataUpdater(
     const Configuration& config, MetadataStore* store,
-    const std::string& name, double period_s,
+    const std::string& name, int period_s,
     std::function<std::vector<ResourceMetadata>()> query_metadata)
-    : MetadataUpdater(config, store, name),
-      timer_(new TimerImpl<std::chrono::high_resolution_clock>(
-         period_s, config.VerboseLogging(), name)),
-      query_metadata_(query_metadata),
-      reporter_thread_() {}
+    : PollingMetadataUpdater(
+          config, store, name, period_s, query_metadata,
+          std::unique_ptr<Timer>(new TimerImpl<std::chrono::high_resolution_clock>(
+              config.VerboseLogging(), name))) {}
 
 PollingMetadataUpdater::PollingMetadataUpdater(
     const Configuration& config, MetadataStore* store,
-    const std::string& name, std::unique_ptr<Timer> timer,
-    std::function<std::vector<ResourceMetadata>()> query_metadata)
+    const std::string& name, int period_s,
+    std::function<std::vector<ResourceMetadata>()> query_metadata,
+    std::unique_ptr<Timer> timer)
     : MetadataUpdater(config, store, name),
-      timer_(std::move(timer)),
+      period_(period_s),
       query_metadata_(query_metadata),
+      timer_(std::move(timer)),
       reporter_thread_() {}
 
 PollingMetadataUpdater::~PollingMetadataUpdater() {
@@ -71,15 +73,15 @@ PollingMetadataUpdater::~PollingMetadataUpdater() {
 
 void PollingMetadataUpdater::ValidateStaticConfiguration() const
     throw(ConfigurationValidationError) {
-  if (timer_->Period() < std::chrono::seconds::zero()) {
+  if (period_ < std::chrono::seconds::zero()) {
     throw ConfigurationValidationError(
         format::Substitute("Polling period {{period}}s cannot be negative",
-                           {{"period", format::str(int(timer_->Period().count()))}}));
+                           {{"period", format::str(int(period_.count()))}}));
   }
 }
 
 bool PollingMetadataUpdater::ShouldStartUpdater() const {
-  return timer_->Period() > std::chrono::seconds::zero();
+  return period_ > std::chrono::seconds::zero();
 }
 
 void PollingMetadataUpdater::StartUpdater() {
@@ -98,7 +100,7 @@ void PollingMetadataUpdater::PollForMetadata() {
       UpdateResourceCallback(result);
       UpdateMetadataCallback(std::move(result));
     }
-  } while (timer_->Wait());
+  } while (timer_->Wait(period_));
   if (config().VerboseLogging()) {
     LOG(INFO) << "Timer unlocked (stop polling) for " << name();
   }

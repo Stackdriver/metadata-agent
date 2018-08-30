@@ -10,16 +10,17 @@ namespace testing {
 
 class FakeClock {
  public:
-  // Requirements for Clock, see http://en.cppreference.com/w/cpp/named_req/Clock
-  typedef uint64_t rep;
-  typedef std::ratio<1l, 1000000000l> period;
-  typedef std::chrono::duration<rep, period> duration;
-  typedef std::chrono::time_point<FakeClock> time_point;
-  static const bool is_steady;
-  static time_point now() noexcept;
+  // Requirements for Clock, see:
+  // http://en.cppreference.com/w/cpp/named_req/Clock.
+  using rep = uint64_t;
+  using period = std::ratio<1l, 1000000000l>;
+  using duration = std::chrono::duration<rep, period>;
+  using time_point = std::chrono::time_point<FakeClock>;
+  static constexpr const bool is_steady = false;
+  static time_point now() { return now_; }
 
-  // Increment fake clock's internal counter.
-  static void Advance(duration d) noexcept;
+  // Increment fake clock's internal time.
+  static void Advance(duration d) { now_ += d; }
 
  private:
   FakeClock() = delete;
