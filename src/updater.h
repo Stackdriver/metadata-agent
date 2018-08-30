@@ -173,8 +173,8 @@ class TimerImpl : public Timer {
     }
     auto start = Clock::now();
     auto wakeup = start + period_;
-    bool done = true;
-    while (done && !timer_.try_lock_until(wakeup)) {
+    bool valid_wakeup = false;
+    while (!valid_wakeup && !timer_.try_lock_until(wakeup)) {
       auto now = Clock::now();
       // Detect spurious wakeups.
       if (now < wakeup) {
@@ -187,9 +187,9 @@ class TimerImpl : public Timer {
       }
       start = now;
       wakeup = start + period_;
-      done = false;
+      valid_wakeup = true;
     }
-    return !done;
+    return valid_wakeup;
   }
   void Cancel() {
     timer_.unlock();
