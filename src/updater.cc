@@ -19,7 +19,6 @@
 #include <chrono>
 
 #include "configuration.h"
-#include "format.h"
 #include "logging.h"
 
 namespace google {
@@ -50,9 +49,18 @@ PollingMetadataUpdater::PollingMetadataUpdater(
     const std::string& name, double period_s,
     std::function<std::vector<ResourceMetadata>()> query_metadata)
     : MetadataUpdater(config, store, name),
-      period_(period_s),
+      timer_(new TimerImpl<std::chrono::high_resolution_clock>(
+         period_s, config.VerboseLogging(), name)),
       query_metadata_(query_metadata),
-      timer_(),
+      reporter_thread_() {}
+
+PollingMetadataUpdater::PollingMetadataUpdater(
+    const Configuration& config, MetadataStore* store,
+    const std::string& name, std::unique_ptr<Timer> timer,
+    std::function<std::vector<ResourceMetadata>()> query_metadata)
+    : MetadataUpdater(config, store, name),
+      timer_(std::move(timer)),
+      query_metadata_(query_metadata),
       reporter_thread_() {}
 
 PollingMetadataUpdater::~PollingMetadataUpdater() {
@@ -63,63 +71,34 @@ PollingMetadataUpdater::~PollingMetadataUpdater() {
 
 void PollingMetadataUpdater::ValidateStaticConfiguration() const
     throw(ConfigurationValidationError) {
-  if (period_ < time::seconds::zero()) {
+  if (timer_->Period() < std::chrono::seconds::zero()) {
     throw ConfigurationValidationError(
         format::Substitute("Polling period {{period}}s cannot be negative",
-                           {{"period", format::str(period_.count())}}));
+                           {{"period", format::str(int(timer_->Period().count()))}}));
   }
 }
 
 bool PollingMetadataUpdater::ShouldStartUpdater() const {
-  return period_ > time::seconds::zero();
+  return timer_->Period() > std::chrono::seconds::zero();
 }
 
 void PollingMetadataUpdater::StartUpdater() {
-  timer_.lock();
-  if (config().VerboseLogging()) {
-    LOG(INFO) << "Locked timer for " << name();
-  }
+  timer_->Init();
   reporter_thread_ = std::thread([=]() { PollForMetadata(); });
 }
 
 void PollingMetadataUpdater::NotifyStopUpdater() {
-  timer_.unlock();
-  if (config().VerboseLogging()) {
-    LOG(INFO) << "Unlocked timer for " << name();
-  }
+  timer_->Cancel();
 }
 
 void PollingMetadataUpdater::PollForMetadata() {
-  bool done = false;
   do {
     std::vector<ResourceMetadata> result_vector = query_metadata_();
     for (ResourceMetadata& result : result_vector) {
       UpdateResourceCallback(result);
       UpdateMetadataCallback(std::move(result));
     }
-    // An unlocked timer means we should stop updating.
-    if (config().VerboseLogging()) {
-      LOG(INFO) << "Trying to unlock the timer for " << name();
-    }
-    auto start = std::chrono::high_resolution_clock::now();
-    auto wakeup = start + period_;
-    done = true;
-    while (done && !timer_.try_lock_until(wakeup)) {
-      auto now = std::chrono::high_resolution_clock::now();
-      // Detect spurious wakeups.
-      if (now < wakeup) {
-        continue;
-      }
-      if (config().VerboseLogging()) {
-        LOG(INFO) << " Timer unlock timed out after "
-                  << std::chrono::duration_cast<time::seconds>(now - start).count()
-                  << "s (good) for " << name();
-      }
-      start = now;
-      wakeup = start + period_;
-      done = false;
-    }
-  } while (!done);
+  } while (!timer_->Wait());
   if (config().VerboseLogging()) {
     LOG(INFO) << "Timer unlocked (stop polling) for " << name();
   }

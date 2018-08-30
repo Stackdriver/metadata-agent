@@ -22,6 +22,7 @@
 #include <thread>
 #include <vector>
 
+#include "format.h"
 #include "resource.h"
 #include "store.h"
 #include "time.h"
@@ -135,12 +136,84 @@ class MetadataUpdater {
   MetadataStore* store_;
 };
 
+// Abstract class for a periodic timer.
+class Timer {
+ public:
+  // Returns the period of the timer (in seconds).
+  virtual std::chrono::seconds Period() const = 0;
+
+  // Initializes the timer.
+  virtual void Init() = 0;
+
+  // Waits for one period to pass.  Returns true if the timer was
+  // canceled while waiting.
+  virtual bool Wait() = 0;
+
+  // Cancels the timer.
+  virtual void Cancel() = 0;
+};
+
+// Implementation of a periodic timer parameterized over a clock type.
+template<typename Clock>
+class TimerImpl : public Timer {
+ public:
+  TimerImpl(int period_s, bool verbose, const std::string& name)
+      : period_(period_s), verbose_(verbose), name_(name) {}
+  std::chrono::seconds Period() const { return period_; }
+  void Init() {
+    timer_.lock();
+    if (verbose_) {
+      LOG(INFO) << "Locked timer for " << name_;
+    }
+  }
+  bool Wait() {
+    // An unlocked timer means we should stop updating.
+    if (verbose_) {
+      LOG(INFO) << "Trying to unlock the timer for " << name_;
+    }
+    auto start = Clock::now();
+    auto wakeup = start + period_;
+    bool done = true;
+    while (done && !timer_.try_lock_until(wakeup)) {
+      auto now = Clock::now();
+      // Detect spurious wakeups.
+      if (now < wakeup) {
+        continue;
+      }
+      if (verbose_) {
+        LOG(INFO) << " Timer unlock timed out after "
+                  << std::chrono::duration_cast<time::seconds>(now-start).count()
+                  << "s (good) for " << name_;
+      }
+      start = now;
+      wakeup = start + period_;
+      done = false;
+    }
+    return done;
+  }
+  void Cancel() {
+    timer_.unlock();
+    if (verbose_) {
+      LOG(INFO) << "Unlocked timer for " << name_;
+    }
+  }
+ private:
+  std::timed_mutex timer_;
+  std::chrono::seconds period_;
+  bool verbose_;
+  std::string name_;
+};
+
 // A class for all periodic updates of the metadata mapping.
 class PollingMetadataUpdater : public MetadataUpdater {
  public:
   PollingMetadataUpdater(
       const Configuration& config, MetadataStore* store,
       const std::string& name, double period_s,
+      std::function<std::vector<ResourceMetadata>()> query_metadata);
+  PollingMetadataUpdater(
+      const Configuration& config, MetadataStore* store,
+      const std::string& name, std::unique_ptr<Timer> timer,
       std::function<std::vector<ResourceMetadata>()> query_metadata);
   ~PollingMetadataUpdater();
 
@@ -159,14 +232,11 @@ class PollingMetadataUpdater : public MetadataUpdater {
   // Metadata poller.
   void PollForMetadata();
 
-  // The polling period in seconds.
-  time::seconds period_;
-
   // The function to actually query for metadata.
   std::function<std::vector<ResourceMetadata>()> query_metadata_;
 
   // The timer.
-  std::timed_mutex timer_;
+  std::unique_ptr<Timer> timer_;
 
   // The thread that polls for new metadata.
   std::thread reporter_thread_;

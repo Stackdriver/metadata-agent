@@ -2,6 +2,7 @@
 #include "../src/resource.h"
 #include "../src/store.h"
 #include "../src/updater.h"
+#include "fake_clock.h"
 #include "gtest/gtest.h"
 
 #include <string>
@@ -213,6 +214,62 @@ TEST_F(UpdaterTest, UpdateResourceCallback) {
             store.LookupResource(""));
   EXPECT_EQ(MonitoredResource("test_resource", {}),
             store.LookupResource("test-prefix"));
+}
+
+bool WaitForResource(const MetadataStore& store,
+                     const MonitoredResource& resource) {
+  for (int i = 0; i < 30; i++) {
+    const auto metadata_map = store.GetMetadataMap();
+    if (metadata_map.find(resource) != metadata_map.end()) {
+      return true;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  return false;
+}
+
+TEST_F(UpdaterTest, PollingMetadataUpdater) {
+  // Start updater with 1 second polling interval, using fake clock
+  // implementation.
+  //
+  // Each callback will return a new resource "test_resource_<i>".
+  std::unique_ptr<Timer> timer(new TimerImpl<testing::FakeClock>(1, false, "Test"));
+  int i = 0;
+  std::function<std::vector<MetadataUpdater::ResourceMetadata>()> query_metadata(
+    [&i]() {
+      MetadataStore::Metadata m(
+          "test-version",
+          false,
+          std::chrono::system_clock::now(),
+          std::chrono::system_clock::now(),
+          json::object({{"f", json::string("test")}}));
+      std::vector<MetadataUpdater::ResourceMetadata> result;
+      result.emplace_back(std::move(MetadataUpdater::ResourceMetadata(
+          {"", "test-prefix"},
+          MonitoredResource("test_resource_" + std::to_string(i++), {}),
+          std::move(m))));
+      return result;
+    });
+  PollingMetadataUpdater updater(
+      config, &store, "Test", std::move(timer), query_metadata);
+  std::thread updater_thread([&updater] { updater.Start(); });
+
+  // Wait for 1st update, verify store.
+  EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_0", {})));
+  EXPECT_EQ(1, store.GetMetadataMap().size());
+
+  // Advance fake clock, wait for 2nd update, verify store.
+  testing::FakeClock::Advance(std::chrono::seconds(1));
+  EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_1", {})));
+  EXPECT_EQ(2, store.GetMetadataMap().size());
+
+  // Advance fake clock, wait for 3rd update, verify store.
+  testing::FakeClock::Advance(std::chrono::seconds(1));
+  EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_2", {})));
+  EXPECT_EQ(3, store.GetMetadataMap().size());
+
+  updater.NotifyStop();
+  updater_thread.join();
 }
 
 }  // namespace
