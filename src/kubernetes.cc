@@ -63,6 +63,9 @@ constexpr const char kWatchParam[] = "watch=true";
 
 constexpr const char kDockerIdPrefix[] = "docker://";
 
+// Empty resource id is reserved for the default resource (i.e.,  instance).
+constexpr const char kLocalInstanceResourceId[] = "";
+
 constexpr const char kServiceAccountDirectory[] =
     "/var/run/secrets/kubernetes.io/serviceaccount";
 
@@ -126,7 +129,8 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     associations = json::object({
       {"version", json::string(config_.MetadataIngestionRawContentVersion())},
       {"raw", json::object({
-        {"infrastructureResource", store_.LookupResource("").ToJSON()},
+        {"infrastructureResource",
+         store_.LookupResource(kLocalInstanceResourceId).ToJSON()},
       })},
     });
   } catch (const std::out_of_range& e) {
@@ -165,7 +169,8 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
 
   json::value instance_resource;
   try {
-    instance_resource = store_.LookupResource("").ToJSON();
+    instance_resource =
+        store_.LookupResource(kLocalInstanceResourceId).ToJSON();
   } catch (const std::out_of_range& e) {
     // No instance resource; proceed.
   }
