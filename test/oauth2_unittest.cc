@@ -38,7 +38,7 @@ TEST_F(OAuth2Test, GetHeaderValueUsingTokenFromCredentials) {
   ));
   Environment environment(config);
   OAuth2 auth(environment);
-  SetTokenEndpointForTest(&auth, server.GetUrl() + "oauth2/v3/token");
+  SetTokenEndpointForTest(&auth, server.GetUrl() + "/oauth2/v3/token");
 
   EXPECT_EQ("Bearer the-access-token", auth.GetAuthHeaderValue());
 }
@@ -52,7 +52,7 @@ TEST_F(OAuth2Test, GetHeaderValueUsingTokenFromMetadataServer) {
 
   Configuration config;
   Environment environment(config);
-  SetMetadataServerUrlForTest(&environment, server.GetUrl());
+  SetMetadataServerUrlForTest(&environment, server.GetUrl() + "/");
 
   OAuth2 auth(environment);
   EXPECT_EQ("Bearer the-access-token", auth.GetAuthHeaderValue());
