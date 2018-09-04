@@ -47,7 +47,7 @@ void MetadataUpdater::NotifyStop() {
 
 PollingMetadataUpdater::PollingMetadataUpdater(
     const Configuration& config, MetadataStore* store,
-    const std::string& name, int period_s,
+    const std::string& name, double period_s,
     std::function<std::vector<ResourceMetadata>()> query_metadata)
     : PollingMetadataUpdater(
           config, store, name, period_s, query_metadata,
@@ -56,7 +56,7 @@ PollingMetadataUpdater::PollingMetadataUpdater(
 
 PollingMetadataUpdater::PollingMetadataUpdater(
     const Configuration& config, MetadataStore* store,
-    const std::string& name, int period_s,
+    const std::string& name, double period_s,
     std::function<std::vector<ResourceMetadata>()> query_metadata,
     std::unique_ptr<Timer> timer)
     : MetadataUpdater(config, store, name),
@@ -73,7 +73,7 @@ PollingMetadataUpdater::~PollingMetadataUpdater() {
 
 void PollingMetadataUpdater::ValidateStaticConfiguration() const
     throw(ConfigurationValidationError) {
-  if (period_ < std::chrono::seconds::zero()) {
+  if (period_ < time::seconds::zero()) {
     throw ConfigurationValidationError(
         format::Substitute("Polling period {{period}}s cannot be negative",
                            {{"period", format::str(int(period_.count()))}}));
@@ -81,7 +81,7 @@ void PollingMetadataUpdater::ValidateStaticConfiguration() const
 }
 
 bool PollingMetadataUpdater::ShouldStartUpdater() const {
-  return period_ > std::chrono::seconds::zero();
+  return period_ > time::seconds::zero();
 }
 
 void PollingMetadataUpdater::StartUpdater() {

@@ -223,6 +223,8 @@ bool WaitForResource(const MetadataStore& store,
     if (metadata_map.find(resource) != metadata_map.end()) {
       return true;
     }
+    // Use real time here, because we are polling until the store has
+    // been updated by another thread.
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
   return false;
@@ -238,11 +240,11 @@ class FakePollingMetadataUpdater : public PollingMetadataUpdater {
       : PollingMetadataUpdater(
           config, store, name, period_s, query_metadata,
           std::unique_ptr<Timer>(new TimerImpl<testing::FakeClock>(
-              config.VerboseLogging(), name))) {}
+              false, name))) {}
 };
 
 TEST_F(UpdaterTest, PollingMetadataUpdater) {
-  // Start updater with 1 second polling interval, using fake clock
+  // Start updater with 60 second polling interval, using fake clock
   // implementation.
   //
   // Each callback will return a new resource "test_resource_<i>".
@@ -262,7 +264,8 @@ TEST_F(UpdaterTest, PollingMetadataUpdater) {
           std::move(m))));
       return result;
     });
-  FakePollingMetadataUpdater updater(config, &store, "Test", 1, query_metadata);
+  FakePollingMetadataUpdater updater(
+      config, &store, test_info_->name(), 60, query_metadata);
   std::thread updater_thread([&updater] { updater.Start(); });
 
   // Wait for 1st update, verify store.
@@ -270,12 +273,12 @@ TEST_F(UpdaterTest, PollingMetadataUpdater) {
   EXPECT_EQ(1, store.GetMetadataMap().size());
 
   // Advance fake clock, wait for 2nd update, verify store.
-  testing::FakeClock::Advance(std::chrono::seconds(1));
+  testing::FakeClock::Advance(time::seconds(60));
   EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_1", {})));
   EXPECT_EQ(2, store.GetMetadataMap().size());
 
   // Advance fake clock, wait for 3rd update, verify store.
-  testing::FakeClock::Advance(std::chrono::seconds(1));
+  testing::FakeClock::Advance(time::seconds(60));
   EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_2", {})));
   EXPECT_EQ(3, store.GetMetadataMap().size());
 

@@ -135,21 +135,21 @@ class MetadataUpdater {
   MetadataStore* store_;
 };
 
-// Abstract class for a periodic timer.
+// Abstract class for a timer.
 class Timer {
  public:
   // Initializes the timer.
   virtual void Init() = 0;
 
-  // Waits for one period to pass.  Returns false if the timer was
+  // Waits for one duration to pass.  Returns false if the timer was
   // canceled while waiting.
-  virtual bool Wait(std::chrono::seconds period) = 0;
+  virtual bool Wait(time::seconds duration) = 0;
 
   // Cancels the timer.
   virtual void Cancel() = 0;
 };
 
-// Implementation of a periodic timer parameterized over a clock type.
+// Implementation of a timer parameterized over a clock type.
 template<typename Clock>
 class TimerImpl : public Timer {
  public:
@@ -161,10 +161,10 @@ class TimerImpl : public Timer {
       LOG(INFO) << "Locked timer for " << name_;
     }
   }
-  bool Wait(std::chrono::seconds period) override {
+  bool Wait(time::seconds duration) override {
     // An unlocked timer means the wait is cancelled.
     auto start = Clock::now();
-    auto wakeup = start + period;
+    auto wakeup = start + duration;
     if (verbose_) {
       LOG(INFO) << "Trying to unlock the timer for " << name_;
     }
@@ -179,8 +179,6 @@ class TimerImpl : public Timer {
                   << std::chrono::duration_cast<time::seconds>(now-start).count()
                   << "s (good) for " << name_;
       }
-      start = now;
-      wakeup = start + period;
       return true;
     }
     return false;
@@ -202,7 +200,7 @@ class PollingMetadataUpdater : public MetadataUpdater {
  public:
   PollingMetadataUpdater(
       const Configuration& config, MetadataStore* store,
-      const std::string& name, int period_s,
+      const std::string& name, double period_s,
       std::function<std::vector<ResourceMetadata>()> query_metadata);
   ~PollingMetadataUpdater();
 
@@ -211,7 +209,7 @@ class PollingMetadataUpdater : public MetadataUpdater {
 
   PollingMetadataUpdater(
       const Configuration& config, MetadataStore* store,
-      const std::string& name, int period_s,
+      const std::string& name, double period_s,
       std::function<std::vector<ResourceMetadata>()> query_metadata,
       std::unique_ptr<Timer> timer);
 
@@ -228,7 +226,7 @@ class PollingMetadataUpdater : public MetadataUpdater {
   void PollForMetadata();
 
   // The polling period in seconds.
-  std::chrono::seconds period_;
+  time::seconds period_;
 
   // The function to actually query for metadata.
   std::function<std::vector<ResourceMetadata>()> query_metadata_;

@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <ratio>
 
+#include "../src/time.h"
+
 namespace google {
 namespace testing {
 
@@ -12,9 +14,9 @@ class FakeClock {
  public:
   // Requirements for Clock, see:
   // http://en.cppreference.com/w/cpp/named_req/Clock.
-  using rep = uint64_t;
-  using period = std::ratio<1l, 1000000000l>;
-  using duration = std::chrono::duration<rep, period>;
+  using rep = time::seconds::rep;
+  using period = time::seconds::period;
+  using duration = time::seconds;
   using time_point = std::chrono::time_point<FakeClock>;
   static constexpr const bool is_steady = false;
   static time_point now() { return now_; }
@@ -32,5 +34,17 @@ class FakeClock {
 
 }  // namespace testing
 }  // namespace google
+
+template<>
+inline bool std::timed_mutex::try_lock_until<
+    google::testing::FakeClock, google::testing::FakeClock::duration>(
+    const google::testing::FakeClock::time_point& timeout_time) {
+  do {
+    if (try_lock()) {
+      return true;
+    }
+  } while (google::testing::FakeClock::now() < timeout_time);
+  return false;
+}
 
 #endif  // FAKE_CLOCK_H_
