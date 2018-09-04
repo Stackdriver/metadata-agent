@@ -235,7 +235,7 @@ class FakePollingMetadataUpdater : public PollingMetadataUpdater {
  public:
   FakePollingMetadataUpdater(
       const Configuration& config, MetadataStore* store,
-      const std::string& name, int period_s,
+      const std::string& name, double period_s,
       std::function<std::vector<ResourceMetadata>()> query_metadata)
       : PollingMetadataUpdater(
           config, store, name, period_s, query_metadata,

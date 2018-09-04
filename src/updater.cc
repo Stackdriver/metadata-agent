@@ -76,7 +76,7 @@ void PollingMetadataUpdater::ValidateStaticConfiguration() const
   if (period_ < time::seconds::zero()) {
     throw ConfigurationValidationError(
         format::Substitute("Polling period {{period}}s cannot be negative",
-                           {{"period", format::str(int(period_.count()))}}));
+                           {{"period", format::str(period_.count())}}));
   }
 }
 

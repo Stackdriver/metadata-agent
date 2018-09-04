@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <mutex>
 #include <ratio>
 
 #include "../src/time.h"
@@ -35,6 +36,7 @@ class FakeClock {
 }  // namespace testing
 }  // namespace google
 
+// Allow using std::timed_mutex::try_lock_until with a FakeClock.
 template<>
 inline bool std::timed_mutex::try_lock_until<
     google::testing::FakeClock, google::testing::FakeClock::duration>(
