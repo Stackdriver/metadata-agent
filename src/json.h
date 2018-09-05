@@ -239,10 +239,10 @@ class Object : public Value, public std::map<std::string, std::unique_ptr<Value>
  public:
   Object() {}
   // Construct an object with the specified fields.
-  // nullptr values will be discarded.
+  // Key/value pairs with nullptr values will be discarded.
   Object(std::map<std::string, std::unique_ptr<Value>>&& fields);
   // Construct an object with the specified fields.
-  // nullptr values will be discarded.
+  // Key/value pairs with nullptr values will be discarded.
   Object(std::initializer_list<std::pair<std::string, rref_capture<std::unique_ptr<Value>>>> fields);
   Object(const Object& other);
 
