@@ -733,10 +733,15 @@ TEST(EdgeTest, NegativeNumbers) {
 TEST(BigTest, RealisticConstruction) {
   GuardJsonException([](){
     json::value v = json::object({
-      {"foo", json::array({json::number(1), json::number(2), json::number(3)})},
+      {"foo", json::array({
+        // Uninitialized values are ignored.
+        json::number(1), json::value(), json::number(2), json::number(3)
+      })},
+      {"uninitialized1", json::value()},  // Uninitialized values are ignored.
       {"bar", json::object({{"x", json::number(0)}, {"y", json::null()}})},
       {"baz", json::boolean(true)},
       {"str", json::string("asdfasdf")},
+      {"uninitialized2", json::value()},  // Uninitialized values are ignored.
     });
     EXPECT_TOSTRING_EQ(
       "{"
