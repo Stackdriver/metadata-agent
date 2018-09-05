@@ -18,7 +18,7 @@ TEST(LoggingTest, Logger) {
   }
 
   EXPECT_TRUE(std::regex_match(out.str(), std::regex(
-     "W\\d{4} \\d{2}:\\d{2}:\\d{2} 0x[0-9a-f]{12} "
+     "W\\d{4} \\d{2}:\\d{2}:\\d{2} .+ "
      "somefile.cc:123 Test message\n")));
 }
 
