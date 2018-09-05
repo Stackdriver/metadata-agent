@@ -43,7 +43,7 @@ endif
 SRC_DIR=../src
 
 TEST_DIR=.
-TEST_SOURCES=$(wildcard $(TEST_DIR)/*_unittest.cc $(TEST_DIR)/fake_clock.cc $(TEST_DIR)/fake_http_server.cc)
+TEST_SOURCES=$(wildcard $(TEST_DIR)/*.cc)
 TEST_OBJS=$(TEST_SOURCES:$(TEST_DIR)/%.cc=%.o)
 TESTS=\
       api_server_unittest \
