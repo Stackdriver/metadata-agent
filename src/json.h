@@ -338,6 +338,14 @@ inline std::unique_ptr<Value> object(
   return std::unique_ptr<Object>(new Object(fields));
 }
 
+// A nullptr-robust Clone.
+inline std::unique_ptr<Value> Clone(const std::unique_ptr<Value>& value) {
+  if (value == nullptr) {
+    return std::unique_ptr<Value>();
+  }
+  return value->Clone();
+}
+
 class Parser {
  public:
   class ParseState;

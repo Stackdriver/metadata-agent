@@ -213,12 +213,17 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
     node_name = json::string(spec->Get<json::String>("nodeName"));
   }
 
-  // If controllers or node_name are not populated, they will be discarded.
+  // If any of the field values are not populated, they will be discarded.
   json::value raw_associations = json::object({
     {"infrastructureResource", std::move(instance_resource)},
     {"controllers", std::move(controllers)},
     {"nodeName", std::move(node_name)},
   });
+
+  // If none of the field values above were populated, discard the object.
+  if (raw_associations->As<json::Object>()->empty()) {
+    return json::value();
+  }
 
   return json::object({
     {"version", json::string(config_.MetadataIngestionRawContentVersion())},
@@ -472,7 +477,8 @@ KubernetesReader::GetPodAndContainerMetadata(
     }
     result.emplace_back(
         GetContainerMetadata(pod, container_spec, container_status,
-                             associations->Clone(), collected_at, is_deleted));
+                             json::Clone(associations), collected_at,
+                             is_deleted));
   }
 
   result.emplace_back(
