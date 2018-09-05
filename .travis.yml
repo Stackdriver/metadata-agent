@@ -1,0 +1,6 @@
+language: cpp
+os: ubuntu
+dist: xenial
+compiler: clang
+install: sudo apt-get update && sudo apt-get install g++ cmake dpkg-dev libyajl-dev libssl-dev libboost1.58-dev libboost-system1.58-dev libboost-atomic1.58-dev libboost-chrono1.58-dev libboost-date-time1.58-dev libboost-filesystem1.58-dev libboost-program-options1.58-dev libboost-regex1.58-dev libboost-thread1.58-dev libboost-timer1.58-dev
+script: cd src && make test
