@@ -62,6 +62,8 @@ TESTS=\
       time_unittest \
       updater_unittest \
       util_unittest
+UTIL_SOURCES=$(TEST_DIR)/fake_clock.cc $(TEST_DIR)/fake_http_server.cc
+UTIL_OBJS=$(UTIL_SOURCES:$(TEST_DIR)/%.cc=%.o)
 
 GTEST_LIB=gtest_lib.a
 
@@ -76,7 +78,7 @@ test: $(TESTS)
 	done
 
 clean:
-	$(RM) $(TESTS) $(GTEST_LIB) $(TEST_OBJS)
+	$(RM) $(TESTS) $(GTEST_LIB) $(TEST_OBJS) $(UTIL_OBJS)
 
 purge: clean
 	$(RM) init-submodules
