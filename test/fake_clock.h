@@ -36,9 +36,10 @@ class FakeClock {
 }  // namespace testing
 }  // namespace google
 
+namespace std {
 // Allow using std::timed_mutex::try_lock_until with a FakeClock.
 template<>
-inline bool std::timed_mutex::try_lock_until<
+inline bool timed_mutex::try_lock_until<
     google::testing::FakeClock, google::testing::FakeClock::duration>(
     const google::testing::FakeClock::time_point& timeout_time) {
   do {
@@ -48,5 +49,6 @@ inline bool std::timed_mutex::try_lock_until<
   } while (google::testing::FakeClock::now() < timeout_time);
   return false;
 }
+}  // namespace std
 
 #endif  // FAKE_CLOCK_H_
