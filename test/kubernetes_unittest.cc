@@ -1,7 +1,6 @@
 #include "../src/configuration.h"
 #include "../src/resource.h"
 #include "../src/kubernetes.h"
-#include "../src/store.h"
 #include "../src/updater.h"
 #include "fake_http_server.h"
 #include "gtest/gtest.h"
@@ -102,16 +101,13 @@ class KubernetesTest : public ::testing::Test {
 
   void SetUp() override {
     config = CreateConfig();
-    store.reset(new MetadataStore(*config));
     reader.reset(new KubernetesReader(*config,
-                                      *store,
                                       nullptr));  // Don't need HealthChecker.
   }
 
   virtual std::unique_ptr<Configuration> CreateConfig() = 0;
 
   std::unique_ptr<Configuration> config;
-  std::unique_ptr<MetadataStore> store;
   std::unique_ptr<KubernetesReader> reader;
 };
 
@@ -360,14 +356,6 @@ TEST_F(KubernetesTestNoInstance, GetPodAndContainerMetadata) {
 
 class KubernetesTestWithInstance : public KubernetesTestNoInstance {
  protected:
-  void SetUp() override {
-    KubernetesTestNoInstance::SetUp();
-    store->UpdateResource({""}, {"gce_instance", {
-      {"instance_id", "TestID"},
-      {"zone", "TestZone"},
-    }});
-  }
-
   std::unique_ptr<Configuration> CreateConfig() override {
     return std::unique_ptr<Configuration>(
       new Configuration(std::istringstream(
@@ -960,10 +948,6 @@ class KubernetesTestFakeServer : public KubernetesTest {
   void SetUp() override {
     server.reset(new testing::FakeServer());
     KubernetesTest::SetUp();
-    store->UpdateResource({""}, {"gce_instance", {
-      {"instance_id", "TestID"},
-      {"zone", "TestZone"},
-    }});
   }
 
   std::unique_ptr<Configuration> CreateConfig() override {

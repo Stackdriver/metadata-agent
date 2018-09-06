@@ -30,6 +30,7 @@
 #include "configuration.h"
 #include "format.h"
 #include "http_common.h"
+#include "instance.h"
 #include "json.h"
 #include "logging.h"
 #include "resource.h"
@@ -63,9 +64,6 @@ constexpr const char kWatchParam[] = "watch=true";
 
 constexpr const char kDockerIdPrefix[] = "docker://";
 
-// Empty resource id is reserved for the default resource (i.e.,  instance).
-constexpr const char kLocalInstanceResourceId[] = "";
-
 constexpr const char kServiceAccountDirectory[] =
     "/var/run/secrets/kubernetes.io/serviceaccount";
 
@@ -79,10 +77,8 @@ class KubernetesReader::NonRetriableError
 };
 
 KubernetesReader::KubernetesReader(const Configuration& config,
-                                   const MetadataStore& store,
                                    HealthChecker* health_checker)
-    : config_(config), environment_(config), store_(store),
-      health_checker_(health_checker),
+    : config_(config), environment_(config), health_checker_(health_checker),
       service_account_directory_(kServiceAccountDirectory) {}
 
 std::string KubernetesReader::SecretPath(const std::string& secret) const {
@@ -130,7 +126,7 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
       {"version", json::string(config_.MetadataIngestionRawContentVersion())},
       {"raw", json::object({
         {"infrastructureResource",
-         store_.LookupResource(kLocalInstanceResourceId).ToJSON()},
+         InstanceReader::InstanceResource(environment_).ToJSON()},
       })},
     });
   } catch (const std::out_of_range& e) {
@@ -170,7 +166,7 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
   json::value instance_resource;
   try {
     instance_resource =
-        store_.LookupResource(kLocalInstanceResourceId).ToJSON();
+        InstanceReader::InstanceResource(environment_).ToJSON();
   } catch (const std::out_of_range& e) {
     // No instance resource; proceed.
   }
@@ -1301,7 +1297,7 @@ void KubernetesReader::WatchEndpoints(
 KubernetesUpdater::KubernetesUpdater(const Configuration& config,
                                      HealthChecker* health_checker,
                                      MetadataStore* store)
-    : reader_(config, *store, health_checker), PollingMetadataUpdater(
+    : reader_(config, health_checker), PollingMetadataUpdater(
         config, store, "KubernetesUpdater",
         config.KubernetesUpdaterIntervalSeconds(),
         [=]() { return reader_.MetadataQuery(); }) { }

@@ -39,7 +39,6 @@ class MetadataStore;
 class KubernetesReader {
  public:
   KubernetesReader(const Configuration& config,
-                   const MetadataStore& store,
                    HealthChecker* health_checker);
   // A Kubernetes metadata query function.
   std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
@@ -216,7 +215,6 @@ class KubernetesReader {
   mutable std::map<ServiceKey, std::vector<std::string>> service_to_pods_;
 
   const Configuration& config_;
-  const MetadataStore& store_;
   HealthChecker* health_checker_;
   Environment environment_;
   std::string service_account_directory_;

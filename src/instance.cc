@@ -33,10 +33,14 @@ InstanceReader::InstanceReader(const Configuration& config)
     : config_(config), environment_(config) {}
 
 /*static*/
-MonitoredResource InstanceReader::InstanceResource(const Environment& environment) {
+MonitoredResource InstanceReader::InstanceResource(const Environment& environment)
+    throw(std::out_of_range) {
   const std::string resource_type = environment.InstanceResourceType();
   const std::string instance_id = environment.InstanceId();
   const std::string zone = environment.InstanceZone();
+  if (instance_id.empty() || zone.empty()) {
+    throw std::out_of_range("No instance information");
+  }
   return {resource_type, {
     {"instance_id", instance_id},
     {"zone", zone},
