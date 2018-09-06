@@ -2,6 +2,7 @@
 #include "../src/resource.h"
 #include "../src/kubernetes.h"
 #include "../src/updater.h"
+#include "environment_util.h"
 #include "fake_http_server.h"
 #include "gtest/gtest.h"
 #include "temp_file.h"
@@ -99,6 +100,12 @@ class KubernetesTest : public ::testing::Test {
     reader->SetServiceAccountDirectoryForTest(directory);
   }
 
+  static void SetMetadataServerUrlForTest(
+      KubernetesReader* reader, const std::string& url) {
+    testing::EnvironmentUtil::SetMetadataServerUrlForTest(
+        &reader->environment_, url);
+  }
+
   void SetUp() override {
     config = CreateConfig();
     reader.reset(new KubernetesReader(*config,
@@ -113,6 +120,13 @@ class KubernetesTest : public ::testing::Test {
 
 class KubernetesTestNoInstance : public KubernetesTest {
  protected:
+  void SetUp() override {
+    metadata_server.reset(new testing::FakeServer());
+    KubernetesTest::SetUp();
+    // Need to ensure that the metadata server returns no info either.
+    SetMetadataServerUrlForTest(reader.get(), metadata_server->GetUrl() + "/");
+  }
+
   std::unique_ptr<Configuration> CreateConfig() override {
     return std::unique_ptr<Configuration>(
       new Configuration(std::istringstream(
@@ -121,6 +135,8 @@ class KubernetesTestNoInstance : public KubernetesTest {
         "MetadataIngestionRawContentVersion: TestVersion\n"
       )));
   }
+
+  std::unique_ptr<testing::FakeServer> metadata_server;
 };
 
 TEST_F(KubernetesTestNoInstance, GetNodeMetadata) {
