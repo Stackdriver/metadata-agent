@@ -21,4 +21,4 @@ addons:
 compiler:
   - clang
   - gcc
-script: cd src && make test
+script: cd src && make && make test
