@@ -24,6 +24,10 @@
 
 namespace google {
 
+namespace testing {
+class EnvironmentUtil;
+}  // testing
+
 class Environment {
  public:
   Environment(const Configuration& config);
@@ -45,7 +49,7 @@ class Environment {
 
  private:
   friend class EnvironmentTest;
-  friend class OAuth2Test;
+  friend class testing::EnvironmentUtil;
 
   void ReadApplicationDefaultCredentials() const;
 

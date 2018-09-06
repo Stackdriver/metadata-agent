@@ -1,4 +1,5 @@
 #include "../src/oauth2.h"
+#include "environment_util.h"
 #include "fake_http_server.h"
 #include "temp_file.h"
 #include "gtest/gtest.h"
@@ -9,11 +10,6 @@ namespace google {
 
 class OAuth2Test : public ::testing::Test {
  protected:
-  static void SetMetadataServerUrlForTest(Environment* environment,
-                                          const std::string& url) {
-    environment->SetMetadataServerUrlForTest(url);
-  }
-
   static void SetTokenEndpointForTest(OAuth2* auth,
                                       const std::string& endpoint) {
     auth->SetTokenEndpointForTest(endpoint);
@@ -52,7 +48,8 @@ TEST_F(OAuth2Test, GetHeaderValueUsingTokenFromMetadataServer) {
 
   Configuration config;
   Environment environment(config);
-  SetMetadataServerUrlForTest(&environment, server.GetUrl() + "/");
+  testing::EnvironmentUtil::SetMetadataServerUrlForTest(
+      &environment, server.GetUrl() + "/");
 
   OAuth2 auth(environment);
   EXPECT_EQ("Bearer the-access-token", auth.GetAuthHeaderValue());
