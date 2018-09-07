@@ -773,7 +773,7 @@ void TestNodes(testing::FakeServer& server, MetadataStore& store,
 
   Timestamp last_nodes_timestamp = std::chrono::system_clock::now();
   for (int i = 0; i < 3; i++) {
-    // Send a response to the watcher.
+    // Construct and send a response to the watcher.
     json::value resp = json::object({
       {"type", json::string("ADDED")},
       {"object", json::object({
@@ -843,7 +843,7 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
 
   Timestamp last_pods_timestamp = std::chrono::system_clock::now();
   for (int i = 0; i < 3; i++) {
-    // Send a response to the watcher.
+    // Construct and send a response to the watcher.
     json::value resp = json::object({
       {"type", json::string("ADDED")},
       {"object", json::object({
@@ -1029,7 +1029,7 @@ void TestServices(testing::FakeServer& server, MetadataStore& store,
 
   Timestamp last_services_timestamp = std::chrono::system_clock::now();
   for (int i = 0; i < 3; i++) {
-    // Send a response to the watcher.
+    // Construct and send a response to the watcher.
     json::value resp = json::object({
       {"type", json::string("ADDED")},
       {"object", json::object({
@@ -1089,7 +1089,7 @@ void TestEndpoints(testing::FakeServer& server, MetadataStore& store,
 
   Timestamp last_endpoints_timestamp = std::chrono::system_clock::now();
   for (int i = 0; i < 3; i++) {
-    // Send a response to the watcher.
+    // Construct and send a response to the watcher.
     json::value resp = json::object({
       {"type", json::string("ADDED")},
       {"object", json::object({
