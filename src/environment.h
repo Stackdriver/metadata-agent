@@ -28,7 +28,7 @@ class Environment {
  public:
   Environment(const Configuration& config);
 
-  const std::string& NumericProjectId() const;
+  const std::string& ProjectId() const;
   const std::string& InstanceResourceType() const;
   const std::string& InstanceId() const;
   const std::string& InstanceZone() const;

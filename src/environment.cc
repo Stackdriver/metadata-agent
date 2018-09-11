@@ -116,46 +116,17 @@ bool Environment::IsGcpLocationZonal(const std::string& location) const {
   return num_dashes >= 2;
 }
 
-const std::string& Environment::NumericProjectId() const {
+const std::string& Environment::ProjectId() const {
   std::lock_guard<std::mutex> lock(mutex_);
   if (project_id_.empty()) {
     if (!config_.ProjectId().empty()) {
       project_id_ = config_.ProjectId();
     } else {
-      ReadApplicationDefaultCredentials();
-      if (!client_email_.empty()) {
-        // Extract from credentials.
-        // New-style emails (string@project.iam.gserviceaccount.com).
-        // Old-style emails (projectnumber-hash@developer.gserviceaccount.com).
-        std::string::size_type new_style =
-            client_email_.find(".iam.gserviceaccount.com");
-        std::string::size_type old_style =
-            client_email_.find("@developer.gserviceaccount.com");
-        if (new_style != std::string::npos) {
-          std::string::size_type at = client_email_.find('@');
-          if (at != std::string::npos) {
-            project_id_ = client_email_.substr(at + 1, new_style - at - 1);
-            LOG(INFO) << "Found project id in credentials: " << project_id_;
-          }
-        } else if (old_style != std::string::npos) {
-          std::string::size_type dash = client_email_.find('-');
-          if (dash != std::string::npos) {
-            project_id_ = client_email_.substr(0, dash);
-            LOG(INFO) << "Found project id in credentials: " << project_id_;
-          }
-        } else {
-          LOG(ERROR) << "Unable to extract project id from " << client_email_;
-        }
+      if (config_.VerboseLogging()) {
+        LOG(INFO) << "Getting project id from metadata server";
       }
-      if (project_id_.empty()) {
-        // Query the metadata server.
-        // TODO: Other sources.
-        if (config_.VerboseLogging()) {
-          LOG(INFO) << "Getting project id from metadata server";
-        }
-        project_id_ = GetMetadataString("project/numeric-project-id");
-        LOG(INFO) << "Got project id from metadata server: " << project_id_;
-      }
+      project_id_ = GetMetadataString("project/project-id");
+      LOG(INFO) << "Got project id from metadata server: " << project_id_;
     }
   }
   return project_id_;
