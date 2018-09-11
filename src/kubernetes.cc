@@ -209,7 +209,8 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
     node_name = json::string(spec->Get<json::String>("nodeName"));
   }
 
-  // If any of the field values are not populated, they will be discarded.
+  // If instance_resource, controllers, or node_name are not populated,
+  // they will be discarded.
   json::value raw_associations = json::object({
     {"infrastructureResource", std::move(instance_resource)},
     {"controllers", std::move(controllers)},
