@@ -16,6 +16,7 @@
 #ifndef AGENT_CONFIG_H_
 #define AGENT_CONFIG_H_
 
+#include <memory>
 #include <mutex>
 #include <string>
 
@@ -29,8 +30,13 @@ class Configuration {
   Configuration(std::istream& input);
   // Used to accept inline construction of streams.
   Configuration(std::istream&& input) : Configuration(input) {}
+  ~Configuration();
 
   // Shared configuration.
+  bool VerboseLogging() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return verbose_logging_;
+  }
   const std::string& ProjectId() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return project_id_;
@@ -38,10 +44,6 @@ class Configuration {
   const std::string& CredentialsFile() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return credentials_file_;
-  }
-  bool VerboseLogging() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return verbose_logging_;
   }
   // Metadata API server configuration options.
   int MetadataApiNumThreads() const {
@@ -179,6 +181,8 @@ class Configuration {
   friend class ConfigurationArgumentParserTest;
   friend int ::main(int, char**);  // Calls ParseArguments.
 
+  class OptionMap;  // Internal helper class.
+
   void ParseConfigFile(const std::string& filename);
   void ParseConfiguration(std::istream& input);
   // Parse the command line.
@@ -189,9 +193,9 @@ class Configuration {
   int ParseArguments(int ac, char** av);
 
   mutable std::mutex mutex_;
+  bool verbose_logging_;
   std::string project_id_;
   std::string credentials_file_;
-  bool verbose_logging_;
   int metadata_api_num_threads_;
   int metadata_api_port_;
   std::string metadata_api_bind_address_;
@@ -223,6 +227,8 @@ class Configuration {
   std::string instance_zone_;
   std::string health_check_file_;
   int health_check_max_data_age_seconds_;
+
+  std::unique_ptr<const OptionMap> options_;
 };
 
 }
