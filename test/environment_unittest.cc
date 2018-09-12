@@ -62,6 +62,42 @@ TEST_F(EnvironmentTest, ValuesFromConfig) {
             environment.KubernetesClusterName());
 }
 
+TEST_F(EnvironmentTest, ProjectIdFromConfigNewStyleCredentialsProjectId) {
+  testing::TemporaryFile credentials_file(
+    std::string(test_info_->name()) + "_creds.json",
+    "{\"client_email\":\"user@email-project.iam.gserviceaccount.com\","
+    "\"private_key\":\"some_key\",\"project_id\":\"my-project\"}");
+  Configuration config(std::istringstream(
+      "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
+  ));
+  Environment environment(config);
+  EXPECT_EQ("my-project", environment.ProjectId());
+}
+
+TEST_F(EnvironmentTest, ProjectIdFromConfigNewStyleCredentialsEmail) {
+  testing::TemporaryFile credentials_file(
+    std::string(test_info_->name()) + "_creds.json",
+    "{\"client_email\":\"user@my-project.iam.gserviceaccount.com\","
+    "\"private_key\":\"some_key\"}");
+  Configuration config(std::istringstream(
+      "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
+  ));
+  Environment environment(config);
+  EXPECT_EQ("my-project", environment.ProjectId());
+}
+
+TEST_F(EnvironmentTest, ProjectIdFromConfigOldStyleCredentialsEmailFails) {
+  testing::TemporaryFile credentials_file(
+    std::string(test_info_->name()) + "_creds.json",
+    "{\"client_email\":\"12345-hash@developer.gserviceaccount.com\","
+    "\"private_key\":\"some_key\"}");
+  Configuration config(std::istringstream(
+      "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
+  ));
+  Environment environment(config);
+  EXPECT_EQ("", environment.ProjectId());
+}
+
 TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsSucceeds) {
   testing::TemporaryFile credentials_file(
     std::string(test_info_->name()) + "_creds.json",
