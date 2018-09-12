@@ -37,7 +37,9 @@ class InstanceReader {
   std::vector<MetadataUpdater::ResourceMetadata> MetadataQuery() const;
 
   // Gets the monitored resource of the instance the agent is running on.
-  static MonitoredResource InstanceResource(const Environment& environment);
+  // Throws std::out_of_range if no instance information is available.
+  static MonitoredResource InstanceResource(const Environment& environment)
+      throw(std::out_of_range);
 
  private:
   const Configuration& config_;

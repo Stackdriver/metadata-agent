@@ -120,13 +120,18 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     {"location", location},
   });
 
-  json::value associations = json::object({
-    {"version", json::string(config_.MetadataIngestionRawContentVersion())},
-    {"raw", json::object({
-      {"infrastructureResource",
-       InstanceReader::InstanceResource(environment_).ToJSON()},
-    })},
-  });
+  json::value associations;
+  try {
+    associations = json::object({
+      {"version", json::string(config_.MetadataIngestionRawContentVersion())},
+      {"raw", json::object({
+        {"infrastructureResource",
+         InstanceReader::InstanceResource(environment_).ToJSON()},
+      })},
+    });
+  } catch (const std::out_of_range& e) {
+    // No instance resource; proceed.
+  }
 
   json::value node_raw_metadata = json::object({
     {"blobs", json::object({
@@ -158,8 +163,13 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
   const json::Object* metadata = pod->Get<json::Object>("metadata");
   const std::string namespace_name = metadata->Get<json::String>("namespace");
 
-  json::value instance_resource =
-      InstanceReader::InstanceResource(environment_).ToJSON();
+  json::value instance_resource;
+  try {
+    instance_resource =
+        InstanceReader::InstanceResource(environment_).ToJSON();
+  } catch (const std::out_of_range& e) {
+    // No instance resource; proceed.
+  }
 
   json::value controllers;
   try {
@@ -199,12 +209,18 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
     node_name = json::string(spec->Get<json::String>("nodeName"));
   }
 
-  // If controllers or node_name are not populated, they will be discarded.
+  // If instance_resource, controllers, or node_name are not populated,
+  // they will be discarded.
   json::value raw_associations = json::object({
     {"infrastructureResource", std::move(instance_resource)},
     {"controllers", std::move(controllers)},
     {"nodeName", std::move(node_name)},
   });
+
+  // If none of the field values above were populated, discard the object.
+  if (raw_associations->As<json::Object>()->empty()) {
+    return json::value();
+  }
 
   return json::object({
     {"version", json::string(config_.MetadataIngestionRawContentVersion())},
@@ -365,10 +381,14 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetLegacyResource(
     const json::Object* pod, const std::string& container_name) const
-    throw(json::Exception) {
+    throw(std::out_of_range, json::Exception) {
   const std::string instance_id = environment_.InstanceId();
   const std::string zone = environment_.InstanceZone();
   const std::string cluster_name = environment_.KubernetesClusterName();
+
+  if (instance_id.empty() || zone.empty()) {
+    throw std::out_of_range("No instance information, skipping gke_container");
+  }
 
   const json::Object* metadata = pod->Get<json::Object>("metadata");
   const std::string namespace_name = metadata->Get<json::String>("namespace");
@@ -446,10 +466,16 @@ KubernetesReader::GetPodAndContainerMetadata(
         LOG(INFO) << "Container status: " << *container_status;
       }
     }
-    result.emplace_back(GetLegacyResource(pod, name));
+    try {
+      result.emplace_back(GetLegacyResource(pod, name));
+    } catch (const std::out_of_range& e) {
+      // No instance information available; log and ignore.
+      LOG(INFO) << e.what();
+    }
     result.emplace_back(
         GetContainerMetadata(pod, container_spec, container_status,
-                             associations->Clone(), collected_at, is_deleted));
+                             json::Clone(associations), collected_at,
+                             is_deleted));
   }
 
   result.emplace_back(

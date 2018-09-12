@@ -1,4 +1,5 @@
 #include "../src/environment.h"
+#include "environment_util.h"
 #include "fake_http_server.h"
 #include "gtest/gtest.h"
 #include "temp_file.h"
@@ -11,11 +12,6 @@ class EnvironmentTest : public ::testing::Test {
  protected:
   static void ReadApplicationDefaultCredentials(const Environment& environment) {
     environment.ReadApplicationDefaultCredentials();
-  }
-
-  static void SetMetadataServerUrlForTest(Environment* environment,
-                                          const std::string& url) {
-    environment->SetMetadataServerUrlForTest(url);
   }
 };
 
@@ -127,7 +123,8 @@ TEST_F(EnvironmentTest, GetMetadataStringWithFakeServer) {
 
   Configuration config;
   Environment environment(config);
-  SetMetadataServerUrlForTest(&environment, server.GetUrl() + "/");
+  testing::EnvironmentUtil::SetMetadataServerUrlForTest(
+      &environment, server.GetUrl() + "/");
 
   EXPECT_EQ("hello", environment.GetMetadataString("a/b/c"));
   EXPECT_EQ("", environment.GetMetadataString("unknown/path"));
@@ -145,7 +142,8 @@ TEST_F(EnvironmentTest, ValuesFromMetadataServer) {
 
   Configuration config;
   Environment environment(config);
-  SetMetadataServerUrlForTest(&environment, server.GetUrl() + "/");
+  testing::EnvironmentUtil::SetMetadataServerUrlForTest(
+      &environment, server.GetUrl() + "/");
 
   EXPECT_EQ("some-cluster-location", environment.KubernetesClusterLocation());
   EXPECT_EQ("some-cluster-name", environment.KubernetesClusterName());
@@ -162,7 +160,8 @@ TEST_F(EnvironmentTest, KubernetesClusterLocationFromMetadataServerKubeEnv) {
 
   Configuration config;
   Environment environment(config);
-  SetMetadataServerUrlForTest(&environment, server.GetUrl() + "/");
+  testing::EnvironmentUtil::SetMetadataServerUrlForTest(
+      &environment, server.GetUrl() + "/");
 
   EXPECT_EQ("some-kube-env-zone", environment.KubernetesClusterLocation());
 }
