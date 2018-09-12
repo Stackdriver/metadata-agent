@@ -381,13 +381,13 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetLegacyResource(
     const json::Object* pod, const std::string& container_name) const
-    throw(QueryException, json::Exception) {
+    throw(std::out_of_range, json::Exception) {
   const std::string instance_id = environment_.InstanceId();
   const std::string zone = environment_.InstanceZone();
   const std::string cluster_name = environment_.KubernetesClusterName();
 
   if (instance_id.empty() || zone.empty()) {
-    throw QueryException("No instance information, skipping gke_container");
+    throw std::out_of_range("No instance information, skipping gke_container");
   }
 
   const json::Object* metadata = pod->Get<json::Object>("metadata");
@@ -468,7 +468,7 @@ KubernetesReader::GetPodAndContainerMetadata(
     }
     try {
       result.emplace_back(GetLegacyResource(pod, name));
-    } catch (const QueryException& e) {
+    } catch (const std::out_of_range& e) {
       // No instance information available; log and ignore.
       LOG(INFO) << e.what();
     }

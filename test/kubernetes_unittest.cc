@@ -55,7 +55,7 @@ class KubernetesTest : public ::testing::Test {
   static MetadataUpdater::ResourceMetadata GetLegacyResource(
       const KubernetesReader& reader, const json::Object* pod,
       const std::string& container_name)
-      throw(QueryException, json::Exception) {
+      throw(std::out_of_range, json::Exception) {
     return reader.GetLegacyResource(pod, container_name);
   }
 
@@ -224,7 +224,7 @@ TEST_F(KubernetesTestNoInstance, GetLegacyResource) {
   });
   EXPECT_THROW(
       GetLegacyResource(*reader, pod->As<json::Object>(), "TestContainerName"),
-      QueryException);
+      std::out_of_range);
 }
 
 TEST_F(KubernetesTestNoInstance, GetPodAndContainerMetadata) {
