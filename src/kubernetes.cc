@@ -566,7 +566,7 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
 }
 
 const std::string KubernetesReader::ClusterFullName() const {
-  const std::string project_id = environment_.NumericProjectId();
+  const std::string project_id = environment_.ProjectId();
   const std::string cluster_name = environment_.KubernetesClusterName();
   const std::string location = environment_.KubernetesClusterLocation();
   const std::string location_type =

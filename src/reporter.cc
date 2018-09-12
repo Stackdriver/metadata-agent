@@ -182,7 +182,7 @@ void MetadataReporter::SendMetadata(
   if (config_.VerboseLogging()) {
     LOG(INFO) << "Sending request to the server";
   }
-  const std::string project_id = environment_.NumericProjectId();
+  const std::string project_id = environment_.ProjectId();
   const std::string& endpoint = config_.MetadataIngestionEndpointFormat();
   const std::string& publish_path =
       format::Substitute(kPublishPathFormat, {{"project_id", project_id}});
