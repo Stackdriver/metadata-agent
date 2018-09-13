@@ -83,6 +83,7 @@ TEST_F(EnvironmentTest, ProjectIdFromConfigNewStyleCredentialsEmail) {
 }
 
 TEST_F(EnvironmentTest, ProjectIdFromConfigOldStyleCredentialsEmailFails) {
+  testing::FakeServer server;
   testing::TemporaryFile credentials_file(
     std::string(test_info_->name()) + "_creds.json",
     "{\"client_email\":\"12345-hash@developer.gserviceaccount.com\","
@@ -91,6 +92,8 @@ TEST_F(EnvironmentTest, ProjectIdFromConfigOldStyleCredentialsEmailFails) {
       "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
   ));
   Environment environment(config);
+  testing::EnvironmentUtil::SetMetadataServerUrlForTest(
+      &environment, server.GetUrl() + "/");
   EXPECT_EQ("", environment.ProjectId());
 }
 
