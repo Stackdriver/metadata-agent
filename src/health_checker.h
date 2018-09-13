@@ -38,9 +38,6 @@ class HealthChecker {
  private:
   friend class HealthCheckerUnittest;
 
-  bool IsHealthy() const;
-  void CleanupForTest();
-
   const Configuration& config_;
   const MetadataStore& store_;
   std::set<std::string> unhealthy_components_;
