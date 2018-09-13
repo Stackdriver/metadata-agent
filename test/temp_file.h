@@ -18,6 +18,7 @@
 
 #include <boost/filesystem.hpp>
 #include <fstream>
+#include <locale>
 
 namespace google {
 namespace testing {
@@ -25,8 +26,10 @@ namespace testing {
 // A file with a given name in a temporary (unique) directory.
 boost::filesystem::path TempPath(const std::string& filename) {
   boost::filesystem::path path = boost::filesystem::temp_directory_path();
-  path.append(boost::filesystem::unique_path().native());
-  path.append(filename);
+  const boost::filesystem::path::codecvt_type& codecvt =
+     std::use_facet<boost::filesystem::path::codecvt_type>(std::locale(""));
+  path.append(boost::filesystem::unique_path().native(), codecvt);
+  path.append(filename, codecvt);
   return path;
 }
 

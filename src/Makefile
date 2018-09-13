@@ -50,7 +50,7 @@ ifeq ($(UNAME_S),Darwin)
   LDFLAGS+= -L/usr/local/lib -L/usr/local/opt/openssl/lib
   SED_I+= ''
   SED_EXTRA+= -e \
-      's/-Wall/-Wall -Wno-deprecated-declarations -Wno-unused-local-typedef/'
+      's/-Wall/-Wall -Wno-deprecated-declarations -Wno-c++14-extensions -Wno-unused-local-typedef/'
 endif
 
 SRCS=\
@@ -184,6 +184,7 @@ endif
 $(CPP_NETLIB_DIR)/Makefile: init-submodules
 	cd $(CPP_NETLIB_DIR) && \
 	$(SED_I) -e 's/unit_test_framework //' $(SED_EXTRA) CMakeLists.txt && \
+	$(SED_I) -e 's/-std=c++14/-std=c++11/' $(SED_EXTRA) deps/uri/CMakeLists.txt && \
 	$(CMAKE) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
 	    -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
 	    -DCPP-NETLIB_BUILD_TESTS=OFF -DCPP-NETLIB_BUILD_EXAMPLES=OFF \
