@@ -44,7 +44,7 @@ LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR)
 LDLIBS=\
     -lcppnetlib-client-connections -lcppnetlib-server-parsers -lnetwork-uri \
     -lboost_program_options -lboost_system -lboost_thread -lboost_filesystem \
-    -lpthread -lyajl -lssl -lcrypto -lyaml-cpp
+    -lboost_regex -lpthread -lyajl -lssl -lcrypto -lyaml-cpp
 
 UNAME_S=$(shell uname -s)
 ifeq ($(UNAME_S),Darwin)

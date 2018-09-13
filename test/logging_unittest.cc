@@ -17,7 +17,7 @@
 #include "../src/logging.h"
 #include "gtest/gtest.h"
 
-#include <regex>
+#include <boost/regex.hpp>
 #include <sstream>
 
 namespace google {
@@ -33,7 +33,7 @@ TEST(LoggingTest, Logger) {
     logger << "Test message";
   }
 
-  EXPECT_TRUE(std::regex_match(out.str(), std::regex(
+  EXPECT_TRUE(boost::regex_match(out.str(), boost::regex(
      "W\\d{4} \\d{2}:\\d{2}:\\d{2} .+ "
      "somefile.cc:123 Test message\n")));
 }
