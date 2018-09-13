@@ -58,19 +58,31 @@ TEST_F(EnvironmentTest, ValuesFromConfig) {
             environment.KubernetesClusterName());
 }
 
-TEST_F(EnvironmentTest, NumericProjectIdFromConfigNewStyleCredentials) {
+TEST_F(EnvironmentTest, ProjectIdFromConfigNewStyleCredentialsProjectId) {
   testing::TemporaryFile credentials_file(
     std::string(test_info_->name()) + "_creds.json",
-    "{\"client_email\":\"user@12345.iam.gserviceaccount.com\","
+    "{\"client_email\":\"user@email-project.iam.gserviceaccount.com\","
+    "\"private_key\":\"some_key\",\"project_id\":\"my-project\"}");
+  Configuration config(std::istringstream(
+      "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
+  ));
+  Environment environment(config);
+  EXPECT_EQ("my-project", environment.ProjectId());
+}
+
+TEST_F(EnvironmentTest, ProjectIdFromConfigNewStyleCredentialsEmail) {
+  testing::TemporaryFile credentials_file(
+    std::string(test_info_->name()) + "_creds.json",
+    "{\"client_email\":\"user@my-project.iam.gserviceaccount.com\","
     "\"private_key\":\"some_key\"}");
   Configuration config(std::istringstream(
       "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
   ));
   Environment environment(config);
-  EXPECT_EQ("12345", environment.NumericProjectId());
+  EXPECT_EQ("my-project", environment.ProjectId());
 }
 
-TEST_F(EnvironmentTest, NumericProjectIdFromConfigOldStyleCredentials) {
+TEST_F(EnvironmentTest, ProjectIdFromConfigOldStyleCredentialsEmailFails) {
   testing::TemporaryFile credentials_file(
     std::string(test_info_->name()) + "_creds.json",
     "{\"client_email\":\"12345-hash@developer.gserviceaccount.com\","
@@ -79,7 +91,7 @@ TEST_F(EnvironmentTest, NumericProjectIdFromConfigOldStyleCredentials) {
       "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
   ));
   Environment environment(config);
-  EXPECT_EQ("12345", environment.NumericProjectId());
+  EXPECT_EQ("", environment.ProjectId());
 }
 
 TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsSucceeds) {
@@ -139,6 +151,7 @@ TEST_F(EnvironmentTest, ValuesFromMetadataServer) {
   server.SetResponse("/instance/zone",
                      "projects/some-project/zones/some-instance-zone");
   server.SetResponse("/project/numeric-project-id", "12345");
+  server.SetResponse("/project/project-id", "my-project");
 
   Configuration config;
   Environment environment(config);
@@ -149,7 +162,7 @@ TEST_F(EnvironmentTest, ValuesFromMetadataServer) {
   EXPECT_EQ("some-cluster-name", environment.KubernetesClusterName());
   EXPECT_EQ("some-instance-id", environment.InstanceId());
   EXPECT_EQ("some-instance-zone", environment.InstanceZone());
-  EXPECT_EQ("12345", environment.NumericProjectId());
+  EXPECT_EQ("my-project", environment.ProjectId());
 }
 
 TEST_F(EnvironmentTest, KubernetesClusterLocationFromMetadataServerKubeEnv) {
