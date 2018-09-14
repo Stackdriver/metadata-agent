@@ -22,7 +22,10 @@ namespace testing {
 FakeServer::FakeServer()
     // Note: An empty port selects a random available port (this behavior
     // is not documented).
-    : server_(Server::options(handler_).address("127.0.0.1").port("")) {
+    : server_(Server::options(handler_)
+                  .address("127.0.0.1")
+                  .port("")
+                  .reuse_address(true)) {
   server_.listen();
   server_thread_ = std::thread([this] { server_.run(); });
 }
