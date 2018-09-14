@@ -1216,6 +1216,32 @@ TEST_F(KubernetesTestFakeServer, MetadataQuery) {
   EXPECT_EQ(pod_metadata->ToString(), m[3].metadata().metadata->ToString());
 }
 
+class KubernetesTestFakeServerOneWatchRetry : public KubernetesTest {
+ protected:
+  void SetUp() override {
+    server.reset(new testing::FakeServer());
+    KubernetesTest::SetUp();
+  }
+
+  std::unique_ptr<Configuration> CreateConfig() override {
+    return std::unique_ptr<Configuration>(
+      new Configuration(std::istringstream(
+        "InstanceId: TestID\n"
+        "InstanceResourceType: gce_instance\n"
+        "InstanceZone: TestZone\n"
+        "KubernetesClusterLocation: TestClusterLocation\n"
+        "KubernetesClusterName: TestClusterName\n"
+        "KubernetesEndpointHost: " + server->GetUrl() + "\n"
+        "KubernetesNodeName: TestNodeName\n"
+        "MetadataIngestionRawContentVersion: TestVersion\n"
+        "KubernetesUpdaterWatchConnectionRetries: 1\n"
+        "KubernetesUseWatch: true\n"
+      )));
+  }
+
+  std::unique_ptr<testing::FakeServer> server;
+};
+
 // Polls store until collected_at for resource is newer than
 // last_timestamp.  Returns false if newer timestamp not found after 3
 // seconds (polling every 100 millis).
@@ -1233,36 +1259,23 @@ bool WaitForNewerCollectionTimestamp(const MetadataStore& store,
   return false;
 }
 
-TEST_F(KubernetesTest, KubernetesUpdater) {
-  // Create a fake server representing the Kubernetes master.
-  testing::FakeServer server;
-  server.SetResponse("/api/v1/nodes?limit=1", "{}");
-  server.SetResponse("/api/v1/pods?limit=1", "{}");
-  server.AllowStream(
+TEST_F(KubernetesTestFakeServerOneWatchRetry, KubernetesUpdater) {
+  // Set responses for fake server representing the Kubernetes master.
+  server->SetResponse("/api/v1/nodes?limit=1", "{}");
+  server->SetResponse("/api/v1/pods?limit=1", "{}");
+  server->AllowStream(
       "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true");
-  server.AllowStream(
+  server->AllowStream(
       "/api/v1/watch/nodes/TestNodeName?watch=true");
 
-  // Start the updater with a config that points to the fake server.
-  Configuration config(std::istringstream(
-      "InstanceId: TestID\n"
-      "InstanceResourceType: gce_instance\n"
-      "InstanceZone: TestZone\n"
-      "KubernetesClusterLocation: TestClusterLocation\n"
-      "KubernetesClusterName: TestClusterName\n"
-      "KubernetesEndpointHost: " + server.GetUrl() + "\n"
-      "KubernetesNodeName: TestNodeName\n"
-      "KubernetesUpdaterWatchConnectionRetries: 1\n"
-      "KubernetesUseWatch: true\n"
-  ));
-  MetadataStore store(config);
-  KubernetesUpdater updater(config, /*health_checker=*/nullptr, &store);
+  MetadataStore store(*config);
+  KubernetesUpdater updater(*config, /*health_checker=*/nullptr, &store);
   std::thread updater_thread([&updater] { updater.Start(); });
 
   // Wait for updater's watchers to connect to the server (hanging GETs).
-  EXPECT_TRUE(server.WaitForOneStreamWatcher(
+  EXPECT_TRUE(server->WaitForOneStreamWatcher(
       "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true"));
-  EXPECT_TRUE(server.WaitForOneStreamWatcher(
+  EXPECT_TRUE(server->WaitForOneStreamWatcher(
       "/api/v1/watch/nodes/TestNodeName?watch=true"));
 
   // For nodes, send stream responses from the fake Kubernetes
@@ -1279,7 +1292,7 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
       })}
     });
     // Send a response to the watcher.
-    server.SendStreamResponse(
+    server->SendStreamResponse(
         "/api/v1/watch/nodes/TestNodeName?watch=true",
         resp->ToString());
     // Wait until watcher has processed response (by polling the store).
@@ -1325,7 +1338,7 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
       })}
     });
     // Send a response to the watcher.
-    server.SendStreamResponse(
+    server->SendStreamResponse(
         "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true",
         resp->ToString());
     // Wait until watcher has processed response (by polling the store).
@@ -1344,7 +1357,7 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
   }
 
   // Terminate the hanging GETs on the server so that the updater will finish.
-  server.TerminateAllStreams();
+  server->TerminateAllStreams();
   updater_thread.join();
 }
 
