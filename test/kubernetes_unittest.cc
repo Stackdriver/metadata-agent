@@ -1252,6 +1252,7 @@ TEST_F(KubernetesTest, KubernetesUpdater) {
       "KubernetesClusterName: TestClusterName\n"
       "KubernetesEndpointHost: " + server.GetUrl() + "\n"
       "KubernetesNodeName: TestNodeName\n"
+      "KubernetesUpdaterWatchConnectionRetries: 1\n"
       "KubernetesUseWatch: true\n"
   ));
   MetadataStore store(config);

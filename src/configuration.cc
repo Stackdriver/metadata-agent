@@ -113,6 +113,9 @@ Configuration::Configuration()
          option(kubernetes_updater_interval_seconds_, 0)},
         {"KubernetesUpdaterWatchConnectionRetries",
          option(kubernetes_updater_watch_connection_retries_, 15)},
+        // A negative value means "infinite retries".
+        {"KubernetesUpdaterWatchMaxConnectionFailures",
+         option(kubernetes_updater_watch_max_connection_failures_, -1)},
         {"KubernetesEndpointHost",
          option(kubernetes_endpoint_host_, "https://kubernetes.default.svc")},
         {"KubernetesPodLabelSelector",

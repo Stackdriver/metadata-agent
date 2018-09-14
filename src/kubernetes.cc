@@ -798,13 +798,14 @@ void KubernetesReader::WatchMaster(
   request << boost::network::header(
       "Authorization", "Bearer " + KubernetesApiToken());
   const bool verbose = config_.VerboseLogging();
+  const int retries = config_.KubernetesUpdaterWatchConnectionRetries();
   int failures = 0;
-  while (true) {
+  for (int i = 0; retries > 0 && i < retries; i++) {
     if (verbose) {
       if (failures > 0) {
         LOG(INFO) << "WatchMaster(" << name
                   << "): Retrying; attempt #" << failures
-                  << " of " << config_.KubernetesUpdaterWatchConnectionRetries();
+                  << " of " << config_.KubernetesUpdaterWatchMaxConnectionFailures();
       }
       LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint;
     }
@@ -834,9 +835,9 @@ void KubernetesReader::WatchMaster(
     } catch (const boost::system::system_error& e) {
       LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
       ++failures;
-      if (failures >= config_.KubernetesUpdaterWatchConnectionRetries()) {
+      if (failures >= config_.KubernetesUpdaterWatchMaxConnectionFailures()) {
         LOG(ERROR) << "WatchMaster(" << name << "): Exiting after "
-                   << failures << " retries";
+                   << failures << " failures";
         throw QueryException(endpoint + " -> " + e.what());
       }
       double backoff = fmin(pow(1.5, failures), 30);
