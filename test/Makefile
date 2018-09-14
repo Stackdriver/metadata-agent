@@ -53,6 +53,11 @@ ifeq ($(UNAME_S),Darwin)
   LDFLAGS+= -L/usr/local/lib -L/usr/local/opt/openssl/lib
 endif
 
+ifneq ($(BOOST_ROOT),)
+  CPPFLAGS+= -I$(BOOST_ROOT)/include
+  LDFLAGS+= -L$(BOOST_ROOT)/lib64
+endif
+
 # Where to find code under test.
 SRC_DIR=../src
 

@@ -53,6 +53,11 @@ ifeq ($(UNAME_S),Darwin)
       's/-Wall/-Wall -Wno-deprecated-declarations -Wno-c++14-extensions -Wno-unused-local-typedef/'
 endif
 
+ifneq ($(BOOST_ROOT),)
+  CPPFLAGS+= -I$(BOOST_ROOT)/include
+  LDFLAGS+= -L$(BOOST_ROOT)/lib64
+endif
+
 SRCS=\
      metadatad.cc \
      agent.cc \
