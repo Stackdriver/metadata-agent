@@ -96,10 +96,10 @@ clean:
 
 purge: clean
 	$(RM) init-submodules
-	git submodule deinit -f $(GTEST_MODULE)
+	(cd .. && git submodule deinit -f $(GTEST_MODULE:../%=%))
 
 init-submodules:
-	git submodule update --init $(GTEST_MODULE)
+	(cd .. && git submodule update --init $(GTEST_MODULE:../%=%))
 	touch init-submodules
 
 $(SRC_DIR)/init-submodules:

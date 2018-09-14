@@ -163,10 +163,10 @@ clean:
 
 purge: clean
 	$(RM) -r init-submodules build-cpp-netlib build-yaml-cpp
-	git submodule deinit -f $(SUBMODULE_DIRS)
+	(cd .. && git submodule deinit -f $(SUBMODULE_DIRS:../%=%))
 
 init-submodules:
-	git submodule update --init --recursive $(SUBMODULE_DIRS)
+	(cd .. && git submodule update --init --recursive $(SUBMODULE_DIRS:../%=%))
 ifneq ($(findstring $(GIT_VERSION),2.7.0 2.7.1 2.7.2 2.7.3 2.7.4 2.7.5 2.7.6 2.8.0 2.8.1 2.8.2 2.8.3),)
 	# Git submodule recursive init was broken between 2.7.0 and 2.8.4
 	# (see https://marc.info/?l=git&m=145935867502974).
