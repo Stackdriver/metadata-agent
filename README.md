@@ -53,23 +53,34 @@ This is the Stackdriver metadata agent.
 <!---
 ## CentOS 7
 
-1. Install runtime dependencies:
+1. Prepare external boost repo:
 
-       $ sudo yum install -y yajl
-       $ (cd /tmp && \
-          VENDOR_URL=http://testrepo.stackdriver.com/vendor/boost/x86_64 && \
-          curl -O ${VENDOR_URL}/boost-system-1.54.0-1.el7.x86_64.rpm && \
-          curl -O ${VENDOR_URL}/boost-thread-1.54.0-1.el7.x86_64.rpm)
-       $ sudo rpm --nodeps -ivp /tmp/boost-{system,thread}-1.54.0-1.el7.x86_64.rpm
+       $ sudo tee /etc/yum.repos.d/puias-computational-x86_64.repo << EOM
+       [puias-computational-x86_64]
+       name=PUIAS Computational x86_64
+       baseurl=http://springdale.math.ias.edu/data/puias/computational/7/x86_64
+       enabled=1
+       gpgcheck=1
+       EOM
+       $ sudo rpm --import http://springdale.math.ias.edu/data/puias/7/x86_64/os/RPM-GPG-KEY-puias
 
-2. Install build dependencies:
+2. Install runtime dependencies:
 
-       $ sudo yum install -y gcc-c++ cmake rpm-build yajl-devel openssl-devel
-       $ (cd /tmp && \
-          VENDOR_URL=http://testrepo.stackdriver.com/vendor/boost/x86_64 && \
-          curl -O ${VENDOR_URL}/boost-devel-1.54.0-1.el7.x86_64.rpm && \
-          curl -O ${VENDOR_URL}/boost-static-1.54.0-1.el7.x86_64.rpm)
-       $ sudo rpm --nodeps -ivp /tmp/boost-{devel,static}-1.54.0-1.el7.x86_64.rpm
+       $ sudo yum install -y yajl boost155-filesystem boost155-system \
+         boost155-thread boost155-program-options
+
+3. Install build dependencies:
+
+       $ sudo yum install -y gcc-c++ make cmake rpm-build yajl-devel openssl-devel \
+         boost155-devel
+
+4. Set up Boost root:
+
+       $ sudo tee /etc/profile.d/boost.sh << EOM
+       export BOOST_ROOT=/usr/local/boost/1.55.0
+       export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$BOOST_ROOT/lib64"
+       EOM
+       $ . /etc/profile.d/boost.sh
 
 -->
 ## MacOS 10.12
