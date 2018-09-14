@@ -50,7 +50,6 @@ This is the Stackdriver metadata agent.
          libboost-filesystem1.62-dev libboost-program-options1.62-dev \
          libboost-regex1.62-dev libboost-thread1.62-dev libboost-timer1.62-dev
 
-<!---
 ## CentOS 7
 
 1. Prepare external boost repo:
@@ -82,7 +81,6 @@ This is the Stackdriver metadata agent.
        EOM
        $ . /etc/profile.d/boost.sh
 
--->
 ## MacOS 10.12
 
 1. Install runtime dependencies:
