@@ -124,7 +124,7 @@ void MetadataReporter::SendMetadata(
   if (config_.VerboseLogging()) {
     LOG(INFO) << "Sending request to the server";
   }
-  const std::string project_id = environment_.NumericProjectId();
+  const std::string project_id = environment_.ProjectId();
   // The endpoint template is expected to be of the form
   // "https://stackdriver.googleapis.com/.../projects/{{project_id}}/...".
   const std::string endpoint =
