@@ -168,10 +168,6 @@ class Configuration {
     return instance_zone_;
   }
 
-  const std::string& HealthCheckFile() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return health_check_file_;
-  }
   int HealthCheckMaxDataAgeSeconds() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return health_check_max_data_age_seconds_;
@@ -225,7 +221,6 @@ class Configuration {
   bool kubernetes_service_metadata_;
   std::string instance_id_;
   std::string instance_zone_;
-  std::string health_check_file_;
   int health_check_max_data_age_seconds_;
 
   std::unique_ptr<const OptionMap> options_;

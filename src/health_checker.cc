@@ -27,27 +27,11 @@ namespace google {
 
 HealthChecker::HealthChecker(const Configuration& config,
                              const MetadataStore& store)
-    : config_(config), store_(store) {
-  boost::filesystem::create_directories(
-      boost::filesystem::path(config_.HealthCheckFile()).parent_path());
-  std::remove(config_.HealthCheckFile().c_str());
-}
+    : config_(config), store_(store) {}
 
 void HealthChecker::SetUnhealthy(const std::string& component) {
   std::lock_guard<std::mutex> lock(mutex_);
   unhealthy_components_.insert(component);
-  std::ofstream health_file(config_.HealthCheckFile());
-  health_file << std::endl;
-}
-
-bool HealthChecker::IsHealthy() const {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return unhealthy_components_.empty();
-}
-
-void HealthChecker::CleanupForTest() {
-  boost::filesystem::remove_all(boost::filesystem::path(
-      config_.HealthCheckFile()).parent_path());
 }
 
 std::set<std::string> HealthChecker::UnhealthyComponents() const {

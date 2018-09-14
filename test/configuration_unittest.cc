@@ -38,7 +38,6 @@ void VerifyDefaultConfig(const Configuration& config) {
   EXPECT_EQ(true, config.KubernetesServiceMetadata());
   EXPECT_EQ("", config.InstanceId());
   EXPECT_EQ("", config.InstanceZone());
-  EXPECT_EQ("/var/run/metadata-agent/health/unhealthy", config.HealthCheckFile());
 }
 
 TEST(ConfigurationTest, NoConfig) {
@@ -57,14 +56,12 @@ TEST(ConfigurationTest, PopulatedConfig) {
       "MetadataApiNumThreads: 13\n"
       "MetadataReporterPurgeDeleted: true\n"
       "MetadataReporterUserAgent: \"foobar/foobaz\"\n"
-      "HealthCheckFile: /a/b/c\n"
       "MetadataIngestionRequestSizeLimitCount: 500\n"
   ));
   EXPECT_EQ("TestProjectId", config.ProjectId());
   EXPECT_EQ(13, config.MetadataApiNumThreads());
   EXPECT_EQ(true, config.MetadataReporterPurgeDeleted());
   EXPECT_EQ("foobar/foobaz", config.MetadataReporterUserAgent());
-  EXPECT_EQ("/a/b/c", config.HealthCheckFile());
   EXPECT_EQ(500, config.MetadataIngestionRequestSizeLimitCount());
 }
 

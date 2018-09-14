@@ -127,9 +127,6 @@ Configuration::Configuration()
          option(kubernetes_service_metadata_, true)},
         {"InstanceId", option(instance_id_, "")},
         {"InstanceZone", option(instance_zone_, "")},
-        {"HealthCheckFile",
-         option(health_check_file_,
-                "/var/run/metadata-agent/health/unhealthy")},
         {"HealthCheckMaxDataAgeSeconds",
          option(health_check_max_data_age_seconds_, 5*60)},
       })) {}
