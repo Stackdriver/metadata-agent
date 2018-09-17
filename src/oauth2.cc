@@ -275,8 +275,7 @@ json::value OAuth2::GetMetadataToken() const {
 std::string OAuth2::GetAuthHeaderValue() {
   // Build in a 60 second slack to avoid timing problems (clock skew, races).
   if (auth_header_value_.empty() ||
-      token_expiration_ <
-          std::chrono::system_clock::now() + std::chrono::seconds(60)) {
+      token_expiration_->IsExpired(std::chrono::seconds(60))) {
     // Token expired; retrieve new value.
     json::value token_json = ComputeTokenFromCredentials();
     if (token_json == nullptr) {
@@ -304,13 +303,11 @@ std::string OAuth2::GetAuthHeaderValue() {
           token->Get<json::Number>("expires_in");
 
       if (token_type != "Bearer") {
-        LOG(ERROR) << "Token type is not 'Bearer', but '" << token_type << "'";
+        LOG(WARNING) << "Token type is not 'Bearer', but '" << token_type << "'";
       }
 
       auth_header_value_ = token_type + " " + access_token;
-      token_expiration_ =
-          std::chrono::system_clock::now() +
-          std::chrono::seconds(static_cast<long>(expires_in));
+      token_expiration_->Reset(std::chrono::seconds(static_cast<long>(expires_in)));
     } catch (const json::Exception& e) {
       LOG(ERROR) << e.what();
       return "";

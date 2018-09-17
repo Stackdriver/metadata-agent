@@ -34,7 +34,23 @@ class FakeServer {
   ~FakeServer();
 
   std::string GetUrl();
+
+  // Sets the response for GET requests to a path.
   void SetResponse(const std::string& path, const std::string& response);
+
+  // Sets the response for POST requests to a path.  Also initializes
+  // state for collecting posted data.
+  void SetPostResponse(const std::string& path, const std::string& response);
+
+  // Represents the headers and body sent in a single POST request.
+  struct Post {
+    std::map<std::string, std::string> headers;
+    std::string body;
+  };
+
+  // Returns all POST data sent on requests to path.
+  // Note: This method is not thread-safe.
+  const std::vector<Post>& GetPosts(const std::string& path);
 
   // TODO: Consider changing the stream methods to operate on a stream
   // object, rather than looking up the path every time.
@@ -59,6 +75,11 @@ class FakeServer {
 
   // Handler that maps paths to response strings.
   struct Handler {
+    struct PostState {
+      std::string response;
+      std::vector<Post> posts;
+    };
+
     // Stream holds the state for an endpoint that streams data over a
     // hanging GET.
     //
@@ -85,6 +106,7 @@ class FakeServer {
                     Server::connection_ptr connection);
 
     std::map<std::string, std::string> path_responses;
+    std::map<std::string, PostState> path_posts;
     std::map<std::string, Stream> path_streams;
   };
 

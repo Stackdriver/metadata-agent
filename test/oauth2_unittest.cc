@@ -16,8 +16,10 @@
 
 #include "../src/oauth2.h"
 #include "environment_util.h"
+#include "fake_clock.h"
 #include "fake_http_server.h"
 #include "temp_file.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include <sstream>
@@ -34,14 +36,12 @@ class OAuth2Test : public ::testing::Test {
 
 namespace {
 
-TEST_F(OAuth2Test, GetHeaderValueUsingTokenFromCredentials) {
-  // TODO: Verify the POST body sent to the token endpoint.
-  testing::FakeServer server;
-  server.SetResponse("/oauth2/v3/token",
-                     "{\"access_token\": \"the-access-token\","
-                     " \"token_type\": \"Bearer\","
-                     " \"expires_in\": 3600}");
-
+TEST_F(OAuth2Test, GetAuthHeaderValueUsingTokenFromCredentials) {
+  testing::FakeServer oauth_server;
+  oauth_server.SetPostResponse("/oauth2/v3/token",
+                               "{\"access_token\": \"the-access-token\","
+                               " \"token_type\": \"Bearer\","
+                               " \"expires_in\": 3600}");
   testing::TemporaryFile credentials_file(
     std::string(test_info_->name()) + "_creds.json",
     "{\"client_email\":\"user@example.com\",\"private_key\":\"some_key\"}");
@@ -50,25 +50,129 @@ TEST_F(OAuth2Test, GetHeaderValueUsingTokenFromCredentials) {
   ));
   Environment environment(config);
   OAuth2 auth(environment);
-  SetTokenEndpointForTest(&auth, server.GetUrl() + "/oauth2/v3/token");
+  SetTokenEndpointForTest(&auth, oauth_server.GetUrl() + "/oauth2/v3/token");
+
+  EXPECT_EQ("Bearer the-access-token", auth.GetAuthHeaderValue());
+
+  // Verify the POST contents sent to the token endpoint.
+  const auto& posts = oauth_server.GetPosts("/oauth2/v3/token");
+  EXPECT_EQ(1, posts.size());
+
+  const auto& post = posts[0];
+  EXPECT_EQ("application/x-www-form-urlencoded",
+            post.headers.at("Content-Type"));
+  EXPECT_THAT(post.body, ::testing::StartsWith(
+      "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer"
+      "&assertion="));
+}
+
+TEST_F(OAuth2Test, GetAuthHeaderValueUsingTokenFromMetadataServer) {
+  testing::FakeServer metadata_server;
+  metadata_server.SetResponse("/instance/service-accounts/default/token",
+                              "{\"access_token\": \"the-access-token\","
+                              " \"token_type\": \"Bearer\","
+                              " \"expires_in\": 3600}");
+  Configuration config;
+  Environment environment(config);
+  testing::EnvironmentUtil::SetMetadataServerUrlForTest(
+      &environment, metadata_server.GetUrl() + "/");
+  OAuth2 auth(environment);
 
   EXPECT_EQ("Bearer the-access-token", auth.GetAuthHeaderValue());
 }
 
-TEST_F(OAuth2Test, GetHeaderValueUsingTokenFromMetadataServer) {
-  testing::FakeServer server;
-  server.SetResponse("/instance/service-accounts/default/token",
-                     "{\"access_token\": \"the-access-token\","
-                     " \"token_type\": \"Bearer\","
-                     " \"expires_in\": 3600}");
+TEST_F(OAuth2Test, GetAuthHeaderValueUsingTokenFromMetadataServerAsFallback) {
+  testing::FakeServer metadata_server;
+  metadata_server.SetResponse("/instance/service-accounts/default/token",
+                              "{\"access_token\": \"the-access-token\","
+                              " \"token_type\": \"Bearer\","
+                              " \"expires_in\": 3600}");
+  // Setup fake OAuth endpoint, but don't set response for
+  // /oauth2/v3/token, so that it returns an error.
+  //
+  // We'll check that we fallback to the Metadata Server.
+  testing::FakeServer oauth_server;
+  testing::TemporaryFile credentials_file(
+    std::string(test_info_->name()) + "_creds.json",
+    "{\"client_email\":\"user@example.com\",\"private_key\":\"some_key\"}");
+  Configuration config(std::istringstream(
+      "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
+  ));
+  Environment environment(config);
+  testing::EnvironmentUtil::SetMetadataServerUrlForTest(
+      &environment, metadata_server.GetUrl() + "/");
+  OAuth2 auth(environment);
+  SetTokenEndpointForTest(&auth, oauth_server.GetUrl() + "/oauth2/v3/token");
 
+  EXPECT_EQ("Bearer the-access-token", auth.GetAuthHeaderValue());
+}
+
+TEST_F(OAuth2Test, GetAuthHeaderValueTokenJsonMissingField) {
+  testing::FakeServer metadata_server;
+  // JSON is missing "expires_in" field.
+  metadata_server.SetResponse("/instance/service-accounts/default/token",
+                              "{\"access_token\": \"the-access-token\","
+                              " \"token_type\": \"Bearer\"}");
   Configuration config;
   Environment environment(config);
   testing::EnvironmentUtil::SetMetadataServerUrlForTest(
-      &environment, server.GetUrl() + "/");
-
+      &environment, metadata_server.GetUrl() + "/");
   OAuth2 auth(environment);
-  EXPECT_EQ("Bearer the-access-token", auth.GetAuthHeaderValue());
+
+  EXPECT_EQ("", auth.GetAuthHeaderValue());
+}
+
+TEST_F(OAuth2Test, GetAuthHeaderValueMetadataServerReturnsEmptyToken) {
+  testing::FakeServer metadata_server;
+  metadata_server.SetResponse("/instance/service-accounts/default/token", "");
+  Configuration config;
+  Environment environment(config);
+  testing::EnvironmentUtil::SetMetadataServerUrlForTest(
+      &environment, metadata_server.GetUrl() + "/");
+  OAuth2 auth(environment);
+
+  EXPECT_EQ("", auth.GetAuthHeaderValue());
+}
+
+// OAuth2 implementation using a FakeClock for token expiration.
+class FakeOAuth2 : public OAuth2 {
+ public:
+  FakeOAuth2(const Environment& environment)
+    : OAuth2(environment,
+             std::unique_ptr<Expiration>(
+                 new ExpirationImpl<testing::FakeClock>())) {}
+};
+
+TEST_F(OAuth2Test, GetAuthHeaderValueCachingAndExpiration) {
+  testing::FakeServer metadata_server;
+  Configuration config;
+  Environment environment(config);
+  testing::EnvironmentUtil::SetMetadataServerUrlForTest(
+      &environment, metadata_server.GetUrl() + "/");
+  FakeOAuth2 auth(environment);
+
+  // Metadata Server returns token "1".
+  metadata_server.SetResponse("/instance/service-accounts/default/token",
+                              "{\"access_token\": \"the-access-token-1\","
+                              " \"token_type\": \"Bearer\","
+                              " \"expires_in\": 3600}");
+  EXPECT_EQ("Bearer the-access-token-1", auth.GetAuthHeaderValue());
+
+  // Metadata Server returns token "2", but cached token is still "1".
+  metadata_server.SetResponse("/instance/service-accounts/default/token",
+                              "{\"access_token\": \"the-access-token-2\","
+                              " \"token_type\": \"Bearer\","
+                              " \"expires_in\": 3600}");
+  EXPECT_EQ("Bearer the-access-token-1", auth.GetAuthHeaderValue());
+
+  // Advance clock only 2000, still use cached token of "1".
+  testing::FakeClock::Advance(std::chrono::seconds(2000));
+  EXPECT_EQ("Bearer the-access-token-1", auth.GetAuthHeaderValue());
+
+  // Advance clock another 1550, so now it is within 60 seconds of
+  // expiration and we fetch new token of "2" from Metadata Server.
+  testing::FakeClock::Advance(std::chrono::seconds(1550));
+  EXPECT_EQ("Bearer the-access-token-2", auth.GetAuthHeaderValue());
 }
 
 }  // namespace

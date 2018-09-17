@@ -53,6 +53,22 @@ void FakeServer::SetResponse(const std::string& path,
   handler_.path_responses[path] = response;
 }
 
+void FakeServer::SetPostResponse(const std::string& path,
+                                 const std::string& response) {
+  handler_.path_posts[path].response = response;
+}
+
+const std::vector<FakeServer::Post>& FakeServer::GetPosts(
+    const std::string& path) {
+  const auto it = handler_.path_posts.find(path);
+  if (it == handler_.path_posts.end()) {
+    LOG(ERROR) << "No post response enabled for path " << path;
+    static std::vector<Post> empty;
+    return empty;
+  }
+  return it->second.posts;
+}
+
 void FakeServer::AllowStream(const std::string& path) {
   // Initialize entry for path with default Stream object.
   handler_.path_streams[path];
@@ -87,38 +103,64 @@ void FakeServer::TerminateAllStreams() {
 
 void FakeServer::Handler::operator()(Server::request const &request,
                                      Server::connection_ptr connection) {
-  auto stream_it = path_streams.find(request.destination);
-  if (stream_it != path_streams.end()) {
-    auto& stream = stream_it->second;
-    connection->set_status(Server::connection::ok);
-    connection->set_headers(std::map<std::string, std::string>({
-        {"Content-Type", "text/plain"},
-    }));
+  if (request.method == "GET") {
+    auto stream_it = path_streams.find(request.destination);
+    if (stream_it != path_streams.end()) {
+      auto& stream = stream_it->second;
+      connection->set_status(Server::connection::ok);
+      connection->set_headers(std::map<std::string, std::string>({
+          {"Content-Type", "text/plain"},
+      }));
 
-    // Create a queue for this watcher and add to the stream.
-    std::queue<std::string> my_queue;
-    stream.AddQueue(&my_queue);
+      // Create a queue for this watcher and add to the stream.
+      std::queue<std::string> my_queue;
+      stream.AddQueue(&my_queue);
 
-    // For every new string on my queue, send to the client.  The
-    // empty string indicates that we should terminate the stream.
-    while (true) {
-      std::string s = stream.GetNextResponse(&my_queue);
-      if (s.empty()) {
-        break;
+      // For every new string on my queue, send to the client.  The
+      // empty string indicates that we should terminate the stream.
+      while (true) {
+        std::string s = stream.GetNextResponse(&my_queue);
+        if (s.empty()) {
+          break;
+        }
+        connection->write(s);
       }
-      connection->write(s);
+      return;
     }
-    return;
+
+    auto it = path_responses.find(request.destination);
+    if (it != path_responses.end()) {
+      connection->set_status(Server::connection::ok);
+      connection->set_headers(std::map<std::string, std::string>({
+          {"Content-Type", "text/plain"},
+      }));
+      connection->write(it->second);
+      return;
+    }
   }
 
-  auto it = path_responses.find(request.destination);
-  if (it != path_responses.end()) {
-    connection->set_status(Server::connection::ok);
-    connection->set_headers(std::map<std::string, std::string>({
-        {"Content-Type", "text/plain"},
-    }));
-    connection->write(it->second);
-    return;
+  if (request.method == "POST") {
+    auto p = path_posts.find(request.destination);
+    if (p != path_posts.end()) {
+      auto& state = p->second;
+      connection->read([&state, &request](Server::connection::input_range range,
+                                          boost::system::error_code error,
+                                          size_t size,
+                                          Server::connection_ptr conn) {
+        Post post;
+        for (const auto& h : request.headers) {
+          post.headers[h.name] = h.value;
+        }
+        post.body.append(range.begin(), range.end());
+        state.posts.push_back(post);
+      });
+      connection->set_status(Server::connection::ok);
+      connection->set_headers(std::map<std::string, std::string>({
+          {"Content-Type", "text/plain"},
+      }));
+      connection->write(p->second.response);
+      return;
+    }
   }
 
   // Note: We have to set headers; otherwise, an exception is thrown.
