@@ -46,6 +46,9 @@ class FakeServer {
   // A handler for GET requests that returns a constant string.
   static GetHandler Return(const std::string& body);
 
+  // Returns the "<host>:<port>" string for this server.
+  std::string HostPort();
+
   // Returns the URL for this server without a trailing slash:
   // "http://<host>:<port>".
   std::string GetUrl();

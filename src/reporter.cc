@@ -29,26 +29,48 @@ namespace http = boost::network::http;
 
 namespace google {
 
+namespace {
+constexpr const int kDefaultInitialWaitSeconds = 3;
+}
+
 MetadataReporter::MetadataReporter(const Configuration& config,
                                    MetadataStore* store, double period_s)
+    : MetadataReporter(
+          config, store, period_s, kDefaultInitialWaitSeconds,
+          TimerImpl<std::chrono::high_resolution_clock>::New(
+              config.VerboseLogging(), "metadata reporter")) {}
+
+MetadataReporter::MetadataReporter(
+    const Configuration& config,  MetadataStore* store, double period_s,
+    double initial_wait_s, std::unique_ptr<Timer> timer)
     : store_(store),
       config_(config),
       environment_(config_),
       auth_(environment_),
       period_(period_s),
+      initial_wait_(initial_wait_s),
+      timer_(std::move(timer)),
       reporter_thread_([=]() { ReportMetadata(); }) {}
 
 MetadataReporter::~MetadataReporter() {
-  reporter_thread_.join();
+  if (reporter_thread_.joinable()) {
+    reporter_thread_.join();
+  }
+}
+
+void MetadataReporter::NotifyStopReporter() {
+  timer_->Cancel();
 }
 
 void MetadataReporter::ReportMetadata() {
   LOG(INFO) << "Metadata reporter started";
+  timer_->Init();
   // Wait for the first collection to complete.
   // TODO: Come up with a more robust synchronization mechanism.
-  std::this_thread::sleep_for(time::seconds(3));
-  // TODO: Do we need to be able to stop this?
-  while (true) {
+  LOG(INFO) << "Initialized timer";
+  timer_->Wait(time::seconds(initial_wait_));
+  LOG(INFO) << "Finished waiting " << initial_wait_.count() << " seconds";
+  do {
     if (config_.VerboseLogging()) {
       LOG(INFO) << "Sending metadata request to server";
     }
@@ -63,9 +85,10 @@ void MetadataReporter::ReportMetadata() {
     } catch (const boost::system::system_error& e) {
       LOG(ERROR) << "Metadata request unsuccessful: " << e.what();
     }
-    std::this_thread::sleep_for(period_);
+  } while (timer_->Wait(period_));
+  if (config_.VerboseLogging()) {
+    LOG(INFO) << "Metadata reporter exiting";
   }
-  //LOG(INFO) << "Metadata reporter exiting";
 }
 
 namespace {

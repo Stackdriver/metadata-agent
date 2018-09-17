@@ -40,6 +40,13 @@ class MetadataReporter {
                    double period_s);
   ~MetadataReporter();
 
+  void NotifyStopReporter();
+
+ protected:
+  MetadataReporter(
+      const Configuration& config, MetadataStore* store, double period_s,
+      double initial_wait_s, std::unique_ptr<Timer> timer);
+
  private:
   // Metadata reporter.
   void ReportMetadata();
@@ -55,6 +62,8 @@ class MetadataReporter {
   OAuth2 auth_;
   // The reporting period in seconds.
   time::seconds period_;
+  time::seconds initial_wait_;
+  std::unique_ptr<Timer> timer_;
   std::thread reporter_thread_;
 };
 

@@ -255,8 +255,7 @@ class FakePollingMetadataUpdater : public PollingMetadataUpdater {
       std::function<std::vector<ResourceMetadata>()> query_metadata)
       : PollingMetadataUpdater(
           config, store, name, period_s, query_metadata,
-          std::unique_ptr<Timer>(new TimerImpl<testing::FakeClock>(
-              false, name))) {}
+          TimerImpl<testing::FakeClock>::New(false, name)) {}
 };
 
 TEST_F(UpdaterTest, PollingMetadataUpdater) {

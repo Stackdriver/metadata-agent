@@ -71,14 +71,20 @@ class Timer {
 template<typename Clock>
 class TimerImpl : public Timer {
  public:
+  static std::unique_ptr<Timer> New(bool verbose, const std::string& name) {
+    return std::unique_ptr<Timer>(new TimerImpl<Clock>(verbose, name));
+  }
+
   TimerImpl(bool verbose, const std::string& name)
       : verbose_(verbose), name_(name) {}
+
   void Init() override {
     timer_.lock();
     if (verbose_) {
       LOG(INFO) << "Locked timer for " << name_;
     }
   }
+
   bool Wait(time::seconds duration) override {
     // An unlocked timer means the wait is cancelled.
     auto start = Clock::now();
@@ -101,12 +107,14 @@ class TimerImpl : public Timer {
     }
     return false;
   }
+
   void Cancel() override {
     timer_.unlock();
     if (verbose_) {
       LOG(INFO) << "Unlocked timer for " << name_;
     }
   }
+
  private:
   std::timed_mutex timer_;
   bool verbose_;
