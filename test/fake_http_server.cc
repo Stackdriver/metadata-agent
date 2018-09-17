@@ -20,6 +20,8 @@
 #include "../src/logging.h"
 #include "../src/time.h"
 
+#include <boost/network/utils/thread_pool.hpp>
+
 namespace google {
 namespace testing {
 
@@ -27,9 +29,10 @@ FakeServer::FakeServer()
     // Note: An empty port selects a random available port (this behavior
     // is not documented).
     : server_(Server::options(handler_)
-                .thread_pool(std::make_shared<boost::network::utils::thread_pool>(5))
-                .address("127.0.0.1")
-                .port("")) {
+                  .thread_pool(
+                      std::make_shared<boost::network::utils::thread_pool>(5))
+                  .address("127.0.0.1")
+                  .port("")) {
   server_.listen();
   server_thread_ = std::thread([this] { server_.run(); });
 }
@@ -62,42 +65,23 @@ bool FakeServer::WaitForOneStreamWatcher(const std::string& path,
     LOG(ERROR) << "Attempted to wait for an unknown path " << path;
     return false;
   }
-  auto& stream = stream_it->second;
-  std::unique_lock<std::mutex> queues_lock(stream.mutex);
-  bool success = stream.cv.wait_for(
-      queues_lock,
-      timeout,
-      [&stream]{ return stream.queues.size() > 0; });
-  return success;
+  return stream_it->second.WaitForOneWatcher(timeout);
 }
 
-void FakeServer::SendStreamResponse(const std::string& path, const std::string& response) {
+void FakeServer::SendStreamResponse(const std::string& path,
+                                    const std::string& response) {
   auto stream_it = handler_.path_streams.find(path);
   if (stream_it == handler_.path_streams.end()) {
     LOG(ERROR) << "No stream for path " << path;
     return;
   }
-  auto& stream = stream_it->second;
-  {
-    std::lock_guard<std::mutex> lk(stream.mutex);
-    for (auto* queue : stream.queues) {
-      queue->push(response);
-    }
-  }
-  stream.cv.notify_all();
+  stream_it->second.SendToAllQueues(response);
 }
 
 void FakeServer::TerminateAllStreams() {
   // Send sentinel (empty string) to all queues.
   for (auto& s : handler_.path_streams) {
-    auto& stream = s.second;
-    {
-      std::lock_guard<std::mutex> lk(stream.mutex);
-      for (auto* queue : stream.queues) {
-        queue->push("");
-      }
-    }
-    stream.cv.notify_all();
+    s.second.SendToAllQueues("");
   }
 }
 
@@ -111,23 +95,14 @@ void FakeServer::Handler::operator()(Server::request const &request,
         {"Content-Type", "text/plain"},
     }));
 
-    // Create a queue for this watcher, and notify the condition
-    // variable to unblock any calls to WaitForOneStreamWatcher().
+    // Create a queue for this watcher add add to the stream.
     std::queue<std::string> my_queue;
-    {
-      std::lock_guard<std::mutex> lk(stream.mutex);
-      stream.queues.push_back(&my_queue);
-    }
-    stream.cv.notify_all();
+    stream.AddQueue(&my_queue);
 
     // For every new string on my queue, send to the client.  The
     // empty string indicates that we should terminate the stream.
     while (true) {
-      std::unique_lock<std::mutex> lk(stream.mutex);
-      stream.cv.wait(lk, [&my_queue]{ return my_queue.size() > 0;});
-      std::string s = my_queue.front();
-      my_queue.pop();
-      lk.unlock();
+      std::string s = stream.GetNextResponse(&my_queue);
       if (s.empty()) {
         break;
       }
