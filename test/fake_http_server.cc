@@ -51,8 +51,8 @@ void FakeServer::SetResponse(const std::string& path,
 }
 
 void FakeServer::AllowStream(const std::string& path) {
-  handler_.path_streams[path] = std::unique_ptr<Handler::Stream>(
-      new Handler::Stream);
+  // Initialize entry for path with default Stream object.
+  handler_.path_streams[path];
 }
 
 bool FakeServer::WaitForOneStreamWatcher(const std::string& path,
@@ -63,12 +63,11 @@ bool FakeServer::WaitForOneStreamWatcher(const std::string& path,
     return false;
   }
   auto& stream = stream_it->second;
-  std::unique_lock<std::mutex> queues_lock(stream->mutex);
-  bool success = stream->cv.wait_for(
+  std::unique_lock<std::mutex> queues_lock(stream.mutex);
+  bool success = stream.cv.wait_for(
       queues_lock,
       timeout,
-      [&stream]{ return stream->queues.size() > 0; });
-  queues_lock.unlock();
+      [&stream]{ return stream.queues.size() > 0; });
   return success;
 }
 
@@ -80,12 +79,12 @@ void FakeServer::SendStreamResponse(const std::string& path, const std::string& 
   }
   auto& stream = stream_it->second;
   {
-    std::lock_guard<std::mutex> lk(stream->mutex);
-    for (auto* queue : stream->queues) {
+    std::lock_guard<std::mutex> lk(stream.mutex);
+    for (auto* queue : stream.queues) {
       queue->push(response);
     }
   }
-  stream->cv.notify_all();
+  stream.cv.notify_all();
 }
 
 void FakeServer::TerminateAllStreams() {
@@ -93,12 +92,12 @@ void FakeServer::TerminateAllStreams() {
   for (auto& s : handler_.path_streams) {
     auto& stream = s.second;
     {
-      std::lock_guard<std::mutex> lk(stream->mutex);
-      for (auto* queue : stream->queues) {
+      std::lock_guard<std::mutex> lk(stream.mutex);
+      for (auto* queue : stream.queues) {
         queue->push("");
       }
     }
-    stream->cv.notify_all();
+    stream.cv.notify_all();
   }
 }
 
@@ -116,16 +115,16 @@ void FakeServer::Handler::operator()(Server::request const &request,
     // variable to unblock any calls to WaitForOneStreamWatcher().
     std::queue<std::string> my_queue;
     {
-      std::lock_guard<std::mutex> lk(stream->mutex);
-      stream->queues.push_back(&my_queue);
+      std::lock_guard<std::mutex> lk(stream.mutex);
+      stream.queues.push_back(&my_queue);
     }
-    stream->cv.notify_all();
+    stream.cv.notify_all();
 
     // For every new string on my queue, send to the client.  The
     // empty string indicates that we should terminate the stream.
     while (true) {
-      std::unique_lock<std::mutex> lk(stream->mutex);
-      stream->cv.wait(lk, [&my_queue]{ return my_queue.size() > 0;});
+      std::unique_lock<std::mutex> lk(stream.mutex);
+      stream.cv.wait(lk, [&my_queue]{ return my_queue.size() > 0;});
       std::string s = my_queue.front();
       my_queue.pop();
       lk.unlock();

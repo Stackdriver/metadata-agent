@@ -65,6 +65,7 @@ class FakeServer {
     struct Stream {
       std::mutex mutex;
       std::condition_variable cv;
+      // The vector elements are not owned by the Stream object.
       std::vector<std::queue<std::string>*> queues;
     };
 
@@ -72,7 +73,7 @@ class FakeServer {
                     Server::connection_ptr connection);
 
     std::map<std::string, std::string> path_responses;
-    std::map<std::string, std::unique_ptr<Stream>> path_streams;
+    std::map<std::string, Stream> path_streams;
   };
 
   Handler handler_;
