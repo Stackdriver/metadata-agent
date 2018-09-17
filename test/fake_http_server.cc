@@ -18,8 +18,7 @@
 
 #include "../src/json.h"
 #include "../src/logging.h"
-
-#include <chrono>
+#include "../src/time.h"
 
 namespace google {
 namespace testing {
@@ -56,28 +55,30 @@ void FakeServer::AllowStream(const std::string& path) {
       new Handler::Stream);
 }
 
-bool FakeServer::WaitForOneStreamWatcher(const std::string& path) {
+bool FakeServer::WaitForOneStreamWatcher(const std::string& path,
+                                         time::seconds timeout) {
   auto stream_it = handler_.path_streams.find(path);
   if (stream_it == handler_.path_streams.end()) {
-    LOG(ERROR) << "No stream for path " << path;
+    LOG(ERROR) << "Attempted to wait for an unknown path " << path;
     return false;
   }
   auto& stream = stream_it->second;
   std::unique_lock<std::mutex> queues_lock(stream->mutex);
-  bool success = stream->cv.wait_for(queues_lock,
-                                     std::chrono::seconds(3),
-                                     [&stream]{return stream->queues.size() > 0;});
+  bool success = stream->cv.wait_for(
+      queues_lock,
+      timeout,
+      [&stream]{ return stream->queues.size() > 0; });
   queues_lock.unlock();
   return success;
 }
 
 void FakeServer::SendStreamResponse(const std::string& path, const std::string& response) {
-  auto s = handler_.path_streams.find(path);
-  if (s == handler_.path_streams.end()) {
+  auto stream_it = handler_.path_streams.find(path);
+  if (stream_it == handler_.path_streams.end()) {
     LOG(ERROR) << "No stream for path " << path;
     return;
   }
-  auto& stream = s->second;
+  auto& stream = stream_it->second;
   {
     std::lock_guard<std::mutex> lk(stream->mutex);
     for (auto* queue : stream->queues) {
@@ -103,9 +104,9 @@ void FakeServer::TerminateAllStreams() {
 
 void FakeServer::Handler::operator()(Server::request const &request,
                                      Server::connection_ptr connection) {
-  auto s = path_streams.find(request.destination);
-  if (s != path_streams.end()) {
-    auto& stream = s->second;
+  auto stream_it = path_streams.find(request.destination);
+  if (stream_it != path_streams.end()) {
+    auto& stream = stream_it->second;
     connection->set_status(Server::connection::ok);
     connection->set_headers(std::map<std::string, std::string>({
         {"Content-Type", "text/plain"},

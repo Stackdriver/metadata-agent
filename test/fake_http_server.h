@@ -16,6 +16,8 @@
 #ifndef FAKE_HTTP_SERVER_H_
 #define FAKE_HTTP_SERVER_H_
 
+#include "../src/time.h"
+
 #include <boost/network/protocol/http/server.hpp>
 #include <queue>
 
@@ -37,10 +39,10 @@ class FakeServer {
   void AllowStream(const std::string& path);
 
   // Blocks until at least one client has connected to the given path.
-  // Returns false if no client has connected after 3 seconds.
-  bool WaitForOneStreamWatcher(const std::string& path);
+  // Returns false if the timeout is reached with no client connections.
+  bool WaitForOneStreamWatcher(const std::string& path, time::seconds timeout);
 
-  // Sends a streaming response to all watchers fo the given path.
+  // Sends a streaming response to all watchers for the given path.
   void SendStreamResponse(const std::string& path, const std::string& response);
 
   // Closes all open streams on the server.

@@ -23,7 +23,6 @@
 #include "gtest/gtest.h"
 #include "temp_file.h"
 
-#include <boost/network/protocol/http/server.hpp>
 #include <memory>
 
 namespace google {
@@ -1274,15 +1273,19 @@ TEST_F(KubernetesTestFakeServerOneWatchRetry, KubernetesUpdater) {
 
   // Wait for updater's watchers to connect to the server (hanging GETs).
   EXPECT_TRUE(server->WaitForOneStreamWatcher(
-      "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true"));
+      "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true",
+      time::seconds(3)));
   EXPECT_TRUE(server->WaitForOneStreamWatcher(
-      "/api/v1/watch/nodes/TestNodeName?watch=true"));
+      "/api/v1/watch/nodes/TestNodeName?watch=true",
+      time::seconds(3)));
 
   // For nodes, send stream responses from the fake Kubernetes
   // master and verify that the updater propagates them to the store.
+  // Do 3 updates to test multiple updates being pushed over the
+  // hanging GET.
   Timestamp last_nodes_timestamp = std::chrono::system_clock::now();
   for (int i = 0; i < 3; i++) {
-    json::value resp = json::object({
+    json::value node_metadata = json::object({
       {"type", json::string("ADDED")},
       {"object", json::object({
         {"metadata", json::object({
@@ -1294,7 +1297,7 @@ TEST_F(KubernetesTestFakeServerOneWatchRetry, KubernetesUpdater) {
     // Send a response to the watcher.
     server->SendStreamResponse(
         "/api/v1/watch/nodes/TestNodeName?watch=true",
-        resp->ToString());
+        node_metadata->ToString());
     // Wait until watcher has processed response (by polling the store).
     MonitoredResource resource("k8s_node",
                                {{"cluster_name", "TestClusterName"},
@@ -1312,7 +1315,7 @@ TEST_F(KubernetesTestFakeServerOneWatchRetry, KubernetesUpdater) {
   // For pods, do the same thing.
   Timestamp last_pods_timestamp = std::chrono::system_clock::now();
   for (int i = 0; i < 3; i++) {
-    json::value resp = json::object({
+    json::value pod_metadata = json::object({
       {"type", json::string("ADDED")},
       {"object", json::object({
         {"metadata", json::object({
@@ -1340,7 +1343,7 @@ TEST_F(KubernetesTestFakeServerOneWatchRetry, KubernetesUpdater) {
     // Send a response to the watcher.
     server->SendStreamResponse(
         "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true",
-        resp->ToString());
+        pod_metadata->ToString());
     // Wait until watcher has processed response (by polling the store).
     MonitoredResource resource("k8s_pod",
                                {{"cluster_name", "TestClusterName"},

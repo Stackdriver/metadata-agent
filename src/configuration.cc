@@ -111,11 +111,11 @@ Configuration::Configuration()
         {"DockerContainerFilter", option(docker_container_filter_, "limit=30")},
         {"KubernetesUpdaterIntervalSeconds",
          option(kubernetes_updater_interval_seconds_, 0)},
+        // A nonpositive value means "infinite retries".
         {"KubernetesUpdaterWatchConnectionRetries",
-         option(kubernetes_updater_watch_connection_retries_, 15)},
-        // A negative value means "infinite retries".
+         option(kubernetes_updater_watch_connection_retries_, 0)},
         {"KubernetesUpdaterWatchMaxConnectionFailures",
-         option(kubernetes_updater_watch_max_connection_failures_, -1)},
+         option(kubernetes_updater_watch_max_connection_failures_, 15)},
         {"KubernetesEndpointHost",
          option(kubernetes_endpoint_host_, "https://kubernetes.default.svc")},
         {"KubernetesPodLabelSelector",

@@ -835,7 +835,7 @@ void KubernetesReader::WatchMaster(
     } catch (const boost::system::system_error& e) {
       LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
       ++failures;
-      if (failures >= config_.KubernetesUpdaterWatchMaxConnectionFailures()) {
+      if (failures > config_.KubernetesUpdaterWatchMaxConnectionFailures()) {
         LOG(ERROR) << "WatchMaster(" << name << "): Exiting after "
                    << failures << " failures";
         throw QueryException(endpoint + " -> " + e.what());
