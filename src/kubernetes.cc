@@ -82,6 +82,25 @@ constexpr const char kK8sNamedGroupsResourceTypeFormat[] =
 constexpr const char kK8sWatchPathFormat[] =
     "/{{api_prefix}}/{{api_version}}/watch/{{plural_kind}}{{selector}}";
 
+const std::vector<std::pair<std::string, std::string>>
+    kPluralKindAndApiVersions = {
+      {"cronjobs", "batch/v1beta1"},
+      {"daemonsets", "apps/v1"},
+      {"daemonsets", "extensions/v1beta1"},
+      {"deployments", "apps/v1"},
+      {"deployments", "extensions/v1beta1"},
+      {"endpoints", "v1"},
+      {"ingresses", "extensions/v1beta1"},
+      {"jobs", "batch/v1"},
+      {"namespaces", "v1"},
+      {"replicasets", "apps/v1"},
+      {"replicasets", "extensions/v1beta1"},
+      {"replicationcontrollers", "v1"},
+      {"services", "v1"},
+      {"statefulsets", "apps/v1"},
+    };
+
+
 // Returns the full path to the secret filename.
 std::string SecretPath(const std::string& secret) {
   return std::string(kServiceAccountDirectory) + "/" + secret;
@@ -990,12 +1009,15 @@ void KubernetesUpdater::StartUpdater() {
     });
     if (config().KubernetesClusterLevelMetadata() &&
         config().KubernetesServiceMetadata()) {
-      service_watch_thread_ = std::thread([=]() {
-        reader_.WatchObjects("services", "v1", cb);
-      });
-      endpoints_watch_thread_ = std::thread([=]() {
-        reader_.WatchObjects("endpoints", "v1", cb);
-      });
+      for (const auto& plural_kind_and_api_version: kPluralKindAndApiVersions) {
+        const std::string& plural_kind = plural_kind_and_api_version.first;
+        const std::string& api_version = plural_kind_and_api_version.second;
+        std::thread watch_thread([=]() {
+          reader_.WatchObjects(plural_kind, api_version, cb);
+        });
+        object_watch_threads_.emplace(
+            plural_kind_and_api_version, std::move(watch_thread));
+      }
     }
   } else {
     // Only try to poll if watch is disabled.

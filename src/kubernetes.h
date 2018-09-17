@@ -174,9 +174,6 @@ class KubernetesReader {
   mutable std::string current_node_;
   mutable std::string kubernetes_api_token_;
   mutable std::string kubernetes_namespace_;
-  // A memoized map from version to a map from kind to name.
-  mutable std::map<std::string, std::map<std::string, std::string>>
-      version_to_kind_to_name_;
 
   const Configuration& config_;
   HealthChecker* health_checker_;
@@ -195,11 +192,11 @@ class KubernetesUpdater : public PollingMetadataUpdater {
     if (pod_watch_thread_.joinable()) {
       pod_watch_thread_.join();
     }
-    if (service_watch_thread_.joinable()) {
-      service_watch_thread_.join();
-    }
-    if (endpoints_watch_thread_.joinable()) {
-      endpoints_watch_thread_.join();
+    for (auto& thread_it: object_watch_threads_) {
+      std::thread& watch_thread = thread_it.second;
+      if (watch_thread.joinable()) {
+        watch_thread.join();
+      }
     }
   }
 
@@ -218,8 +215,9 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   HealthChecker* health_checker_;
   std::thread node_watch_thread_;
   std::thread pod_watch_thread_;
-  std::thread service_watch_thread_;
-  std::thread endpoints_watch_thread_;
+  // Map from plural kind and API version to the thread.
+  std::map<std::pair<std::string, std::string>, std::thread>
+      object_watch_threads_;
 };
 
 }
