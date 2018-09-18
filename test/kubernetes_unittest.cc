@@ -1351,7 +1351,7 @@ TEST_F(KubernetesTestFakeServerOneWatchRetry, KubernetesUpdater) {
                                 {"namespace_name", "TestNamespace"},
                                 {"pod_name", "TestPodName"}});
     EXPECT_TRUE(
-        WaitForNewerCollectionTimestamp(store, resource, last_nodes_timestamp));
+        WaitForNewerCollectionTimestamp(store, resource, last_pods_timestamp));
 
     const auto metadata_map = store.GetMetadataMap();
     const auto& metadata = metadata_map.at(resource);

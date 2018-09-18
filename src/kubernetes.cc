@@ -800,7 +800,7 @@ void KubernetesReader::WatchMaster(
   const bool verbose = config_.VerboseLogging();
   const int retries = config_.KubernetesUpdaterWatchConnectionRetries();
   int failures = 0;
-  for (int i = 0; retries > 0 && i < retries; i++) {
+  for (int i = 0; retries <= 0 || i < retries; i++) {
     if (verbose) {
       if (failures > 0) {
         LOG(INFO) << "WatchMaster(" << name

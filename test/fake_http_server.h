@@ -34,6 +34,9 @@ class FakeServer {
   std::string GetUrl();
   void SetResponse(const std::string& path, const std::string& response);
 
+  // TODO: Consider changing the stream methods to operate on a stream
+  // object, rather than looking up the path every time.
+
   // Indicates that for the given path, the server should stream
   // responses over a hanging GET.
   void AllowStream(const std::string& path);
@@ -64,41 +67,10 @@ class FakeServer {
     // take ownership.
     class Stream {
      public:
-      void AddQueue(std::queue<std::string>* queue) {
-        {
-          std::lock_guard<std::mutex> lk(mutex_);
-          queues_.push_back(queue);
-        }
-        // Notify the condition variable to unblock any calls to
-        // WaitForOneStreamWatcher().
-        cv_.notify_all();
-      }
-
-      bool WaitForOneWatcher(time::seconds timeout) {
-        std::unique_lock<std::mutex> queues_lock(mutex_);
-        return cv_.wait_for(queues_lock,
-                            timeout,
-                            [this]{ return this->queues_.size() > 0; });
-      }
-
-      void SendToAllQueues(const std::string& response) {
-        {
-          std::lock_guard<std::mutex> lk(mutex_);
-          for (auto* queue : queues_) {
-            queue->push(response);
-          }
-        }
-        cv_.notify_all();
-      }
-
-      std::string GetNextResponse(std::queue<std::string>* queue) {
-        std::unique_lock<std::mutex> lk(mutex_);
-        cv_.wait(lk, [&queue]{ return queue->size() > 0; });
-        std::string s = queue->front();
-        queue->pop();
-        lk.unlock();
-        return s;
-      }
+      void AddQueue(std::queue<std::string>* queue);
+      bool WaitForOneWatcher(time::seconds timeout);
+      void SendToAllQueues(const std::string& response);
+      std::string GetNextResponse(std::queue<std::string>* queue);
 
      private:
       std::mutex mutex_;

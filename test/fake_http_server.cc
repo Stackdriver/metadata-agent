@@ -95,7 +95,7 @@ void FakeServer::Handler::operator()(Server::request const &request,
         {"Content-Type", "text/plain"},
     }));
 
-    // Create a queue for this watcher add add to the stream.
+    // Create a queue for this watcher and add to the stream.
     std::queue<std::string> my_queue;
     stream.AddQueue(&my_queue);
 
@@ -124,6 +124,41 @@ void FakeServer::Handler::operator()(Server::request const &request,
   // Note: We have to set headers; otherwise, an exception is thrown.
   connection->set_status(Server::connection::not_found);
   connection->set_headers(std::map<std::string, std::string>());
+}
+
+void FakeServer::Handler::Stream::AddQueue(std::queue<std::string>* queue) {
+  {
+    std::lock_guard<std::mutex> lk(mutex_);
+    queues_.push_back(queue);
+  }
+  // Notify the condition variable to unblock any calls to
+  // WaitForOneStreamWatcher().
+  cv_.notify_all();
+}
+
+bool FakeServer::Handler::Stream::WaitForOneWatcher(time::seconds timeout) {
+  std::unique_lock<std::mutex> queues_lock(mutex_);
+  return cv_.wait_for(queues_lock,
+                      timeout,
+                      [this]{ return queues_.size() > 0; });
+}
+
+void FakeServer::Handler::Stream::SendToAllQueues(const std::string& response) {
+  {
+    std::lock_guard<std::mutex> lk(mutex_);
+    for (auto* queue : queues_) {
+      queue->push(response);
+    }
+  }
+  cv_.notify_all();
+}
+
+std::string FakeServer::Handler::Stream::GetNextResponse(std::queue<std::string>* queue) {
+  std::unique_lock<std::mutex> lk(mutex_);
+  cv_.wait(lk, [&queue]{ return queue->size() > 0; });
+  std::string s = queue->front();
+  queue->pop();
+  return s;
 }
 
 }  // testing
