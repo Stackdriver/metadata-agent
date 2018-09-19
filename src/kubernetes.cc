@@ -82,25 +82,6 @@ constexpr const char kK8sNamedGroupsResourceTypeFormat[] =
 constexpr const char kK8sWatchPathFormat[] =
     "/{{api_prefix}}/{{api_version}}/watch/{{plural_kind}}{{selector}}";
 
-const std::vector<std::pair<std::string, std::string>>
-    kPluralKindAndApiVersions = {
-      {"cronjobs", "batch/v1beta1"},
-      {"daemonsets", "apps/v1"},
-      {"daemonsets", "extensions/v1beta1"},
-      {"deployments", "apps/v1"},
-      {"deployments", "extensions/v1beta1"},
-      {"endpoints", "v1"},
-      {"ingresses", "extensions/v1beta1"},
-      {"jobs", "batch/v1"},
-      {"namespaces", "v1"},
-      {"replicasets", "apps/v1"},
-      {"replicasets", "extensions/v1beta1"},
-      {"replicationcontrollers", "v1"},
-      {"services", "v1"},
-      {"statefulsets", "apps/v1"},
-    };
-
-
 // Returns the full path to the secret filename.
 std::string SecretPath(const std::string& secret) {
   return std::string(kServiceAccountDirectory) + "/" + secret;
@@ -969,6 +950,23 @@ KubernetesUpdater::KubernetesUpdater(const Configuration& config,
         config.KubernetesUpdaterIntervalSeconds(),
         [=]() { return reader_.MetadataQuery(); }) { }
 
+const KubernetesUpdater::WatchId KubernetesUpdater::watch_ids_[] = {
+    {"cronjobs", "batch/v1beta1"},
+    {"daemonsets", "apps/v1"},
+    {"daemonsets", "extensions/v1beta1"},
+    {"deployments", "apps/v1"},
+    {"deployments", "extensions/v1beta1"},
+    {"endpoints", "v1"},
+    {"ingresses", "extensions/v1beta1"},
+    {"jobs", "batch/v1"},
+    {"namespaces", "v1"},
+    {"replicasets", "apps/v1"},
+    {"replicasets", "extensions/v1beta1"},
+    {"replicationcontrollers", "v1"},
+    {"services", "v1"},
+    {"statefulsets", "apps/v1"},
+};
+
 void KubernetesUpdater::ValidateDynamicConfiguration() const
     throw(ConfigurationValidationError) {
   PollingMetadataUpdater::ValidateDynamicConfiguration();
@@ -1001,22 +999,25 @@ void KubernetesUpdater::StartUpdater() {
     auto cb = [=](std::vector<MetadataUpdater::ResourceMetadata>&& results) {
       MetadataCallback(std::move(results));
     };
-    node_watch_thread_ = std::thread([=]() {
+    std::thread node_watch_thread = std::thread([=]() {
       reader_.WatchNodes(watched_node, cb);
     });
-    pod_watch_thread_ = std::thread([=]() {
+    object_watch_threads_.emplace(
+        WatchId("nodes", "v1"), std::move(node_watch_thread));
+    std::thread pod_watch_thread = std::thread([=]() {
       reader_.WatchPods(watched_node, cb);
     });
+    object_watch_threads_.emplace(
+        WatchId("pods", "v1"), std::move(pod_watch_thread));
     if (config().KubernetesClusterLevelMetadata() &&
         config().KubernetesServiceMetadata()) {
-      for (const auto& plural_kind_and_api_version: kPluralKindAndApiVersions) {
-        const std::string& plural_kind = plural_kind_and_api_version.first;
-        const std::string& api_version = plural_kind_and_api_version.second;
+      for (const auto& watch_id: watch_ids_) {
+        const std::string& plural_kind = watch_id.first;
+        const std::string& api_version = watch_id.second;
         std::thread watch_thread([=]() {
           reader_.WatchObjects(plural_kind, api_version, cb);
         });
-        object_watch_threads_.emplace(
-            plural_kind_and_api_version, std::move(watch_thread));
+        object_watch_threads_.emplace(watch_id, std::move(watch_thread));
       }
     }
   } else {

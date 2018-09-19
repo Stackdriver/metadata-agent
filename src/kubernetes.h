@@ -186,12 +186,6 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   KubernetesUpdater(const Configuration& config, HealthChecker* health_checker,
                     MetadataStore* store);
   ~KubernetesUpdater() {
-    if (node_watch_thread_.joinable()) {
-      node_watch_thread_.join();
-    }
-    if (pod_watch_thread_.joinable()) {
-      pod_watch_thread_.join();
-    }
     for (auto& thread_it: object_watch_threads_) {
       std::thread& watch_thread = thread_it.second;
       if (watch_thread.joinable()) {
@@ -213,11 +207,12 @@ class KubernetesUpdater : public PollingMetadataUpdater {
 
   KubernetesReader reader_;
   HealthChecker* health_checker_;
-  std::thread node_watch_thread_;
-  std::thread pod_watch_thread_;
-  // Map from plural kind and API version to the thread.
-  std::map<std::pair<std::string, std::string>, std::thread>
-      object_watch_threads_;
+  // WatchId combines the plural kubernetes kind, and API version.
+  using WatchId = std::pair<const char*, const char*>;
+  // Map from the watch IDs to the respective threads.
+  std::map<WatchId, std::thread> object_watch_threads_;
+  // List of watch IDs.
+  static const WatchId watch_ids_[];
 };
 
 }
