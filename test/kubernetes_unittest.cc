@@ -1215,4 +1215,153 @@ TEST_F(KubernetesTestFakeServer, MetadataQuery) {
   EXPECT_EQ(pod_metadata->ToString(), m[3].metadata().metadata->ToString());
 }
 
+class KubernetesTestFakeServerOneWatchRetry : public KubernetesTest {
+ protected:
+  void SetUp() override {
+    server.reset(new testing::FakeServer());
+    KubernetesTest::SetUp();
+  }
+
+  std::unique_ptr<Configuration> CreateConfig() override {
+    return std::unique_ptr<Configuration>(
+      new Configuration(std::istringstream(
+        "InstanceId: TestID\n"
+        "InstanceResourceType: gce_instance\n"
+        "InstanceZone: TestZone\n"
+        "KubernetesClusterLocation: TestClusterLocation\n"
+        "KubernetesClusterName: TestClusterName\n"
+        "KubernetesEndpointHost: " + server->GetUrl() + "\n"
+        "KubernetesNodeName: TestNodeName\n"
+        "MetadataIngestionRawContentVersion: TestVersion\n"
+        "KubernetesUpdaterWatchConnectionRetries: 1\n"
+        "KubernetesUseWatch: true\n"
+      )));
+  }
+
+  std::unique_ptr<testing::FakeServer> server;
+};
+
+// Polls store until collected_at for resource is newer than
+// last_timestamp.  Returns false if newer timestamp not found after 3
+// seconds (polling every 100 millis).
+bool WaitForNewerCollectionTimestamp(const MetadataStore& store,
+                                     const MonitoredResource& resource,
+                                     Timestamp last_timestamp) {
+  for (int i = 0; i < 30; i++){
+    const auto metadata_map = store.GetMetadataMap();
+    const auto m = metadata_map.find(resource);
+    if (m != metadata_map.end() && m->second.collected_at > last_timestamp) {
+      return true;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  return false;
+}
+
+TEST_F(KubernetesTestFakeServerOneWatchRetry, KubernetesUpdater) {
+  // Set responses for fake server representing the Kubernetes master.
+  server->SetResponse("/api/v1/nodes?limit=1", "{}");
+  server->SetResponse("/api/v1/pods?limit=1", "{}");
+  server->AllowStream(
+      "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true");
+  server->AllowStream(
+      "/api/v1/watch/nodes/TestNodeName?watch=true");
+
+  MetadataStore store(*config);
+  KubernetesUpdater updater(*config, /*health_checker=*/nullptr, &store);
+  std::thread updater_thread([&updater] { updater.Start(); });
+
+  // Wait for updater's watchers to connect to the server (hanging GETs).
+  EXPECT_TRUE(server->WaitForOneStreamWatcher(
+      "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true",
+      time::seconds(3)));
+  EXPECT_TRUE(server->WaitForOneStreamWatcher(
+      "/api/v1/watch/nodes/TestNodeName?watch=true",
+      time::seconds(3)));
+
+  // For nodes, send stream responses from the fake Kubernetes
+  // master and verify that the updater propagates them to the store.
+  // Do 3 updates to test multiple updates being pushed over the
+  // hanging GET.
+  Timestamp last_nodes_timestamp = std::chrono::system_clock::now();
+  for (int i = 0; i < 3; i++) {
+    json::value node_metadata = json::object({
+      {"type", json::string("ADDED")},
+      {"object", json::object({
+        {"metadata", json::object({
+          {"name", json::string("TestNodeName")},
+          {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
+        })}
+      })}
+    });
+    // Send a response to the watcher.
+    server->SendStreamResponse(
+        "/api/v1/watch/nodes/TestNodeName?watch=true",
+        node_metadata->ToString());
+    // Wait until watcher has processed response (by polling the store).
+    MonitoredResource resource("k8s_node",
+                               {{"cluster_name", "TestClusterName"},
+                                {"location", "TestClusterLocation"},
+                                {"node_name", "TestNodeName"}});
+    EXPECT_TRUE(
+        WaitForNewerCollectionTimestamp(store, resource, last_nodes_timestamp));
+
+    const auto metadata_map = store.GetMetadataMap();
+    const auto& metadata = metadata_map.at(resource);
+    // TODO: Insert tests of metadata values.
+    last_nodes_timestamp = metadata.collected_at;
+  }
+
+  // For pods, do the same thing.
+  Timestamp last_pods_timestamp = std::chrono::system_clock::now();
+  for (int i = 0; i < 3; i++) {
+    json::value pod_metadata = json::object({
+      {"type", json::string("ADDED")},
+      {"object", json::object({
+        {"metadata", json::object({
+          {"name", json::string("TestPodName")},
+          {"namespace", json::string("TestNamespace")},
+          {"uid", json::string("TestPodUid")},
+          {"creationTimestamp", json::string("2018-03-03T01:23:45.678901234Z")},
+        })},
+        {"spec", json::object({
+          {"nodeName", json::string("TestSpecNodeName")},
+          {"containers", json::array({
+            json::object({{"name", json::string("TestContainerName0")}}),
+          })},
+        })},
+        {"status", json::object({
+          {"containerID", json::string("docker://TestContainerID")},
+          {"containerStatuses", json::array({
+            json::object({
+              {"name", json::string("TestContainerName0")},
+            }),
+          })},
+        })},
+      })}
+    });
+    // Send a response to the watcher.
+    server->SendStreamResponse(
+        "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true",
+        pod_metadata->ToString());
+    // Wait until watcher has processed response (by polling the store).
+    MonitoredResource resource("k8s_pod",
+                               {{"cluster_name", "TestClusterName"},
+                                {"location", "TestClusterLocation"},
+                                {"namespace_name", "TestNamespace"},
+                                {"pod_name", "TestPodName"}});
+    EXPECT_TRUE(
+        WaitForNewerCollectionTimestamp(store, resource, last_pods_timestamp));
+
+    const auto metadata_map = store.GetMetadataMap();
+    const auto& metadata = metadata_map.at(resource);
+    // TODO: Insert tests of metadata values.
+    last_pods_timestamp = metadata.collected_at;
+  }
+
+  // Terminate the hanging GETs on the server so that the updater will finish.
+  server->TerminateAllStreams();
+  updater_thread.join();
+}
+
 }  // namespace google

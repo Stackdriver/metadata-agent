@@ -16,7 +16,12 @@
 #ifndef FAKE_HTTP_SERVER_H_
 #define FAKE_HTTP_SERVER_H_
 
+#include "../src/time.h"
+
 #include <boost/network/protocol/http/server.hpp>
+#include <condition_variable>
+#include <mutex>
+#include <queue>
 
 namespace google {
 namespace testing {
@@ -31,15 +36,56 @@ class FakeServer {
   std::string GetUrl();
   void SetResponse(const std::string& path, const std::string& response);
 
+  // TODO: Consider changing the stream methods to operate on a stream
+  // object, rather than looking up the path every time.
+
+  // Indicates that for the given path, the server should stream
+  // responses over a hanging GET.
+  void AllowStream(const std::string& path);
+
+  // Blocks until at least one client has connected to the given path.
+  // Returns false if the timeout is reached with no client connections.
+  bool WaitForOneStreamWatcher(const std::string& path, time::seconds timeout);
+
+  // Sends a streaming response to all watchers for the given path.
+  void SendStreamResponse(const std::string& path, const std::string& response);
+
+  // Closes all open streams on the server.
+  void TerminateAllStreams();
+
  private:
   struct Handler;
   typedef boost::network::http::server<Handler> Server;
 
   // Handler that maps paths to response strings.
   struct Handler {
+    // Stream holds the state for an endpoint that streams data over a
+    // hanging GET.
+    //
+    // There is a queue for each client, and the mutex guards access
+    // to queues vector and any queue element.
+    //
+    // This struct only holds a pointer to each queue; it does not
+    // take ownership.
+    class Stream {
+     public:
+      void AddQueue(std::queue<std::string>* queue);
+      bool WaitForOneWatcher(time::seconds timeout);
+      void SendToAllQueues(const std::string& response);
+      std::string GetNextResponse(std::queue<std::string>* queue);
+
+     private:
+      std::mutex mutex_;
+      std::condition_variable cv_;
+      // The vector elements are not owned by the Stream object.
+      std::vector<std::queue<std::string>*> queues_;
+    };
+
     void operator()(Server::request const &request,
                     Server::connection_ptr connection);
+
     std::map<std::string, std::string> path_responses;
+    std::map<std::string, Stream> path_streams;
   };
 
   Handler handler_;
