@@ -24,7 +24,7 @@
 namespace google {
 
 MetadataAgent::MetadataAgent(const Configuration& config)
-    : config_(config), store_(config_), health_checker_(config) {}
+    : config_(config), store_(config_), health_checker_(config, store_) {}
 
 MetadataAgent::~MetadataAgent() {}
 

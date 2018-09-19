@@ -219,7 +219,11 @@ template<typename T> class rref_capture {
 class Array : public Value, public std::vector<std::unique_ptr<Value>> {
  public:
   Array() {}
+  // Construct an array with the specified elements.
+  // nullptr elements will be discarded.
   Array(std::vector<std::unique_ptr<Value>>&& elements);
+  // Construct an array with the specified elements.
+  // nullptr elements will be discarded.
   Array(std::initializer_list<rref_capture<std::unique_ptr<Value>>> elements);
   Array(const Array& other);
 
@@ -234,7 +238,11 @@ class Array : public Value, public std::vector<std::unique_ptr<Value>> {
 class Object : public Value, public std::map<std::string, std::unique_ptr<Value>> {
  public:
   Object() {}
+  // Construct an object with the specified fields.
+  // Key/value pairs with nullptr values will be discarded.
   Object(std::map<std::string, std::unique_ptr<Value>>&& fields);
+  // Construct an object with the specified fields.
+  // Key/value pairs with nullptr values will be discarded.
   Object(std::initializer_list<std::pair<std::string, rref_capture<std::unique_ptr<Value>>>> fields);
   Object(const Object& other);
 
@@ -328,6 +336,14 @@ inline std::unique_ptr<Value> object(
 inline std::unique_ptr<Value> object(
     std::initializer_list<std::pair<std::string, rref_capture<std::unique_ptr<Value>>>> fields) {
   return std::unique_ptr<Object>(new Object(fields));
+}
+
+// A nullptr-robust Clone.
+inline std::unique_ptr<Value> Clone(const std::unique_ptr<Value>& value) {
+  if (value == nullptr) {
+    return std::unique_ptr<Value>();
+  }
+  return value->Clone();
 }
 
 class Parser {

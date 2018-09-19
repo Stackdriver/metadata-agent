@@ -1,4 +1,21 @@
+/*
+ * Copyright 2018 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ **/
+
 #include "../src/environment.h"
+#include "environment_util.h"
 #include "fake_http_server.h"
 #include "gtest/gtest.h"
 #include "temp_file.h"
@@ -11,11 +28,6 @@ class EnvironmentTest : public ::testing::Test {
  protected:
   static void ReadApplicationDefaultCredentials(const Environment& environment) {
     environment.ReadApplicationDefaultCredentials();
-  }
-
-  static void SetMetadataServerUrlForTest(Environment* environment,
-                                          const std::string& url) {
-    environment->SetMetadataServerUrlForTest(url);
   }
 };
 
@@ -62,19 +74,32 @@ TEST_F(EnvironmentTest, ValuesFromConfig) {
             environment.KubernetesClusterName());
 }
 
-TEST_F(EnvironmentTest, NumericProjectIdFromConfigNewStyleCredentials) {
+TEST_F(EnvironmentTest, ProjectIdFromConfigNewStyleCredentialsProjectId) {
   testing::TemporaryFile credentials_file(
     std::string(test_info_->name()) + "_creds.json",
-    "{\"client_email\":\"user@12345.iam.gserviceaccount.com\","
+    "{\"client_email\":\"user@email-project.iam.gserviceaccount.com\","
+    "\"private_key\":\"some_key\",\"project_id\":\"my-project\"}");
+  Configuration config(std::istringstream(
+      "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
+  ));
+  Environment environment(config);
+  EXPECT_EQ("my-project", environment.ProjectId());
+}
+
+TEST_F(EnvironmentTest, ProjectIdFromConfigNewStyleCredentialsEmail) {
+  testing::TemporaryFile credentials_file(
+    std::string(test_info_->name()) + "_creds.json",
+    "{\"client_email\":\"user@my-project.iam.gserviceaccount.com\","
     "\"private_key\":\"some_key\"}");
   Configuration config(std::istringstream(
       "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
   ));
   Environment environment(config);
-  EXPECT_EQ("12345", environment.NumericProjectId());
+  EXPECT_EQ("my-project", environment.ProjectId());
 }
 
-TEST_F(EnvironmentTest, NumericProjectIdFromConfigOldStyleCredentials) {
+TEST_F(EnvironmentTest, ProjectIdFromConfigOldStyleCredentialsEmailFails) {
+  testing::FakeServer server;
   testing::TemporaryFile credentials_file(
     std::string(test_info_->name()) + "_creds.json",
     "{\"client_email\":\"12345-hash@developer.gserviceaccount.com\","
@@ -83,7 +108,9 @@ TEST_F(EnvironmentTest, NumericProjectIdFromConfigOldStyleCredentials) {
       "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
   ));
   Environment environment(config);
-  EXPECT_EQ("12345", environment.NumericProjectId());
+  testing::EnvironmentUtil::SetMetadataServerUrlForTest(
+      &environment, server.GetUrl() + "/");
+  EXPECT_EQ("", environment.ProjectId());
 }
 
 TEST_F(EnvironmentTest, ReadApplicationDefaultCredentialsSucceeds) {
@@ -127,7 +154,8 @@ TEST_F(EnvironmentTest, GetMetadataStringWithFakeServer) {
 
   Configuration config;
   Environment environment(config);
-  SetMetadataServerUrlForTest(&environment, server.GetUrl() + "/");
+  testing::EnvironmentUtil::SetMetadataServerUrlForTest(
+      &environment, server.GetUrl() + "/");
 
   EXPECT_EQ("hello", environment.GetMetadataString("a/b/c"));
   EXPECT_EQ("", environment.GetMetadataString("unknown/path"));
@@ -142,16 +170,18 @@ TEST_F(EnvironmentTest, ValuesFromMetadataServer) {
   server.SetResponse("/instance/zone",
                      "projects/some-project/zones/some-instance-zone");
   server.SetResponse("/project/numeric-project-id", "12345");
+  server.SetResponse("/project/project-id", "my-project");
 
   Configuration config;
   Environment environment(config);
-  SetMetadataServerUrlForTest(&environment, server.GetUrl() + "/");
+  testing::EnvironmentUtil::SetMetadataServerUrlForTest(
+      &environment, server.GetUrl() + "/");
 
   EXPECT_EQ("some-cluster-location", environment.KubernetesClusterLocation());
   EXPECT_EQ("some-cluster-name", environment.KubernetesClusterName());
   EXPECT_EQ("some-instance-id", environment.InstanceId());
   EXPECT_EQ("some-instance-zone", environment.InstanceZone());
-  EXPECT_EQ("12345", environment.NumericProjectId());
+  EXPECT_EQ("my-project", environment.ProjectId());
 }
 
 TEST_F(EnvironmentTest, KubernetesClusterLocationFromMetadataServerKubeEnv) {
@@ -162,7 +192,8 @@ TEST_F(EnvironmentTest, KubernetesClusterLocationFromMetadataServerKubeEnv) {
 
   Configuration config;
   Environment environment(config);
-  SetMetadataServerUrlForTest(&environment, server.GetUrl() + "/");
+  testing::EnvironmentUtil::SetMetadataServerUrlForTest(
+      &environment, server.GetUrl() + "/");
 
   EXPECT_EQ("some-kube-env-zone", environment.KubernetesClusterLocation());
 }

@@ -1,3 +1,17 @@
+# Copyright 2018 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 LIBDIR=../lib
 GTEST_MODULE=$(LIBDIR)/googletest
 GTEST_DIR=$(LIBDIR)/googletest/googletest
@@ -56,11 +70,14 @@ TESTS=\
       json_unittest \
       kubernetes_unittest \
       logging_unittest \
+      oauth2_unittest \
       resource_unittest \
       store_unittest \
       time_unittest \
       updater_unittest \
       util_unittest
+UTIL_SOURCES=$(TEST_DIR)/fake_clock.cc $(TEST_DIR)/fake_http_server.cc
+UTIL_OBJS=$(UTIL_SOURCES:$(TEST_DIR)/%.cc=%.o)
 
 GTEST_LIB=gtest_lib.a
 
@@ -71,11 +88,11 @@ all: $(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(TESTS)
 test: $(TESTS)
 	@for t in $(TESTS); do \
 		echo "Running $$t"; \
-		./$$t; \
+		./$$t || exit 1; \
 	done
 
 clean:
-	$(RM) $(TESTS) $(GTEST_LIB) $(TEST_OBJS)
+	$(RM) $(TESTS) $(GTEST_LIB) $(TEST_OBJS) $(UTIL_OBJS)
 
 purge: clean
 	$(RM) init-submodules
@@ -125,7 +142,7 @@ environment_unittest: environment_unittest.o fake_http_server.o $(SRC_DIR)/envir
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 format_unittest: format_unittest.o $(SRC_DIR)/format.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-health_checker_unittest: health_checker_unittest.o $(SRC_DIR)/health_checker.o $(SRC_DIR)/configuration.o
+health_checker_unittest: health_checker_unittest.o $(SRC_DIR)/health_checker.o $(SRC_DIR)/configuration.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/resource.o $(SRC_DIR)/store.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lboost_filesystem -lboost_system -o $@
 instance_unittest: instance_unittest.o $(SRC_DIR)/instance.o $(SRC_DIR)/configuration.o $(SRC_DIR)/environment.o $(SRC_DIR)/format.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/resource.o $(SRC_DIR)/store.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
@@ -135,13 +152,15 @@ kubernetes_unittest: kubernetes_unittest.o fake_http_server.o $(SRC_DIR)/kuberne
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 logging_unittest: logging_unittest.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+oauth2_unittest: oauth2_unittest.o fake_http_server.o $(SRC_DIR)/oauth2.o $(SRC_DIR)/base64.o $(SRC_DIR)/configuration.o $(SRC_DIR)/environment.o $(SRC_DIR)/format.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 resource_unittest: resource_unittest.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 store_unittest: store_unittest.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/configuration.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 time_unittest: time_unittest.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-updater_unittest: updater_unittest.o $(SRC_DIR)/updater.o $(SRC_DIR)/resource.o $(SRC_DIR)/store.o $(SRC_DIR)/configuration.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/json.o $(SRC_DIR)/format.o
+updater_unittest: updater_unittest.o fake_clock.o $(SRC_DIR)/updater.o $(SRC_DIR)/resource.o $(SRC_DIR)/store.o $(SRC_DIR)/configuration.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/json.o $(SRC_DIR)/format.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 util_unittest: util_unittest.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@

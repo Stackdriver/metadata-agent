@@ -1,7 +1,26 @@
+/*
+ * Copyright 2018 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ **/
 #ifndef FAKE_HTTP_SERVER_H_
 #define FAKE_HTTP_SERVER_H_
 
+#include "../src/time.h"
+
 #include <boost/network/protocol/http/server.hpp>
+#include <condition_variable>
+#include <mutex>
 #include <queue>
 
 namespace google {
@@ -17,15 +36,18 @@ class FakeServer {
   std::string GetUrl();
   void SetResponse(const std::string& path, const std::string& response);
 
+  // TODO: Consider changing the stream methods to operate on a stream
+  // object, rather than looking up the path every time.
+
   // Indicates that for the given path, the server should stream
   // responses over a hanging GET.
   void AllowStream(const std::string& path);
 
   // Blocks until at least one client has connected to the given path.
-  // Returns false if no client has connected after 3 seconds.
-  bool WaitForOneStreamWatcher(const std::string& path);
+  // Returns false if the timeout is reached with no client connections.
+  bool WaitForOneStreamWatcher(const std::string& path, time::seconds timeout);
 
-  // Sends a streaming response to all watchers fo the given path.
+  // Sends a streaming response to all watchers for the given path.
   void SendStreamResponse(const std::string& path, const std::string& response);
 
   // Closes all open streams on the server.
@@ -45,17 +67,25 @@ class FakeServer {
     //
     // This struct only holds a pointer to each queue; it does not
     // take ownership.
-    struct Stream {
-      std::mutex mutex;
-      std::condition_variable cv;
-      std::vector<std::queue<std::string>*> queues;
+    class Stream {
+     public:
+      void AddQueue(std::queue<std::string>* queue);
+      bool WaitForOneWatcher(time::seconds timeout);
+      void SendToAllQueues(const std::string& response);
+      std::string GetNextResponse(std::queue<std::string>* queue);
+
+     private:
+      std::mutex mutex_;
+      std::condition_variable cv_;
+      // The vector elements are not owned by the Stream object.
+      std::vector<std::queue<std::string>*> queues_;
     };
 
     void operator()(Server::request const &request,
                     Server::connection_ptr connection);
 
     std::map<std::string, std::string> path_responses;
-    std::map<std::string, std::unique_ptr<Stream>> path_streams;
+    std::map<std::string, Stream> path_streams;
   };
 
   Handler handler_;

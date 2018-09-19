@@ -1,3 +1,19 @@
+/*
+ * Copyright 2018 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ **/
+
 #include "../src/configuration.h"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
@@ -38,7 +54,6 @@ void VerifyDefaultConfig(const Configuration& config) {
   EXPECT_EQ(true, config.KubernetesServiceMetadata());
   EXPECT_EQ("", config.InstanceId());
   EXPECT_EQ("", config.InstanceZone());
-  EXPECT_EQ("/var/run/metadata-agent/health/unhealthy", config.HealthCheckFile());
 }
 
 TEST(ConfigurationTest, NoConfig) {
@@ -57,14 +72,12 @@ TEST(ConfigurationTest, PopulatedConfig) {
       "MetadataApiNumThreads: 13\n"
       "MetadataReporterPurgeDeleted: true\n"
       "MetadataReporterUserAgent: \"foobar/foobaz\"\n"
-      "HealthCheckFile: /a/b/c\n"
       "MetadataIngestionRequestSizeLimitCount: 500\n"
   ));
   EXPECT_EQ("TestProjectId", config.ProjectId());
   EXPECT_EQ(13, config.MetadataApiNumThreads());
   EXPECT_EQ(true, config.MetadataReporterPurgeDeleted());
   EXPECT_EQ("foobar/foobaz", config.MetadataReporterUserAgent());
-  EXPECT_EQ("/a/b/c", config.HealthCheckFile());
   EXPECT_EQ(500, config.MetadataIngestionRequestSizeLimitCount());
 }
 

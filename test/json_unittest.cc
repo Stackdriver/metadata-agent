@@ -1,3 +1,19 @@
+/*
+ * Copyright 2018 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ **/
+
 #include "../src/json.h"
 #include "gtest/gtest.h"
 
@@ -733,10 +749,15 @@ TEST(EdgeTest, NegativeNumbers) {
 TEST(BigTest, RealisticConstruction) {
   GuardJsonException([](){
     json::value v = json::object({
-      {"foo", json::array({json::number(1), json::number(2), json::number(3)})},
+      {"foo", json::array({
+        // Uninitialized values are ignored.
+        json::number(1), json::value(), json::number(2), json::number(3)
+      })},
+      {"uninitialized1", json::value()},  // Uninitialized values are ignored.
       {"bar", json::object({{"x", json::number(0)}, {"y", json::null()}})},
       {"baz", json::boolean(true)},
       {"str", json::string("asdfasdf")},
+      {"uninitialized2", json::value()},  // Uninitialized values are ignored.
     });
     EXPECT_TOSTRING_EQ(
       "{"

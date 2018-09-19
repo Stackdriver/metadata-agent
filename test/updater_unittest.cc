@@ -1,7 +1,24 @@
+/*
+ * Copyright 2018 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ **/
+
 #include "../src/configuration.h"
 #include "../src/resource.h"
 #include "../src/store.h"
 #include "../src/updater.h"
+#include "fake_clock.h"
 #include "gtest/gtest.h"
 
 #include <string>
@@ -213,6 +230,76 @@ TEST_F(UpdaterTest, UpdateResourceCallback) {
             store.LookupResource(""));
   EXPECT_EQ(MonitoredResource("test_resource", {}),
             store.LookupResource("test-prefix"));
+}
+
+bool WaitForResource(const MetadataStore& store,
+                     const MonitoredResource& resource) {
+  for (int i = 0; i < 30; i++) {
+    const auto metadata_map = store.GetMetadataMap();
+    if (metadata_map.find(resource) != metadata_map.end()) {
+      return true;
+    }
+    // Use real time here, because we are polling until the store has
+    // been updated by another thread.
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  return false;
+}
+
+// PollingMetadataUpdater that uses a FakeClock.
+class FakePollingMetadataUpdater : public PollingMetadataUpdater {
+ public:
+  FakePollingMetadataUpdater(
+      const Configuration& config, MetadataStore* store,
+      const std::string& name, double period_s,
+      std::function<std::vector<ResourceMetadata>()> query_metadata)
+      : PollingMetadataUpdater(
+          config, store, name, period_s, query_metadata,
+          std::unique_ptr<Timer>(new TimerImpl<testing::FakeClock>(
+              false, name))) {}
+};
+
+TEST_F(UpdaterTest, PollingMetadataUpdater) {
+  // Start updater with 60 second polling interval, using fake clock
+  // implementation.
+  //
+  // Each callback will return a new resource "test_resource_<i>".
+  int i = 0;
+  std::function<std::vector<MetadataUpdater::ResourceMetadata>()> query_metadata(
+    [&i]() {
+      MetadataStore::Metadata m(
+          "test-version",
+          false,
+          std::chrono::system_clock::now(),
+          std::chrono::system_clock::now(),
+          json::object({{"f", json::string("test")}}));
+      std::vector<MetadataUpdater::ResourceMetadata> result;
+      result.emplace_back(std::move(MetadataUpdater::ResourceMetadata(
+          {"", "test-prefix"},
+          MonitoredResource("test_resource_" + std::to_string(i++), {}),
+          std::move(m))));
+      return result;
+    });
+  FakePollingMetadataUpdater updater(
+      config, &store, test_info_->name(), 60, query_metadata);
+  std::thread updater_thread([&updater] { updater.Start(); });
+
+  // Wait for 1st update, verify store.
+  EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_0", {})));
+  EXPECT_EQ(1, store.GetMetadataMap().size());
+
+  // Advance fake clock, wait for 2nd update, verify store.
+  testing::FakeClock::Advance(time::seconds(60));
+  EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_1", {})));
+  EXPECT_EQ(2, store.GetMetadataMap().size());
+
+  // Advance fake clock, wait for 3rd update, verify store.
+  testing::FakeClock::Advance(time::seconds(60));
+  EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_2", {})));
+  EXPECT_EQ(3, store.GetMetadataMap().size());
+
+  updater.NotifyStop();
+  updater_thread.join();
 }
 
 }  // namespace

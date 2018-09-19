@@ -24,11 +24,15 @@
 
 namespace google {
 
+namespace testing {
+class EnvironmentUtil;
+}  // testing
+
 class Environment {
  public:
   Environment(const Configuration& config);
 
-  const std::string& NumericProjectId() const;
+  const std::string& ProjectId() const;
   const std::string& InstanceResourceType() const;
   const std::string& InstanceId() const;
   const std::string& InstanceZone() const;
@@ -45,6 +49,7 @@ class Environment {
 
  private:
   friend class EnvironmentTest;
+  friend class testing::EnvironmentUtil;
 
   void ReadApplicationDefaultCredentials() const;
 
@@ -65,6 +70,7 @@ class Environment {
   mutable std::string kubernetes_cluster_location_;
   mutable std::string client_email_;
   mutable std::string private_key_;
+  mutable std::string credentials_project_id_;
   mutable std::string metadata_server_url_;
   mutable bool application_default_credentials_read_;
 };

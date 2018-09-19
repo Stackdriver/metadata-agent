@@ -120,17 +120,22 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetNodeMetadata(
     {"location", location},
   });
 
-  json::value instance_resource =
-      InstanceReader::InstanceResource(environment_).ToJSON();
+  json::value associations;
+  try {
+    associations = json::object({
+      {"version", json::string(config_.MetadataIngestionRawContentVersion())},
+      {"raw", json::object({
+        {"infrastructureResource",
+         InstanceReader::InstanceResource(environment_).ToJSON()},
+      })},
+    });
+  } catch (const std::out_of_range& e) {
+    // No instance resource; proceed.
+  }
 
   json::value node_raw_metadata = json::object({
     {"blobs", json::object({
-      {"association", json::object({
-        {"version", json::string(config_.MetadataIngestionRawContentVersion())},
-        {"raw", json::object({
-          {"infrastructureResource", std::move(instance_resource)},
-        })},
-      })},
+      {"association", std::move(associations)},
       {"api", json::object({
         {"version", json::string(kKubernetesApiVersion)},
         {"raw", node->Clone()},
@@ -158,13 +163,15 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
   const json::Object* metadata = pod->Get<json::Object>("metadata");
   const std::string namespace_name = metadata->Get<json::String>("namespace");
 
-  json::value instance_resource =
-      InstanceReader::InstanceResource(environment_).ToJSON();
+  json::value instance_resource;
+  try {
+    instance_resource =
+        InstanceReader::InstanceResource(environment_).ToJSON();
+  } catch (const std::out_of_range& e) {
+    // No instance resource; proceed.
+  }
 
-  std::unique_ptr<json::Object> raw_associations(new json::Object({
-    {"infrastructureResource", std::move(instance_resource)},
-  }));
-
+  json::value controllers;
   try {
     const json::value top_level = FindTopLevelController(
         namespace_name, pod->Clone());
@@ -185,31 +192,39 @@ json::value KubernetesReader::ComputePodAssociations(const json::Object* pod)
             ? top_level_controller->Get<json::String>("kind")
             : "Pod";
 
-    raw_associations->emplace(std::make_pair(
-      "controllers",
-      json::object({
-        {"topLevelControllerType", json::string(top_level_kind)},
-        {"topLevelControllerName", json::string(top_level_name)},
-      })
-    ));
+    controllers = json::object({
+      {"topLevelControllerType", json::string(top_level_kind)},
+      {"topLevelControllerName", json::string(top_level_name)},
+    });
   } catch (const QueryException& e) {
     LOG(ERROR) << "Error while finding top-level controller for "
                << namespace_name << "." << metadata->Get<json::String>("name")
                << ": " << e.what();
   }
 
+  json::value node_name;
   const json::Object* spec = pod->Get<json::Object>("spec");
   if (spec->Has("nodeName")) {
     // Pods that have been scheduled will have a nodeName.
-    raw_associations->emplace(std::make_pair(
-      "nodeName",
-      json::string(spec->Get<json::String>("nodeName"))
-    ));
+    node_name = json::string(spec->Get<json::String>("nodeName"));
+  }
+
+  // If instance_resource, controllers, or node_name are not populated,
+  // they will be discarded.
+  json::value raw_associations = json::object({
+    {"infrastructureResource", std::move(instance_resource)},
+    {"controllers", std::move(controllers)},
+    {"nodeName", std::move(node_name)},
+  });
+
+  // If none of the field values above were populated, discard the object.
+  if (raw_associations->As<json::Object>()->empty()) {
+    return json::value();
   }
 
   return json::object({
     {"version", json::string(config_.MetadataIngestionRawContentVersion())},
-    {"raw", json::value(std::move(raw_associations))},
+    {"raw", std::move(raw_associations)},
   });
 }
 
@@ -293,33 +308,31 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
     {"location", location},
   });
 
-  std::unique_ptr<json::Object> blobs(new json::Object({
-    {"association", std::move(associations)},
-    {"spec", json::object({
-      {"version", json::string(kKubernetesApiVersion)},
-      {"raw", container_spec->Clone()},
-    })},
-  }));
+  json::value raw_status;
   if (container_status) {
-    blobs->emplace(std::make_pair(
-      "status",
-      json::object({
-        {"version", json::string(kKubernetesApiVersion)},
-        {"raw", container_status->Clone()},
-      })
-    ));
+    raw_status = json::object({
+      {"version", json::string(kKubernetesApiVersion)},
+      {"raw", container_status->Clone()},
+    });
   }
+
+  json::value raw_labels;
   if (labels) {
-    blobs->emplace(std::make_pair(
-      "labels",
-      json::object({
-        {"version", json::string(kKubernetesApiVersion)},
-        {"raw", labels->Clone()},
-      })
-    ));
+    raw_labels = json::object({
+      {"version", json::string(kKubernetesApiVersion)},
+      {"raw", labels->Clone()},
+    });
   }
   json::value container_raw_metadata = json::object({
-    {"blobs", json::value(std::move(blobs))},
+    {"blobs", json::object({
+      {"association", std::move(associations)},
+      {"spec", json::object({
+        {"version", json::string(kKubernetesApiVersion)},
+        {"raw", container_spec->Clone()},
+      })},
+      {"status", std::move(raw_status)},
+      {"labels", std::move(raw_labels)},
+    })},
   });
   if (config_.VerboseLogging()) {
     LOG(INFO) << "Raw container metadata: " << *container_raw_metadata;
@@ -368,10 +381,14 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
 
 MetadataUpdater::ResourceMetadata KubernetesReader::GetLegacyResource(
     const json::Object* pod, const std::string& container_name) const
-    throw(json::Exception) {
+    throw(std::out_of_range, json::Exception) {
   const std::string instance_id = environment_.InstanceId();
   const std::string zone = environment_.InstanceZone();
   const std::string cluster_name = environment_.KubernetesClusterName();
+
+  if (instance_id.empty() || zone.empty()) {
+    throw std::out_of_range("No instance information, skipping gke_container");
+  }
 
   const json::Object* metadata = pod->Get<json::Object>("metadata");
   const std::string namespace_name = metadata->Get<json::String>("namespace");
@@ -449,10 +466,16 @@ KubernetesReader::GetPodAndContainerMetadata(
         LOG(INFO) << "Container status: " << *container_status;
       }
     }
-    result.emplace_back(GetLegacyResource(pod, name));
+    try {
+      result.emplace_back(GetLegacyResource(pod, name));
+    } catch (const std::out_of_range& e) {
+      // No instance information available; log and ignore.
+      LOG(INFO) << e.what();
+    }
     result.emplace_back(
         GetContainerMetadata(pod, container_spec, container_status,
-                             associations->Clone(), collected_at, is_deleted));
+                             json::Clone(associations), collected_at,
+                             is_deleted));
   }
 
   result.emplace_back(
@@ -715,11 +738,11 @@ struct Watcher {
 #ifdef VERBOSE
         LOG(DEBUG) << name_ << " => Watch callback: EOF";
 #endif
-      try {
-        event_parser_.NotifyEOF();
-      } catch (const json::Exception& e) {
-        LOG(ERROR) << "Error while processing last event: " << e.what();
-      }
+        try {
+          event_parser_.NotifyEOF();
+        } catch (const json::Exception& e) {
+          LOG(ERROR) << "Error while processing last event: " << e.what();
+        }
       } else {
         LOG(ERROR) << name_ << " => Callback got error " << error;
       }
@@ -775,53 +798,54 @@ void KubernetesReader::WatchMaster(
   request << boost::network::header(
       "Authorization", "Bearer " + KubernetesApiToken());
   const bool verbose = config_.VerboseLogging();
-  if (verbose) {
-    LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint;
-  }
-  // Initialize the expiration time.  This is the time by when the
-  // watcher has to receive some data to be considered healthy.  Each
-  // receipt of a new message bumps the expiration forward.
-  //
-  // TODO: Cache the expiration (or timestamp of last receipt) in the
-  // store instead of here.
-  const int max_data_age = config_.HealthCheckMaxDataAgeSeconds();
-  std::mutex expiration_mutex;
-  auto expiration =
-    std::chrono::steady_clock::now() + time::seconds(max_data_age);
-  CheckHealth check_health(
-      health_checker_, name, [&expiration_mutex, &expiration]{
-        std::lock_guard<std::mutex> expiration_lock(expiration_mutex);
-        return std::chrono::steady_clock::now() < expiration;
-      });
-  try {
+  const int retries = config_.KubernetesUpdaterWatchConnectionRetries();
+  int failures = 0;
+  for (int i = 0; retries <= 0 || i < retries; i++) {
     if (verbose) {
-      LOG(INFO) << "Locking completion mutex";
+      if (failures > 0) {
+        LOG(INFO) << "WatchMaster(" << name
+                  << "): Retrying; attempt #" << failures
+                  << " of " << config_.KubernetesUpdaterWatchMaxConnectionFailures();
+      }
+      LOG(INFO) << "WatchMaster(" << name << "): Contacting " << endpoint;
     }
-    // A notification for watch completion.
-    std::mutex completion_mutex;
-    std::unique_lock<std::mutex> watch_completion(completion_mutex);
-    Watcher watcher(
-      endpoint,
-      [=, &expiration_mutex, &expiration](json::value raw_watch) {
-        {
-          std::lock_guard<std::mutex> expiration_lock(expiration_mutex);
-          expiration =
-            std::chrono::steady_clock::now() + time::seconds(max_data_age);
-        }
-        WatchEventCallback(callback, name, std::move(raw_watch));
-      },
-      std::move(watch_completion), verbose);
-    http::client::response response = client.get(request, std::ref(watcher));
-    if (verbose) {
-      LOG(INFO) << "Waiting for completion";
+    try {
+      if (verbose) {
+        LOG(INFO) << "Locking completion mutex";
+      }
+      // A notification for watch completion.
+      std::mutex completion_mutex;
+      std::unique_lock<std::mutex> watch_completion(completion_mutex);
+      Watcher watcher(
+        endpoint,
+        [=](json::value raw_watch) {
+          WatchEventCallback(callback, name, std::move(raw_watch));
+        },
+        std::move(watch_completion), verbose);
+      http::client::response response = client.get(request, std::ref(watcher));
+      if (verbose) {
+        LOG(INFO) << "Waiting for completion";
+      }
+      std::lock_guard<std::mutex> await_completion(completion_mutex);
+      if (verbose) {
+        LOG(INFO) << "WatchMaster(" << name << ") completed " << body(response);
+      }
+      // Connection closed without an error; reset failure count.
+      failures = 0;
+    } catch (const boost::system::system_error& e) {
+      LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
+      ++failures;
+      if (failures > config_.KubernetesUpdaterWatchMaxConnectionFailures()) {
+        LOG(ERROR) << "WatchMaster(" << name << "): Exiting after "
+                   << failures << " failures";
+        throw QueryException(endpoint + " -> " + e.what());
+      }
+      double backoff = fmin(pow(1.5, failures), 30);
+      if (verbose) {
+        LOG(INFO) << "Backing off for " << backoff << " seconds";
+      }
+      std::this_thread::sleep_for(time::seconds(backoff));
     }
-    std::lock_guard<std::mutex> await_completion(completion_mutex);
-    if (verbose) {
-      LOG(INFO) << "WatchMaster(" << name << ") completed " << body(response);
-    }
-  } catch (const boost::system::system_error& e) {
-    LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
-    throw QueryException(endpoint + " -> " + e.what());
   }
 }
 

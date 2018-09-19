@@ -186,7 +186,7 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
       LOG(INFO) << "Getting an OAuth2 token";
     }
     http::client client;
-    http::client::request request("https://www.googleapis.com/oauth2/v3/token");
+    http::client::request request(token_endpoint_);
     std::string grant_type = ::network::detail::encode_fragment(
         std::string("urn:ietf:params:oauth:grant-type:jwt-bearer"));
     //std::string jwt_header = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9";
@@ -202,7 +202,7 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
     json::value claim_set_object = json::object({
       {"iss", json::string(service_account_email)},
       {"scope", json::string("https://www.googleapis.com/auth/monitoring")},
-      {"aud", json::string("https://www.googleapis.com/oauth2/v3/token")},
+      {"aud", json::string(token_endpoint_)},
       {"iat", json::number(time::SecondsSinceEpoch(now))},
       {"exp", json::number(time::SecondsSinceEpoch(exp))},
     });

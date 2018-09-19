@@ -14,29 +14,12 @@
  * limitations under the License.
  **/
 
-#include "../src/logging.h"
-#include "gtest/gtest.h"
-
-#include <regex>
-#include <sstream>
+#include "fake_clock.h"
 
 namespace google {
-namespace {
+namespace testing {
 
-TEST(LoggingTest, Logger) {
-  std::ostringstream out;
+FakeClock::time_point FakeClock::now_;
 
-  // Logger flushes on destruction.
-  {
-    LogStream stream(out);
-    Logger logger("somefile.cc", 123, Logger::WARNING, &stream);
-    logger << "Test message";
-  }
-
-  EXPECT_TRUE(std::regex_match(out.str(), std::regex(
-     "W\\d{4} \\d{2}:\\d{2}:\\d{2} .+ "
-     "somefile.cc:123 Test message\n")));
-}
-
-}  // namespace
+}  // namespace testing
 }  // namespace google

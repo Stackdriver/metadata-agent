@@ -16,6 +16,8 @@
 
 #include "health_checker.h"
 
+#include "store.h"
+
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <vector>
@@ -23,50 +25,30 @@
 
 namespace google {
 
-HealthChecker::HealthChecker(const Configuration& config)
-    : config_(config) {
-  boost::filesystem::create_directories(
-      boost::filesystem::path(config_.HealthCheckFile()).parent_path());
-  std::remove(config_.HealthCheckFile().c_str());
-}
+HealthChecker::HealthChecker(const Configuration& config,
+                             const MetadataStore& store)
+    : config_(config), store_(store) {}
 
 void HealthChecker::SetUnhealthy(const std::string& component) {
   std::lock_guard<std::mutex> lock(mutex_);
   unhealthy_components_.insert(component);
-  std::ofstream health_file(config_.HealthCheckFile());
-  health_file << std::endl;
-}
-
-bool HealthChecker::IsHealthy() const {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return unhealthy_components_.empty();
-}
-
-void HealthChecker::CleanupForTest() {
-  boost::filesystem::remove_all(boost::filesystem::path(
-      config_.HealthCheckFile()).parent_path());
 }
 
 std::set<std::string> HealthChecker::UnhealthyComponents() const {
   std::lock_guard<std::mutex> lock(mutex_);
   std::set<std::string> result(unhealthy_components_);
-  for (auto& c : component_callbacks_) {
-    if (c.second != nullptr && !c.second()) {
-      result.insert(c.first);
+
+  Timestamp cutoff = std::chrono::system_clock::now()
+    - std::chrono::seconds(config_.HealthCheckMaxDataAgeSeconds());
+  auto last_collection_times = store_.GetLastCollectionTimes();
+  for (const auto& kv : last_collection_times) {
+    const std::string& object_type = kv.first;
+    const Timestamp& collected_at = kv.second;
+    if (collected_at < cutoff) {
+      result.insert(object_type);
     }
   }
   return result;
-}
-
-void HealthChecker::RegisterComponent(const std::string& component,
-                                      std::function<bool()> callback) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  component_callbacks_[component] = callback;
-}
-
-void HealthChecker::UnregisterComponent(const std::string& component) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  component_callbacks_.erase(component);
 }
 
 }  // namespace google

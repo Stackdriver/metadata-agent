@@ -13,30 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  **/
+#ifndef ENVIRONMENT_UTIL_H_
+#define ENVIRONMENT_UTIL_H_
 
-#include "../src/logging.h"
-#include "gtest/gtest.h"
-
-#include <regex>
-#include <sstream>
+#include "../src/environment.h"
 
 namespace google {
-namespace {
+namespace testing {
 
-TEST(LoggingTest, Logger) {
-  std::ostringstream out;
-
-  // Logger flushes on destruction.
-  {
-    LogStream stream(out);
-    Logger logger("somefile.cc", 123, Logger::WARNING, &stream);
-    logger << "Test message";
+class EnvironmentUtil {
+ public:
+  static void SetMetadataServerUrlForTest(Environment* environment,
+                                          const std::string& url) {
+    environment->SetMetadataServerUrlForTest(url);
   }
+};
 
-  EXPECT_TRUE(std::regex_match(out.str(), std::regex(
-     "W\\d{4} \\d{2}:\\d{2}:\\d{2} .+ "
-     "somefile.cc:123 Test message\n")));
-}
-
-}  // namespace
+}  // namespace testing
 }  // namespace google
+
+#endif  // ENVIRONMENT_UTIL_H_
