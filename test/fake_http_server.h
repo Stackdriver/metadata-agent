@@ -19,6 +19,8 @@
 #include "../src/time.h"
 
 #include <boost/network/protocol/http/server.hpp>
+#include <condition_variable>
+#include <mutex>
 #include <queue>
 
 namespace google {
