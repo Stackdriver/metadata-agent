@@ -182,6 +182,8 @@ endif
 	touch init-submodules
 
 $(CPP_NETLIB_DIR)/Makefile: init-submodules
+	# Disable building of cpp-netlib unit tests and change the C++14
+	# requirement to C++11 (some older compilers don't support C++14).
 	cd $(CPP_NETLIB_DIR) && \
 	$(SED_I) -e 's/unit_test_framework //' $(SED_EXTRA) CMakeLists.txt && \
 	$(SED_I) -e 's/-std=c++14/-std=c++11/' $(SED_EXTRA) deps/uri/CMakeLists.txt && \

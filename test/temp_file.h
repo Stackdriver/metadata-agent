@@ -26,6 +26,7 @@ namespace testing {
 // A file with a given name in a temporary (unique) directory.
 boost::filesystem::path TempPath(const std::string& filename) {
   boost::filesystem::path path = boost::filesystem::temp_directory_path();
+  // Older versions of boost::filesystem::path require a locale.
   const boost::filesystem::path::codecvt_type& codecvt =
      std::use_facet<boost::filesystem::path::codecvt_type>(std::locale(""));
   path.append(boost::filesystem::unique_path().native(), codecvt);
