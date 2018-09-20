@@ -19,5 +19,5 @@ install:
 script:
 - cd src
 # - make test
-- cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -D CMAKE_AGENT_COMPILER=gcc
+- cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_AGENT_COMPILER=gcc
 - oclint-json-compilation-database
