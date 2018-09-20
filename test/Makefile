@@ -53,6 +53,11 @@ ifeq ($(UNAME_S),Darwin)
   LDFLAGS+= -L/usr/local/lib -L/usr/local/opt/openssl/lib
 endif
 
+ifneq ($(BOOST_ROOT),)
+  CPPFLAGS+= -I$(BOOST_ROOT)/include
+  LDFLAGS+= -L$(BOOST_ROOT)/lib64
+endif
+
 # Where to find code under test.
 SRC_DIR=../src
 
@@ -96,10 +101,10 @@ clean:
 
 purge: clean
 	$(RM) init-submodules
-	git submodule deinit -f $(GTEST_MODULE)
+	(cd .. && git submodule deinit -f $(GTEST_MODULE:../%=%))
 
 init-submodules:
-	git submodule update --init $(GTEST_MODULE)
+	(cd .. && git submodule update --init $(GTEST_MODULE:../%=%))
 	touch init-submodules
 
 $(SRC_DIR)/init-submodules:
