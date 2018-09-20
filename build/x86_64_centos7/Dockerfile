@@ -1,6 +1,8 @@
 FROM centos:7
 
-RUN yum update -y && yum install -y \
+COPY puias-computational-x86_64.repo /etc/yum.repos.d/
+RUN rpm --import http://springdale.math.ias.edu/data/puias/7/x86_64/os/RPM-GPG-KEY-puias \
+    && yum update -y && yum install -y \
         gcc-c++ \
         git \
         cmake \
@@ -9,10 +11,10 @@ RUN yum update -y && yum install -y \
         rpm-build \
         rpm-sign \
         openssl-devel \
+        boost155-devel \
         expect \
-    && yum -y clean all
+    && yum -y clean all \
+    && rm /etc/yum.repos.d/puias-computational-x86_64.repo
+ENV BOOST_ROOT=/usr/local/boost/1.55.0
+ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$BOOST_ROOT/lib64"
 
-RUN cd /tmp \
-    && VENDOR_URL=http://testrepo.stackdriver.com/vendor/boost/x86_64 \
-    && curl -O "${VENDOR_URL}/boost-{system,thread,devel,static}-1.54.0-1.el7.x86_64.rpm" \
-    && rpm --nodeps -ivp boost-{system,thread,devel,static}-1.54.0-1.el7.x86_64.rpm
