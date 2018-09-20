@@ -202,17 +202,18 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   void NotifyStopUpdater();
 
  private:
+  // WatchId combines the plural Kubernetes kind and API version.
+  using WatchId = std::pair<const char*, const char*>;
+  // List of cluster level objects to watch.
+  static const WatchId kClusterLevelObjectTypes[];
+
   // Metadata watcher callback.
   void MetadataCallback(std::vector<ResourceMetadata>&& result_vector);
 
   KubernetesReader reader_;
   HealthChecker* health_checker_;
-  // WatchId combines the plural kubernetes kind, and API version.
-  using WatchId = std::pair<const char*, const char*>;
   // Map from the watch IDs to the respective threads.
   std::map<WatchId, std::thread> object_watch_threads_;
-  // List of watch IDs.
-  static const WatchId watch_ids_[];
 };
 
 }

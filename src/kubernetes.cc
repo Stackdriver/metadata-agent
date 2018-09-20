@@ -950,7 +950,8 @@ KubernetesUpdater::KubernetesUpdater(const Configuration& config,
         config.KubernetesUpdaterIntervalSeconds(),
         [=]() { return reader_.MetadataQuery(); }) { }
 
-const KubernetesUpdater::WatchId KubernetesUpdater::watch_ids_[] = {
+const KubernetesUpdater::WatchId KubernetesUpdater::kClusterLevelObjectTypes[] =
+{
     {"cronjobs", "batch/v1beta1"},
     {"daemonsets", "apps/v1"},
     {"daemonsets", "extensions/v1beta1"},
@@ -999,25 +1000,25 @@ void KubernetesUpdater::StartUpdater() {
     auto cb = [=](std::vector<MetadataUpdater::ResourceMetadata>&& results) {
       MetadataCallback(std::move(results));
     };
-    std::thread node_watch_thread = std::thread([=]() {
-      reader_.WatchNodes(watched_node, cb);
-    });
     object_watch_threads_.emplace(
-        WatchId("nodes", "v1"), std::move(node_watch_thread));
-    std::thread pod_watch_thread = std::thread([=]() {
-      reader_.WatchPods(watched_node, cb);
-    });
+        WatchId("nodes", "v1"),
+        std::thread([=]() {
+          reader_.WatchNodes(watched_node, cb);
+        }));
     object_watch_threads_.emplace(
-        WatchId("pods", "v1"), std::move(pod_watch_thread));
-    if (config().KubernetesClusterLevelMetadata() &&
-        config().KubernetesServiceMetadata()) {
-      for (const auto& watch_id: watch_ids_) {
-        const std::string& plural_kind = watch_id.first;
-        const std::string& api_version = watch_id.second;
-        std::thread watch_thread([=]() {
-          reader_.WatchObjects(plural_kind, api_version, cb);
-        });
-        object_watch_threads_.emplace(watch_id, std::move(watch_thread));
+        WatchId("pods", "v1"),
+        std::thread([=]() {
+          reader_.WatchPods(watched_node, cb);
+        }));
+    if (config().KubernetesClusterLevelMetadata()) {
+      for (const auto& watch_id: kClusterLevelObjectTypes) {
+        const std::string plural_kind = watch_id.first;
+        const std::string api_version = watch_id.second;
+        object_watch_threads_.emplace(
+            watch_id,
+            std::thread([=]() {
+              reader_.WatchObjects(plural_kind, api_version, cb);
+            }));
       }
     }
   } else {
