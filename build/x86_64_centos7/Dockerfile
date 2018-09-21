@@ -15,7 +15,7 @@ RUN yum update -y && yum install -y \
     && yum -y clean all \
     && rm -rf /var/cache/yum /tmp/yum.log \
     && cd /tmp \
-    && curl -sSLO http://sourceforge.net/projects/boost/files/boost/1.58.0/boost_1_58_0.tar.bz2 \
+    && curl -sSLO https://sourceforge.net/projects/boost/files/boost/1.58.0/boost_1_58_0.tar.bz2 \
     && tar xjf boost_1_58_0.tar.bz2 \
     && cd /tmp/boost_1_58_0 \
     && ./bootstrap.sh --with-libraries=atomic,chrono,date_time,filesystem,program_options,regex,system,thread,timer \
