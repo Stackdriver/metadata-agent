@@ -6,49 +6,52 @@ This is the Stackdriver metadata agent.
 
 1. Install runtime dependencies:
 
-       $ sudo apt-get install libyajl2 libboost-filesystem1.55.0 \
+       $ sudo apt-get install libboost-filesystem1.55.0 \
          libboost-program-options1.55.0 libboost-system1.55.0 \
-         libboost-thread1.55.0
+         libboost-thread1.55.0 libyajl2
 
 2. Install build dependencies:
 
-       $ sudo apt-get install g++ cmake dpkg-dev libyajl-dev libssl-dev \
-         libboost1.55-dev libboost-system1.55-dev libboost-atomic1.55-dev \
+       $ sudo apt-get install cmake dpkg-dev g++ libboost-atomic1.55-dev \
          libboost-chrono1.55-dev libboost-date-time1.55-dev \
          libboost-filesystem1.55-dev libboost-program-options1.55-dev \
-         libboost-regex1.55-dev libboost-thread1.55-dev libboost-timer1.55-dev
+         libboost-regex1.55-dev libboost-system1.55-dev \
+         libboost-thread1.55-dev libboost-timer1.55-dev libboost1.55-dev \
+         libssl-dev libyajl-dev
 
 ## Ubuntu 16.04 (xenial)
 
 1. Install runtime dependencies:
 
-       $ sudo apt-get install libssl1.0.0 libyajl2 libboost-filesystem1.58.0 \
+       $ sudo apt-get install ca-certificates libboost-filesystem1.58.0 \
          libboost-program-options1.58.0 libboost-system1.58.0 \
-         libboost-thread1.58.0 ca-certificates
+         libboost-thread1.58.0 libssl1.0.0 libyajl2
 
 2. Install build dependencies:
 
-       $ sudo apt-get install g++ cmake dpkg-dev libyajl-dev libssl-dev \
-         libboost1.58-dev libboost-system1.58-dev libboost-atomic1.58-dev \
+       $ sudo apt-get install cmake dpkg-dev g++ libboost-atomic1.58-dev \
          libboost-chrono1.58-dev libboost-date-time1.58-dev \
          libboost-filesystem1.58-dev libboost-program-options1.58-dev \
-         libboost-regex1.58-dev libboost-thread1.58-dev libboost-timer1.58-dev
+         libboost-regex1.58-dev libboost-system1.58-dev \
+         libboost-thread1.58-dev libboost-timer1.58-dev libboost1.58-dev \
+         libssl-dev libyajl-dev
 
 ## Debian 9 (stretch)
 
 1. Install runtime dependencies:
 
-       $ sudo apt-get install libssl1.0.2 libyajl2 libboost-filesystem1.62.0 \
+       $ sudo apt-get install ca-certificates libboost-filesystem1.62.0 \
          libboost-program-options1.62.0 libboost-system1.62.0 \
-         libboost-thread1.62.0 ca-certificates
+         libboost-thread1.62.0 libssl1.0.2 libyajl2
 
 2. Install build dependencies:
 
-       $ sudo apt-get install g++ cmake dpkg-dev libyajl-dev libssl1.0-dev \
-         libboost1.62-dev libboost-system1.62-dev libboost-atomic1.62-dev \
+       $ sudo apt-get install cmake dpkg-dev g++ libboost-atomic1.62-dev \
          libboost-chrono1.62-dev libboost-date-time1.62-dev \
          libboost-filesystem1.62-dev libboost-program-options1.62-dev \
-         libboost-regex1.62-dev libboost-thread1.62-dev libboost-timer1.62-dev
+         libboost-regex1.62-dev libboost-system1.62-dev \
+         libboost-thread1.62-dev libboost-timer1.62-dev libboost1.62-dev \
+         libssl1.0-dev libyajl-dev
 
 ## CentOS 7
 
