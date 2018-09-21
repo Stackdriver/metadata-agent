@@ -68,13 +68,13 @@ This is the Stackdriver metadata agent.
 
 2. Install runtime dependencies:
 
-       $ sudo yum install -y yajl boost155-filesystem boost155-system \
-         boost155-thread boost155-program-options
+       $ sudo yum install -y boost155-filesystem boost155-program-options \
+         boost155-system boost155-thread yajl
 
 3. Install build dependencies:
 
-       $ sudo yum install -y gcc-c++ make cmake rpm-build yajl-devel openssl-devel \
-         boost155-devel
+       $ sudo yum install -y boost155-devel cmake gcc-c++ make openssl-devel \
+         rpm-build yajl-devel
 
 4. Set up Boost root:
 
