@@ -6,13 +6,13 @@ This is the Stackdriver metadata agent.
 
 1. Install runtime dependencies:
 
-       $ sudo apt-get install libboost-filesystem1.55.0 \
+       $ sudo apt-get install -y libboost-filesystem1.55.0 \
          libboost-program-options1.55.0 libboost-system1.55.0 \
          libboost-thread1.55.0 libyajl2
 
 2. Install build dependencies:
 
-       $ sudo apt-get install cmake dpkg-dev g++ libboost-atomic1.55-dev \
+       $ sudo apt-get install -y cmake dpkg-dev g++ libboost-atomic1.55-dev \
          libboost-chrono1.55-dev libboost-date-time1.55-dev \
          libboost-filesystem1.55-dev libboost-program-options1.55-dev \
          libboost-regex1.55-dev libboost-system1.55-dev \
@@ -23,13 +23,13 @@ This is the Stackdriver metadata agent.
 
 1. Install runtime dependencies:
 
-       $ sudo apt-get install ca-certificates libboost-filesystem1.58.0 \
+       $ sudo apt-get install -y ca-certificates libboost-filesystem1.58.0 \
          libboost-program-options1.58.0 libboost-system1.58.0 \
          libboost-thread1.58.0 libssl1.0.0 libyajl2
 
 2. Install build dependencies:
 
-       $ sudo apt-get install cmake dpkg-dev g++ libboost-atomic1.58-dev \
+       $ sudo apt-get install -y cmake dpkg-dev g++ libboost-atomic1.58-dev \
          libboost-chrono1.58-dev libboost-date-time1.58-dev \
          libboost-filesystem1.58-dev libboost-program-options1.58-dev \
          libboost-regex1.58-dev libboost-system1.58-dev \
@@ -40,13 +40,13 @@ This is the Stackdriver metadata agent.
 
 1. Install runtime dependencies:
 
-       $ sudo apt-get install ca-certificates libboost-filesystem1.62.0 \
+       $ sudo apt-get install -y ca-certificates libboost-filesystem1.62.0 \
          libboost-program-options1.62.0 libboost-system1.62.0 \
          libboost-thread1.62.0 libssl1.0.2 libyajl2
 
 2. Install build dependencies:
 
-       $ sudo apt-get install cmake dpkg-dev g++ libboost-atomic1.62-dev \
+       $ sudo apt-get install -y cmake dpkg-dev g++ libboost-atomic1.62-dev \
          libboost-chrono1.62-dev libboost-date-time1.62-dev \
          libboost-filesystem1.62-dev libboost-program-options1.62-dev \
          libboost-regex1.62-dev libboost-system1.62-dev \
@@ -68,13 +68,13 @@ This is the Stackdriver metadata agent.
 
 2. Install runtime dependencies:
 
-       $ sudo yum install -y yajl boost155-filesystem boost155-system \
-         boost155-thread boost155-program-options
+       $ sudo yum install -y boost155-filesystem boost155-program-options \
+         boost155-system boost155-thread yajl
 
 3. Install build dependencies:
 
-       $ sudo yum install -y gcc-c++ make cmake rpm-build yajl-devel openssl-devel \
-         boost155-devel
+       $ sudo yum install -y boost155-devel cmake gcc-c++ make openssl-devel \
+         rpm-build yajl-devel
 
 4. Set up Boost root:
 
