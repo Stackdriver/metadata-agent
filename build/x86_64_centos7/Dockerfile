@@ -1,20 +1,26 @@
 FROM centos:7
 
-COPY puias-computational-x86_64.repo /etc/yum.repos.d/
-RUN rpm --import http://springdale.math.ias.edu/data/puias/7/x86_64/os/RPM-GPG-KEY-puias \
-    && yum update -y && yum install -y \
+RUN yum update -y && yum install -y \
+        cmake \
+        curl \
+        expect \
         gcc-c++ \
         git \
-        cmake \
         make \
-        yajl-devel \
+        openssl-devel \
         rpm-build \
         rpm-sign \
-        openssl-devel \
-        boost155-devel \
-        expect \
+        tar \
+        yajl-devel \
     && yum -y clean all \
-    && rm /etc/yum.repos.d/puias-computational-x86_64.repo
-ENV BOOST_ROOT=/usr/local/boost/1.55.0
-ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$BOOST_ROOT/lib64"
+    && rm -rf /var/cache/yum /tmp/yum.log \
+    && cd /tmp \
+    && curl -sSLO http://sourceforge.net/projects/boost/files/boost/1.58.0/boost_1_58_0.tar.bz2 \
+    && tar xjf boost_1_58_0.tar.bz2 \
+    && cd /tmp/boost_1_58_0 \
+    && ./bootstrap.sh --with-libraries=atomic,chrono,date_time,filesystem,program_options,regex,system,thread,timer \
+    && ./b2 cxxflags="-std=c++11" linkflags="-std=c++11" install \
+    && rm -rf /tmp/boost_1_58_0 /tmp/boost_1_58_0.tar.bz2
+ENV BOOST_ROOT=/usr/local
+ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$BOOST_ROOT/lib"
 
