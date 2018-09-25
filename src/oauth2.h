@@ -31,35 +31,6 @@ constexpr const char kDefaultTokenEndpoint[] =
   "https://www.googleapis.com/oauth2/v3/token";
 }
 
-class Expiration {
- public:
-  virtual ~Expiration() = default;
-  virtual bool IsExpired() = 0;
-  virtual void Reset(std::chrono::seconds duration) = 0;
-};
-
-template<typename Clock>
-class ExpirationImpl : public Expiration {
- public:
-  static std::unique_ptr<Expiration> New(std::chrono::seconds slack) {
-    return std::unique_ptr<Expiration>(new ExpirationImpl<Clock>(slack));
-  }
-
-  explicit ExpirationImpl(std::chrono::seconds slack) : slack_(slack) {}
-
-  bool IsExpired() override {
-    return token_expiration_ < Clock::now() + slack_;
-  }
-
-  void Reset(std::chrono::seconds duration) override {
-    token_expiration_ = Clock::now() + duration;
-  }
-
- private:
-  typename Clock::time_point token_expiration_;
-  std::chrono::seconds slack_;
-};
-
 class OAuth2 {
  public:
   OAuth2(const Environment& environment)
