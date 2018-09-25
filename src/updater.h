@@ -138,6 +138,8 @@ class MetadataUpdater {
 // Abstract class for a timer.
 class Timer {
  public:
+  virtual ~Timer() = default;
+
   // Initializes the timer.
   virtual void Init() = 0;
 
