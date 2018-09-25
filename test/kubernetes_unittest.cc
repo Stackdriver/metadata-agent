@@ -113,6 +113,9 @@ json::value ContainerMetadataWithAssociations(const std::string& pod_name,
 }  // namespace
 
 class KubernetesTest : public ::testing::Test {
+ public:
+  virtual ~KubernetesTest() = default;
+
  protected:
   using QueryException = KubernetesReader::QueryException;
 

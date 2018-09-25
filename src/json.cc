@@ -232,9 +232,9 @@ namespace {
 
 class Context {
  public:
+  virtual ~Context() = default;
   virtual void AddValue(std::unique_ptr<Value> value) = 0;
   std::unique_ptr<Context> parent() { return std::move(parent_); }
-  virtual ~Context() = default;
  protected:
   Context(std::unique_ptr<Context> parent) : parent_(std::move(parent)) {}
  private:

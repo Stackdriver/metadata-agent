@@ -50,7 +50,12 @@ ifeq ($(UNAME_S),Darwin)
   LDFLAGS+= -L/usr/local/lib -L/usr/local/opt/openssl/lib
   SED_I+= ''
   SED_EXTRA+= -e \
-      's/-Wall/-Wall -Wno-deprecated-declarations -Wno-unused-local-typedef/'
+      's/-Wall/-Wall -Wno-deprecated-declarations -Wno-c++14-extensions -Wno-unused-local-typedef/'
+endif
+
+ifneq ($(BOOST_ROOT),)
+  CPPFLAGS+= -I$(BOOST_ROOT)/include
+  LDFLAGS+= -L$(BOOST_ROOT)/lib64
 endif
 
 SRCS=\
@@ -163,10 +168,10 @@ clean:
 
 purge: clean
 	$(RM) -r init-submodules build-cpp-netlib build-yaml-cpp
-	git submodule deinit -f $(SUBMODULE_DIRS)
+	(cd .. && git submodule deinit -f $(SUBMODULE_DIRS:../%=%))
 
 init-submodules:
-	git submodule update --init --recursive $(SUBMODULE_DIRS)
+	(cd .. && git submodule update --init --recursive $(SUBMODULE_DIRS:../%=%))
 ifneq ($(findstring $(GIT_VERSION),2.7.0 2.7.1 2.7.2 2.7.3 2.7.4 2.7.5 2.7.6 2.8.0 2.8.1 2.8.2 2.8.3),)
 	# Git submodule recursive init was broken between 2.7.0 and 2.8.4
 	# (see https://marc.info/?l=git&m=145935867502974).
@@ -182,8 +187,11 @@ endif
 	touch init-submodules
 
 $(CPP_NETLIB_DIR)/Makefile: init-submodules
+	# Disable building of cpp-netlib unit tests and change the C++14
+	# requirement to C++11 (some older compilers don't support C++14).
 	cd $(CPP_NETLIB_DIR) && \
 	$(SED_I) -e 's/unit_test_framework //' $(SED_EXTRA) CMakeLists.txt && \
+	$(SED_I) -e 's/-std=c++14/-std=c++11/' $(SED_EXTRA) deps/uri/CMakeLists.txt && \
 	$(CMAKE) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
 	    -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
 	    -DCPP-NETLIB_BUILD_TESTS=OFF -DCPP-NETLIB_BUILD_EXAMPLES=OFF \
