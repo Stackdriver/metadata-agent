@@ -37,11 +37,24 @@ class OAuth2Test : public ::testing::Test {
 namespace {
 
 TEST_F(OAuth2Test, GetAuthHeaderValueUsingTokenFromCredentials) {
+  int post_count = 0;
+  std::map<std::string, std::string> post_headers;
+  std::string post_body;
+
   testing::FakeServer oauth_server;
-  oauth_server.SetPostResponse("/oauth2/v3/token",
-                               "{\"access_token\": \"the-access-token\","
-                               " \"token_type\": \"Bearer\","
-                               " \"expires_in\": 3600}");
+  oauth_server.SetHandler(
+      "/oauth2/v3/token",
+      [&post_count, &post_headers, &post_body]
+      (const std::string& path,
+       const std::map<std::string, std::string>& headers,
+       const std::string& body) -> std::string {
+        post_count++;
+        post_headers = headers;
+        post_body = body;
+        return "{\"access_token\": \"the-access-token\","
+            " \"token_type\": \"Bearer\","
+            " \"expires_in\": 3600}";
+      });
   testing::TemporaryFile credentials_file(
     std::string(test_info_->name()) + "_creds.json",
     "{\"client_email\":\"user@example.com\",\"private_key\":\"some_key\"}");
@@ -55,13 +68,10 @@ TEST_F(OAuth2Test, GetAuthHeaderValueUsingTokenFromCredentials) {
   EXPECT_EQ("Bearer the-access-token", auth.GetAuthHeaderValue());
 
   // Verify the POST contents sent to the token endpoint.
-  const auto& posts = oauth_server.GetPosts("/oauth2/v3/token");
-  EXPECT_EQ(1, posts.size());
-
-  const auto& post = posts[0];
+  EXPECT_EQ(1, post_count);
   EXPECT_EQ("application/x-www-form-urlencoded",
-            post.headers.at("Content-Type"));
-  EXPECT_THAT(post.body, ::testing::StartsWith(
+            post_headers.at("Content-Type"));
+  EXPECT_THAT(post_body, ::testing::StartsWith(
       "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer"
       "&assertion="));
 }
@@ -134,14 +144,16 @@ TEST_F(OAuth2Test, GetAuthHeaderValueMetadataServerReturnsEmptyToken) {
   EXPECT_EQ("", auth.GetAuthHeaderValue());
 }
 
+namespace {
 // OAuth2 implementation using a FakeClock for token expiration.
 class FakeOAuth2 : public OAuth2 {
  public:
   FakeOAuth2(const Environment& environment)
     : OAuth2(environment,
-             std::unique_ptr<Expiration>(
-                 new ExpirationImpl<testing::FakeClock>())) {}
+             ExpirationImpl<testing::FakeClock>::New(
+                 std::chrono::seconds(60))) {}
 };
+}  // namespace
 
 TEST_F(OAuth2Test, GetAuthHeaderValueCachingAndExpiration) {
   testing::FakeServer metadata_server;

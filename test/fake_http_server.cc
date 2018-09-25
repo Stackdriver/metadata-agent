@@ -25,6 +25,12 @@
 namespace google {
 namespace testing {
 
+GetHandler Return(const std::string& body) {
+  return [=](const std::string&, std::map<std::string, std::string>&) -> std::string {
+    return body;
+  };
+}
+
 FakeServer::FakeServer()
     // Note: An empty port selects a random available port (this behavior
     // is not documented).
@@ -48,25 +54,12 @@ std::string FakeServer::GetUrl() {
   return builder.uri().string();
 }
 
-void FakeServer::SetResponse(const std::string& path,
-                             const std::string& response) {
-  handler_.path_responses[path] = response;
+void FakeServer::SetHandler(const std::string& path, GetHandler handler) {
+  handler_.get_handlers[path] = handler;
 }
 
-void FakeServer::SetPostResponse(const std::string& path,
-                                 const std::string& response) {
-  handler_.path_posts[path].response = response;
-}
-
-const std::vector<FakeServer::Post>& FakeServer::GetPosts(
-    const std::string& path) {
-  const auto it = handler_.path_posts.find(path);
-  if (it == handler_.path_posts.end()) {
-    LOG(ERROR) << "No post response enabled for path " << path;
-    static std::vector<Post> empty;
-    return empty;
-  }
-  return it->second.posts;
+void FakeServer::SetHandler(const std::string& path, PostHandler handler) {
+  handler_.post_handlers[path] = handler;
 }
 
 void FakeServer::AllowStream(const std::string& path) {
@@ -128,37 +121,41 @@ void FakeServer::Handler::operator()(Server::request const &request,
       return;
     }
 
-    auto it = path_responses.find(request.destination);
-    if (it != path_responses.end()) {
+    auto it = get_handlers.find(request.destination);
+    if (it != get_handlers.end()) {
       connection->set_status(Server::connection::ok);
       connection->set_headers(std::map<std::string, std::string>({
           {"Content-Type", "text/plain"},
       }));
-      connection->write(it->second);
+      std::map<std::string, std::string> headers;
+      for (const auto& h : request.headers) {
+        headers[h.name] = h.value;
+      }
+      connection->write(it->second(request.destination, headers));
       return;
     }
   }
 
   if (request.method == "POST") {
-    auto p = path_posts.find(request.destination);
-    if (p != path_posts.end()) {
-      auto& state = p->second;
-      connection->read([&state, &request](Server::connection::input_range range,
-                                          boost::system::error_code error,
-                                          size_t size,
-                                          Server::connection_ptr conn) {
-        Post post;
+    auto p = post_handlers.find(request.destination);
+    if (p != post_handlers.end()) {
+      std::map<std::string, std::string> headers;
+      std::string body;
+      connection->read([&headers, &body, &request]
+                       (Server::connection::input_range range,
+                        boost::system::error_code error,
+                        size_t size,
+                        Server::connection_ptr conn) {
         for (const auto& h : request.headers) {
-          post.headers[h.name] = h.value;
+          headers[h.name] = h.value;
         }
-        post.body.append(range.begin(), range.end());
-        state.posts.push_back(post);
+        body.append(range.begin(), range.end());
       });
       connection->set_status(Server::connection::ok);
       connection->set_headers(std::map<std::string, std::string>({
           {"Content-Type", "text/plain"},
       }));
-      connection->write(p->second.response);
+      connection->write(p->second(request.destination, headers, body));
       return;
     }
   }

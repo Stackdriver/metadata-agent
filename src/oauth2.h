@@ -33,15 +33,22 @@ constexpr const char kDefaultTokenEndpoint[] =
 
 class Expiration {
  public:
-  virtual bool IsExpired(std::chrono::seconds slack) = 0;
+  virtual ~Expiration() = default;
+  virtual bool IsExpired() = 0;
   virtual void Reset(std::chrono::seconds duration) = 0;
 };
 
 template<typename Clock>
 class ExpirationImpl : public Expiration {
  public:
-  bool IsExpired(std::chrono::seconds slack) override {
-    return token_expiration_ < Clock::now() + slack;
+  static std::unique_ptr<Expiration> New(std::chrono::seconds slack) {
+    return std::unique_ptr<Expiration>(new ExpirationImpl<Clock>(slack));
+  }
+
+  explicit ExpirationImpl(std::chrono::seconds slack) : slack_(slack) {}
+
+  bool IsExpired() override {
+    return token_expiration_ < Clock::now() + slack_;
   }
 
   void Reset(std::chrono::seconds duration) override {
@@ -50,14 +57,17 @@ class ExpirationImpl : public Expiration {
 
  private:
   typename Clock::time_point token_expiration_;
+  std::chrono::seconds slack_;
 };
 
 class OAuth2 {
  public:
   OAuth2(const Environment& environment)
     : OAuth2(environment,
-             std::unique_ptr<Expiration>(
-                 new ExpirationImpl<std::chrono::system_clock>())) {}
+             // Build in a 60 second slack to avoid timing problems
+             // (clock skew, races).
+             ExpirationImpl<std::chrono::system_clock>::New(
+                 std::chrono::seconds(60))) {}
 
   std::string GetAuthHeaderValue();
 

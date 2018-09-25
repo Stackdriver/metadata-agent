@@ -273,9 +273,7 @@ json::value OAuth2::GetMetadataToken() const {
 }
 
 std::string OAuth2::GetAuthHeaderValue() {
-  // Build in a 60 second slack to avoid timing problems (clock skew, races).
-  if (auth_header_value_.empty() ||
-      token_expiration_->IsExpired(std::chrono::seconds(60))) {
+  if (auth_header_value_.empty() || token_expiration_->IsExpired()) {
     // Token expired; retrieve new value.
     json::value token_json = ComputeTokenFromCredentials();
     if (token_json == nullptr) {
