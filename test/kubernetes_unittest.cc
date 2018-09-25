@@ -30,12 +30,12 @@ namespace google {
 
 namespace {
 
-json::value NodeMetadataWithAssociations(const json::value& node) {
+json::value NodeMetadataWithAssociations(json::value node) {
   return json::object({
     {"blobs", json::object({
       {"api", json::object({
         {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
-        {"raw", node->Clone()},
+        {"raw", std::move(node)},
       })},
       {"association", json::object({
         {"version", json::string("TestVersion")},
@@ -54,12 +54,12 @@ json::value NodeMetadataWithAssociations(const json::value& node) {
 }
 
 json::value PodMetadataWithAssociations(const std::string& pod_name,
-                                        const json::value& pod) {
+                                        json::value pod) {
   return json::object({
     {"blobs", json::object({
       {"api", json::object({
         {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
-        {"raw", pod->Clone()},
+        {"raw", std::move(pod)},
       })},
       {"association", json::object({
         {"version", json::string("TestVersion")},
@@ -83,8 +83,8 @@ json::value PodMetadataWithAssociations(const std::string& pod_name,
 }
 
 json::value ContainerMetadataWithAssociations(const std::string& pod_name,
-                                              const json::value& spec,
-                                              const json::value& status) {
+                                              json::value spec,
+                                              json::value status) {
   return json::object({
     {"blobs", json::object({
       {"association", json::object({
@@ -104,8 +104,8 @@ json::value ContainerMetadataWithAssociations(const std::string& pod_name,
           {"nodeName", json::string("TestSpecNodeName")},
         })},
       })},
-      {"spec", spec->Clone()},
-      {"status", status->Clone()},
+      {"spec", std::move(spec)},
+      {"status", std::move(status)},
     })},
   });
 }
@@ -508,7 +508,7 @@ TEST_F(KubernetesTestWithInstance, GetNodeMetadata) {
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
             m.metadata().created_at);
   EXPECT_EQ(Timestamp(), m.metadata().collected_at);
-  EXPECT_EQ(NodeMetadataWithAssociations(node)->ToString(),
+  EXPECT_EQ(NodeMetadataWithAssociations(node->Clone())->ToString(),
             m.metadata().metadata->ToString());
 }
 
@@ -910,21 +910,21 @@ TEST_F(KubernetesTestWithInstance, GetPodAndContainerMetadata) {
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
             m[1].metadata().created_at);
   EXPECT_EQ(Timestamp(), m[1].metadata().collected_at);
-  json::value spec = json::object({
-    {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
-    {"raw", json::object({
-      {"name", json::string("TestContainerName0")},
-    })},
-  });
-  json::value status = json::object({
-    {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
-    {"raw", json::object({
-      {"name", json::string("TestContainerName0")},
-    })},
-  });
-  EXPECT_EQ(
-      ContainerMetadataWithAssociations("TestPodName", spec, status)->ToString(),
-      m[1].metadata().metadata->ToString());
+  EXPECT_EQ(ContainerMetadataWithAssociations(
+                "TestPodName",
+                json::object({
+                  {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
+                  {"raw", json::object({
+                    {"name", json::string("TestContainerName0")},
+                  })},
+                }),
+                json::object({
+                  {"version", json::string("1.6")},  // Hard-coded in kubernetes.cc.
+                  {"raw", json::object({
+                    {"name", json::string("TestContainerName0")},
+                  })},
+                }))->ToString(),
+            m[1].metadata().metadata->ToString());
 
   EXPECT_EQ(std::vector<std::string>({
     "k8s_pod.TestPodUid",
@@ -942,7 +942,7 @@ TEST_F(KubernetesTestWithInstance, GetPodAndContainerMetadata) {
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
             m[2].metadata().created_at);
   EXPECT_EQ(Timestamp(), m[2].metadata().collected_at);
-  EXPECT_EQ(PodMetadataWithAssociations("TestPodName", pod)->ToString(),
+  EXPECT_EQ(PodMetadataWithAssociations("TestPodName", pod->Clone())->ToString(),
             m[2].metadata().metadata->ToString());
 }
 
@@ -1063,7 +1063,7 @@ TEST_F(KubernetesTestFakeServer, MetadataQuery) {
   EXPECT_FALSE(m[0].metadata().is_deleted);
   EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
             m[0].metadata().created_at);
-  EXPECT_EQ(NodeMetadataWithAssociations(node)->ToString(),
+  EXPECT_EQ(NodeMetadataWithAssociations(node->Clone())->ToString(),
             m[0].metadata().metadata->ToString());
 
   // Verify pod metadata.
@@ -1197,7 +1197,7 @@ TEST_F(KubernetesTestFakeServer, MetadataQuery) {
 }
 
 class KubernetesTestFakeServerOneWatchRetry
-  : public KubernetesTestFakeServer {
+    : public KubernetesTestFakeServer {
  protected:
   virtual bool ClusterLevel() = 0;
   std::unique_ptr<Configuration> CreateConfig() override {
@@ -1220,13 +1220,13 @@ class KubernetesTestFakeServerOneWatchRetry
 };
 
 class KubernetesTestFakeServerOneWatchRetryNodeLevelMetadata
-  : public KubernetesTestFakeServerOneWatchRetry {
+    : public KubernetesTestFakeServerOneWatchRetry {
  protected:
   bool ClusterLevel() override { return false; }
 };
 
-  class KubernetesTestFakeServerOneWatchRetryClusterLevelMetadata
-  : public KubernetesTestFakeServerOneWatchRetry {
+class KubernetesTestFakeServerOneWatchRetryClusterLevelMetadata
+    : public KubernetesTestFakeServerOneWatchRetry {
  protected:
   bool ClusterLevel() override { return true; }
 };
@@ -1295,7 +1295,7 @@ void TestNodes(testing::FakeServer& server, MetadataStore& store,
     EXPECT_FALSE(metadata.is_deleted);
     EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
               metadata.created_at);
-    EXPECT_EQ(NodeMetadataWithAssociations(node1)->ToString(),
+    EXPECT_EQ(NodeMetadataWithAssociations(node1->Clone())->ToString(),
               metadata.metadata->ToString());
     last_timestamp = metadata.collected_at;
   }
@@ -1316,7 +1316,7 @@ void TestNodes(testing::FakeServer& server, MetadataStore& store,
     EXPECT_FALSE(metadata.is_deleted);
     EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
               metadata.created_at);
-    EXPECT_EQ(NodeMetadataWithAssociations(node2)->ToString(),
+    EXPECT_EQ(NodeMetadataWithAssociations(node2->Clone())->ToString(),
               metadata.metadata->ToString());
     last_timestamp = metadata.collected_at;
   }
@@ -1338,7 +1338,7 @@ void TestNodes(testing::FakeServer& server, MetadataStore& store,
     EXPECT_TRUE(metadata.is_deleted);
     EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
               metadata.created_at);
-    EXPECT_EQ(NodeMetadataWithAssociations(node1)->ToString(),
+    EXPECT_EQ(NodeMetadataWithAssociations(node1->Clone())->ToString(),
               metadata.metadata->ToString());
   }
 }
@@ -1460,7 +1460,8 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
     EXPECT_FALSE(k8s_pod_metadata.is_deleted);
     EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
               k8s_pod_metadata.created_at);
-    EXPECT_EQ(PodMetadataWithAssociations("TestPodName1", pod1)->ToString(),
+    EXPECT_EQ(PodMetadataWithAssociations(
+                  "TestPodName1", pod1->Clone())->ToString(),
               k8s_pod_metadata.metadata->ToString());
 
     const auto& k8s_container_metadata = metadata_map.at(
@@ -1472,7 +1473,7 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
     EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
               k8s_container_metadata.created_at);
     EXPECT_EQ(ContainerMetadataWithAssociations(
-                  "TestPodName1", spec, status)->ToString(),
+                  "TestPodName1", spec->Clone(), status->Clone())->ToString(),
               k8s_container_metadata.metadata->ToString());
 
     last_timestamp = k8s_pod_metadata.collected_at;
@@ -1504,7 +1505,8 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
     EXPECT_FALSE(k8s_pod_metadata.is_deleted);
     EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
               k8s_pod_metadata.created_at);
-    EXPECT_EQ(PodMetadataWithAssociations("TestPodName2", pod2)->ToString(),
+    EXPECT_EQ(PodMetadataWithAssociations(
+                  "TestPodName2", pod2->Clone())->ToString(),
               k8s_pod_metadata.metadata->ToString());
 
     const auto& k8s_container_metadata = metadata_map.at(
@@ -1516,7 +1518,7 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
     EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
               k8s_container_metadata.created_at);
     EXPECT_EQ(ContainerMetadataWithAssociations(
-                  "TestPodName2", spec, status)->ToString(),
+                  "TestPodName2", spec->Clone(), status->Clone())->ToString(),
               k8s_container_metadata.metadata->ToString());
 
     last_timestamp = k8s_pod_metadata.collected_at;
@@ -1548,7 +1550,8 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
     EXPECT_TRUE(k8s_pod_metadata.is_deleted);
     EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
               k8s_pod_metadata.created_at);
-    EXPECT_EQ(PodMetadataWithAssociations("TestPodName1", pod1)->ToString(),
+    EXPECT_EQ(PodMetadataWithAssociations(
+                  "TestPodName1", pod1->Clone())->ToString(),
               k8s_pod_metadata.metadata->ToString());
 
     const auto& k8s_container_metadata = metadata_map.at(
@@ -1560,7 +1563,7 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
     EXPECT_EQ(time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
               k8s_container_metadata.created_at);
     EXPECT_EQ(ContainerMetadataWithAssociations(
-                  "TestPodName1", spec, status)->ToString(),
+                  "TestPodName1", spec->Clone(), status->Clone())->ToString(),
               k8s_container_metadata.metadata->ToString());
   }
 }
