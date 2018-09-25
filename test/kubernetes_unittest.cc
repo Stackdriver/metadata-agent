@@ -28,6 +28,9 @@
 namespace google {
 
 class KubernetesTest : public ::testing::Test {
+ public:
+  virtual ~KubernetesTest() = default;
+
  protected:
   using QueryException = KubernetesReader::QueryException;
 

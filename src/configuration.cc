@@ -40,6 +40,7 @@ constexpr const char kConfigFileFlag[] = "config-file";
 
 class Option {
  public:
+  virtual ~Option() = default;
   virtual void Set(const YAML::Node& value) = 0;
 };
 
