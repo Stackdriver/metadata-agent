@@ -305,7 +305,10 @@ std::string OAuth2::GetAuthHeaderValue() {
       }
 
       auth_header_value_ = token_type + " " + access_token;
-      token_expiration_->Reset(std::chrono::seconds(static_cast<long>(expires_in)));
+      // Build in a 60 second slack to avoid timing problems (clock
+      // skew, races).
+      token_expiration_->Reset(
+          std::chrono::seconds(static_cast<long>(expires_in) - 60));
     } catch (const json::Exception& e) {
       LOG(ERROR) << e.what();
       return "";

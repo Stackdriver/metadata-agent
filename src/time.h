@@ -127,14 +127,12 @@ class Expiration {
 template<typename Clock>
 class ExpirationImpl : public Expiration {
  public:
-  static std::unique_ptr<Expiration> New(std::chrono::seconds slack) {
-    return std::unique_ptr<Expiration>(new ExpirationImpl<Clock>(slack));
+  static std::unique_ptr<Expiration> New() {
+    return std::unique_ptr<Expiration>(new ExpirationImpl<Clock>());
   }
 
-  explicit ExpirationImpl(std::chrono::seconds slack) : slack_(slack) {}
-
   bool IsExpired() override {
-    return token_expiration_ < Clock::now() + slack_;
+    return token_expiration_ < Clock::now();
   }
 
   void Reset(std::chrono::seconds duration) override {
@@ -143,7 +141,6 @@ class ExpirationImpl : public Expiration {
 
  private:
   typename Clock::time_point token_expiration_;
-  std::chrono::seconds slack_;
 };
 
 }

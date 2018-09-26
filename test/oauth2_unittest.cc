@@ -150,9 +150,7 @@ namespace {
 class FakeOAuth2 : public OAuth2 {
  public:
   FakeOAuth2(const Environment& environment)
-    : OAuth2(environment,
-             ExpirationImpl<testing::FakeClock>::New(
-                 std::chrono::seconds(60))) {}
+    : OAuth2(environment, ExpirationImpl<testing::FakeClock>::New()) {}
 };
 }  // namespace
 

@@ -34,11 +34,7 @@ constexpr const char kDefaultTokenEndpoint[] =
 class OAuth2 {
  public:
   OAuth2(const Environment& environment)
-    : OAuth2(environment,
-             // Build in a 60 second slack to avoid timing problems
-             // (clock skew, races).
-             ExpirationImpl<std::chrono::system_clock>::New(
-                 std::chrono::seconds(60))) {}
+    : OAuth2(environment, ExpirationImpl<std::chrono::system_clock>::New()) {}
 
   std::string GetAuthHeaderValue();
 
