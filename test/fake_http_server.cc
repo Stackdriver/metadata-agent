@@ -25,12 +25,6 @@
 namespace google {
 namespace testing {
 
-GetHandler Return(const std::string& body) {
-  return [=](const std::string&, std::map<std::string, std::string>&) -> std::string {
-    return body;
-  };
-}
-
 FakeServer::FakeServer()
     // Note: An empty port selects a random available port (this behavior
     // is not documented).
@@ -60,6 +54,12 @@ void FakeServer::SetHandler(const std::string& path, GetHandler handler) {
 
 void FakeServer::SetHandler(const std::string& path, PostHandler handler) {
   handler_.post_handlers[path] = handler;
+}
+
+GetHandler FakeServer::Return(const std::string& body) {
+  return [=](const std::string&, std::map<std::string, std::string>&) -> std::string {
+    return body;
+  };
 }
 
 void FakeServer::AllowStream(const std::string& path) {
@@ -123,6 +123,7 @@ void FakeServer::Handler::operator()(Server::request const &request,
 
     auto it = get_handlers.find(request.destination);
     if (it != get_handlers.end()) {
+      const auto& handler = it->second;
       connection->set_status(Server::connection::ok);
       connection->set_headers(std::map<std::string, std::string>({
           {"Content-Type", "text/plain"},
@@ -131,31 +132,32 @@ void FakeServer::Handler::operator()(Server::request const &request,
       for (const auto& h : request.headers) {
         headers[h.name] = h.value;
       }
-      connection->write(it->second(request.destination, headers));
+      connection->write(handler(request.destination, headers));
       return;
     }
   }
 
   if (request.method == "POST") {
-    auto p = post_handlers.find(request.destination);
-    if (p != post_handlers.end()) {
+    auto it = post_handlers.find(request.destination);
+    if (it != post_handlers.end()) {
+      const auto& handler = it->second;
       std::map<std::string, std::string> headers;
+      for (const auto& h : request.headers) {
+        headers[h.name] = h.value;
+      }
       std::string body;
       connection->read([&headers, &body, &request]
                        (Server::connection::input_range range,
                         boost::system::error_code error,
                         size_t size,
                         Server::connection_ptr conn) {
-        for (const auto& h : request.headers) {
-          headers[h.name] = h.value;
-        }
         body.append(range.begin(), range.end());
       });
       connection->set_status(Server::connection::ok);
       connection->set_headers(std::map<std::string, std::string>({
           {"Content-Type", "text/plain"},
       }));
-      connection->write(p->second(request.destination, headers, body));
+      connection->write(handler(request.destination, headers, body));
       return;
     }
   }

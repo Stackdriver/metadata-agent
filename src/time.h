@@ -50,37 +50,6 @@ std::tm safe_gmtime(const std::time_t* t);
 
 }
 
-// Abstract class for an expiration.
-class Expiration {
- public:
-  virtual ~Expiration() = default;
-  virtual bool IsExpired() = 0;
-  virtual void Reset(std::chrono::seconds duration) = 0;
-};
-
-// Implementation of an expiration paramterized over a clock type.
-template<typename Clock>
-class ExpirationImpl : public Expiration {
- public:
-  static std::unique_ptr<Expiration> New(std::chrono::seconds slack) {
-    return std::unique_ptr<Expiration>(new ExpirationImpl<Clock>(slack));
-  }
-
-  explicit ExpirationImpl(std::chrono::seconds slack) : slack_(slack) {}
-
-  bool IsExpired() override {
-    return token_expiration_ < Clock::now() + slack_;
-  }
-
-  void Reset(std::chrono::seconds duration) override {
-    token_expiration_ = Clock::now() + duration;
-  }
-
- private:
-  typename Clock::time_point token_expiration_;
-  std::chrono::seconds slack_;
-};
-
 // Abstract class for a timer.
 class Timer {
  public:
@@ -139,6 +108,42 @@ class TimerImpl : public Timer {
   std::timed_mutex timer_;
   bool verbose_;
   std::string name_;
+};
+
+// Abstract class for tracking an expiration time.
+class Expiration {
+ public:
+  virtual ~Expiration() = default;
+
+  // Returns true if the expiration time has passed.
+  virtual bool IsExpired() = 0;
+
+  // Resets the expiration time to the given number of seconds from
+  // now.
+  virtual void Reset(std::chrono::seconds duration) = 0;
+};
+
+// Implementation of an expiration parameterized over a clock type.
+template<typename Clock>
+class ExpirationImpl : public Expiration {
+ public:
+  static std::unique_ptr<Expiration> New(std::chrono::seconds slack) {
+    return std::unique_ptr<Expiration>(new ExpirationImpl<Clock>(slack));
+  }
+
+  explicit ExpirationImpl(std::chrono::seconds slack) : slack_(slack) {}
+
+  bool IsExpired() override {
+    return token_expiration_ < Clock::now() + slack_;
+  }
+
+  void Reset(std::chrono::seconds duration) override {
+    token_expiration_ = Clock::now() + duration;
+  }
+
+ private:
+  typename Clock::time_point token_expiration_;
+  std::chrono::seconds slack_;
 };
 
 }

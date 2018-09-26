@@ -44,14 +44,14 @@ TEST_F(OAuth2Test, GetAuthHeaderValueUsingTokenFromCredentials) {
   testing::FakeServer oauth_server;
   oauth_server.SetHandler(
       "/oauth2/v3/token",
-      [&post_count, &post_headers, &post_body]
-      (const std::string& path,
-       const std::map<std::string, std::string>& headers,
-       const std::string& body) -> std::string {
+      [&](const std::string& path,
+          const std::map<std::string, std::string>& headers,
+          const std::string& body) -> std::string {
         post_count++;
         post_headers = headers;
         post_body = body;
-        return "{\"access_token\": \"the-access-token\","
+        return
+            "{\"access_token\": \"the-access-token\","
             " \"token_type\": \"Bearer\","
             " \"expires_in\": 3600}";
       });
@@ -69,8 +69,9 @@ TEST_F(OAuth2Test, GetAuthHeaderValueUsingTokenFromCredentials) {
 
   // Verify the POST contents sent to the token endpoint.
   EXPECT_EQ(1, post_count);
-  EXPECT_EQ("application/x-www-form-urlencoded",
-            post_headers.at("Content-Type"));
+  const auto& content_type = post_headers.find("Content-Type");
+  ASSERT_NE(content_type, post_headers.end());
+  EXPECT_EQ("application/x-www-form-urlencoded", content_type->second);
   EXPECT_THAT(post_body, ::testing::StartsWith(
       "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer"
       "&assertion="));

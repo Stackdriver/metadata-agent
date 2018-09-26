@@ -36,9 +36,6 @@ using PostHandler =
                               std::map<std::string, std::string>&,
                               std::string)>;
 
-// A handler for GET requests that returns a constant string.
-GetHandler Return(const std::string& body);
-
 // Starts a server in a separate thread, allowing it to choose an
 // available port.
 class FakeServer {
@@ -53,6 +50,9 @@ class FakeServer {
 
   // Sets the response for POST requests to a path.
   void SetHandler(const std::string& path, PostHandler handler);
+
+  // A handler for GET requests that returns a constant string.
+  static GetHandler Return(const std::string& body);
 
   // Helper method for simple GET responses.
   void SetResponse(const std::string& path, const std::string& response) {
