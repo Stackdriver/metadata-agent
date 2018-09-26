@@ -23,7 +23,6 @@
 #include "gtest/gtest.h"
 #include "temp_file.h"
 
-#include <boost/network/protocol/http/server.hpp>
 #include <memory>
 
 namespace google {
