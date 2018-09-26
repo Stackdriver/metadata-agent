@@ -950,23 +950,27 @@ KubernetesUpdater::KubernetesUpdater(const Configuration& config,
         config.KubernetesUpdaterIntervalSeconds(),
         [=]() { return reader_.MetadataQuery(); }) { }
 
-const KubernetesUpdater::WatchId KubernetesUpdater::kClusterLevelObjectTypes[] =
-{
-    {"cronjobs", "batch/v1beta1"},
-    {"daemonsets", "apps/v1"},
-    {"daemonsets", "extensions/v1beta1"},
-    {"deployments", "apps/v1"},
-    {"deployments", "extensions/v1beta1"},
-    {"endpoints", "v1"},
-    {"ingresses", "extensions/v1beta1"},
-    {"jobs", "batch/v1"},
-    {"namespaces", "v1"},
-    {"replicasets", "apps/v1"},
-    {"replicasets", "extensions/v1beta1"},
-    {"replicationcontrollers", "v1"},
-    {"services", "v1"},
-    {"statefulsets", "apps/v1"},
-};
+const std::vector<KubernetesUpdater::WatchId>&
+KubernetesUpdater::ClusterLevelObjectTypes() {
+  static const std::vector<WatchId>* cluster_level_object_types =
+      new std::vector<WatchId>{
+        {"cronjobs", "batch/v1beta1"},
+        {"daemonsets", "apps/v1"},
+        {"daemonsets", "extensions/v1beta1"},
+        {"deployments", "apps/v1"},
+        {"deployments", "extensions/v1beta1"},
+        {"endpoints", "v1"},
+        {"ingresses", "extensions/v1beta1"},
+        {"jobs", "batch/v1"},
+        {"namespaces", "v1"},
+        {"replicasets", "apps/v1"},
+        {"replicasets", "extensions/v1beta1"},
+        {"replicationcontrollers", "v1"},
+        {"services", "v1"},
+        {"statefulsets", "apps/v1"},
+      };
+  return *cluster_level_object_types;
+}
 
 void KubernetesUpdater::ValidateDynamicConfiguration() const
     throw(ConfigurationValidationError) {
@@ -1000,20 +1004,16 @@ void KubernetesUpdater::StartUpdater() {
     auto cb = [=](std::vector<MetadataUpdater::ResourceMetadata>&& results) {
       MetadataCallback(std::move(results));
     };
-    object_watch_threads_.emplace(
-        WatchId("nodes", "v1"),
-        std::thread([=]() {
-          reader_.WatchNodes(watched_node, cb);
-        }));
-    object_watch_threads_.emplace(
-        WatchId("pods", "v1"),
-        std::thread([=]() {
-          reader_.WatchPods(watched_node, cb);
-        }));
+    object_watch_threads_.emplace(WatchId("nodes", "v1"), std::thread([=]() {
+      reader_.WatchNodes(watched_node, cb);
+    }));
+    object_watch_threads_.emplace(WatchId("pods", "v1"), std::thread([=]() {
+      reader_.WatchPods(watched_node, cb);
+    }));
     if (config().KubernetesClusterLevelMetadata()) {
-      for (const auto& watch_id: kClusterLevelObjectTypes) {
-        const std::string plural_kind = watch_id.first;
-        const std::string api_version = watch_id.second;
+      for (const auto& watch_id: ClusterLevelObjectTypes()) {
+        const std::string& plural_kind = watch_id.first;
+        const std::string& api_version = watch_id.second;
         object_watch_threads_.emplace(
             watch_id,
             std::thread([=]() {
