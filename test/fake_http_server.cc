@@ -57,7 +57,8 @@ void FakeServer::SetHandler(const std::string& path, PostHandler handler) {
 }
 
 GetHandler FakeServer::Return(const std::string& body) {
-  return [=](const std::string&, std::map<std::string, std::string>&) -> std::string {
+  return [=](const std::string&,
+             std::map<std::string, std::string>&) -> std::string {
     return body;
   };
 }
@@ -141,23 +142,22 @@ void FakeServer::Handler::operator()(Server::request const &request,
     auto it = post_handlers.find(request.destination);
     if (it != post_handlers.end()) {
       const auto& handler = it->second;
-      std::map<std::string, std::string> headers;
-      for (const auto& h : request.headers) {
-        headers[h.name] = h.value;
-      }
-      std::string body;
-      connection->read([&headers, &body, &request]
+      connection->read([&request, &handler]
                        (Server::connection::input_range range,
                         boost::system::error_code error,
                         size_t size,
                         Server::connection_ptr conn) {
-        body.append(range.begin(), range.end());
+        std::map<std::string, std::string> headers;
+        for (const auto& h : request.headers) {
+          headers[h.name] = h.value;
+        }
+        std::string body(range.begin(), range.end());
+        conn->set_status(Server::connection::ok);
+        conn->set_headers(std::map<std::string, std::string>({
+            {"Content-Type", "text/plain"},
+        }));
+        conn->write(handler(request.destination, headers, body));
       });
-      connection->set_status(Server::connection::ok);
-      connection->set_headers(std::map<std::string, std::string>({
-          {"Content-Type", "text/plain"},
-      }));
-      connection->write(handler(request.destination, headers, body));
       return;
     }
   }
@@ -194,7 +194,8 @@ void FakeServer::Handler::Stream::SendToAllQueues(const std::string& response) {
   cv_.notify_all();
 }
 
-std::string FakeServer::Handler::Stream::GetNextResponse(std::queue<std::string>* queue) {
+std::string FakeServer::Handler::Stream::GetNextResponse(
+    std::queue<std::string>* queue) {
   std::unique_lock<std::mutex> lk(mutex_);
   cv_.wait(lk, [&queue]{ return queue->size() > 0; });
   std::string s = queue->front();

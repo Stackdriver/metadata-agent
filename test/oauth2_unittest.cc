@@ -68,10 +68,10 @@ TEST_F(OAuth2Test, GetAuthHeaderValueUsingTokenFromCredentials) {
   EXPECT_EQ("Bearer the-access-token", auth.GetAuthHeaderValue());
 
   // Verify the POST contents sent to the token endpoint.
+  const std::pair<std::string, std::string> content_type(
+      "Content-Type", "application/x-www-form-urlencoded");
   EXPECT_EQ(1, post_count);
-  const auto& content_type = post_headers.find("Content-Type");
-  ASSERT_NE(content_type, post_headers.end());
-  EXPECT_EQ("application/x-www-form-urlencoded", content_type->second);
+  EXPECT_THAT(post_headers, ::testing::Contains(content_type));
   EXPECT_THAT(post_body, ::testing::StartsWith(
       "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer"
       "&assertion="));
