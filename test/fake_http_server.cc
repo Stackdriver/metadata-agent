@@ -143,23 +143,26 @@ void FakeServer::Handler::operator()(Server::request const &request,
     auto it = post_handlers.find(request.destination);
     if (it != post_handlers.end()) {
       const auto& handler = it->second;
+      std::map<std::string, std::string> headers;
+      for (const auto& h : request.headers) {
+        headers[h.name] = h.value;
+      }
+      std::string body;
+      std::mutex mutex;
+      mutex.lock();
       connection->read([&](Server::connection::input_range range,
                            boost::system::error_code error,
                            size_t size,
                            Server::connection_ptr conn) {
-        std::map<std::string, std::string> headers;
-        for (const auto& h : request.headers) {
-          headers[h.name] = h.value;
-        }
-        std::string body(range.begin(), range.end());
-        // Send the response from this async callback to ensure that
-        // we have read the body.
-        conn->set_status(Server::connection::ok);
-        conn->set_headers(std::map<std::string, std::string>({
-            {"Content-Type", "text/plain"},
-        }));
-        conn->write(handler(request.destination, headers, body));
+        body.append(range.begin(), range.end());
+        mutex.unlock();
       });
+      mutex.lock();
+      connection->set_status(Server::connection::ok);
+      connection->set_headers(std::map<std::string, std::string>({
+          {"Content-Type", "text/plain"},
+      }));
+      connection->write(handler(request.destination, headers, body));
       return;
     }
   }
