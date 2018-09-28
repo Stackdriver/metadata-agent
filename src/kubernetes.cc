@@ -1014,11 +1014,9 @@ void KubernetesUpdater::StartUpdater() {
       for (const auto& watch_id: ClusterLevelObjectTypes()) {
         const std::string& plural_kind = watch_id.first;
         const std::string& api_version = watch_id.second;
-        object_watch_threads_.emplace(
-            watch_id,
-            std::thread([=]() {
-              reader_.WatchObjects(plural_kind, api_version, cb);
-            }));
+        object_watch_threads_.emplace(watch_id, std::thread([=]() {
+          reader_.WatchObjects(plural_kind, api_version, cb);
+        }));
       }
     }
   } else {
