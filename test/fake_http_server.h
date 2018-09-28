@@ -47,7 +47,7 @@ class FakeServer {
   static GetHandler Return(const std::string& body);
 
   // Returns the URL for this server without a trailing slash:
-  // http://<host>:<port>
+  // "http://<host>:<port>".
   std::string GetUrl();
 
   // Sets the response for GET requests to a path.

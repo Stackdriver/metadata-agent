@@ -42,6 +42,7 @@ FakeServer::~FakeServer() {
   server_thread_.join();
 }
 
+/* static */
 GetHandler FakeServer::Return(const std::string& body) {
   return [=](const std::string&,
              std::map<std::string, std::string>&) -> std::string {
