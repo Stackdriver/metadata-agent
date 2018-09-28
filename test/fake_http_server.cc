@@ -42,6 +42,13 @@ FakeServer::~FakeServer() {
   server_thread_.join();
 }
 
+GetHandler FakeServer::Return(const std::string& body) {
+  return [=](const std::string&,
+             std::map<std::string, std::string>&) -> std::string {
+    return body;
+  };
+}
+
 std::string FakeServer::GetUrl() {
   network::uri_builder builder;
   builder.scheme("http").host(server_.address()).port(server_.port());
@@ -54,13 +61,6 @@ void FakeServer::SetHandler(const std::string& path, GetHandler handler) {
 
 void FakeServer::SetHandler(const std::string& path, PostHandler handler) {
   handler_.post_handlers[path] = handler;
-}
-
-GetHandler FakeServer::Return(const std::string& body) {
-  return [=](const std::string&,
-             std::map<std::string, std::string>&) -> std::string {
-    return body;
-  };
 }
 
 void FakeServer::AllowStream(const std::string& path) {
@@ -125,14 +125,14 @@ void FakeServer::Handler::operator()(Server::request const &request,
     auto it = get_handlers.find(request.destination);
     if (it != get_handlers.end()) {
       const auto& handler = it->second;
-      connection->set_status(Server::connection::ok);
-      connection->set_headers(std::map<std::string, std::string>({
-          {"Content-Type", "text/plain"},
-      }));
       std::map<std::string, std::string> headers;
       for (const auto& h : request.headers) {
         headers[h.name] = h.value;
       }
+      connection->set_status(Server::connection::ok);
+      connection->set_headers(std::map<std::string, std::string>({
+          {"Content-Type", "text/plain"},
+      }));
       connection->write(handler(request.destination, headers));
       return;
     }
@@ -142,16 +142,17 @@ void FakeServer::Handler::operator()(Server::request const &request,
     auto it = post_handlers.find(request.destination);
     if (it != post_handlers.end()) {
       const auto& handler = it->second;
-      connection->read([&request, &handler]
-                       (Server::connection::input_range range,
-                        boost::system::error_code error,
-                        size_t size,
-                        Server::connection_ptr conn) {
+      connection->read([&](Server::connection::input_range range,
+                           boost::system::error_code error,
+                           size_t size,
+                           Server::connection_ptr conn) {
         std::map<std::string, std::string> headers;
         for (const auto& h : request.headers) {
           headers[h.name] = h.value;
         }
         std::string body(range.begin(), range.end());
+        // Send the response from this async callback to ensure that
+        // we have read the body.
         conn->set_status(Server::connection::ok);
         conn->set_headers(std::map<std::string, std::string>({
             {"Content-Type", "text/plain"},

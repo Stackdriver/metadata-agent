@@ -43,6 +43,11 @@ class FakeServer {
   FakeServer();
   ~FakeServer();
 
+  // A handler for GET requests that returns a constant string.
+  static GetHandler Return(const std::string& body);
+
+  // Returns the URL for this server without a trailing slash:
+  // http://<host>:<port>
   std::string GetUrl();
 
   // Sets the response for GET requests to a path.
@@ -50,9 +55,6 @@ class FakeServer {
 
   // Sets the response for POST requests to a path.
   void SetHandler(const std::string& path, PostHandler handler);
-
-  // A handler for GET requests that returns a constant string.
-  static GetHandler Return(const std::string& body);
 
   // Helper method for simple GET responses.
   void SetResponse(const std::string& path, const std::string& response) {

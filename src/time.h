@@ -18,6 +18,7 @@
 
 #include <chrono>
 #include <ctime>
+#include <memory>
 #include <string>
 
 #include "logging.h"
