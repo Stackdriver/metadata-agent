@@ -177,9 +177,6 @@ class KubernetesReader {
   mutable std::string current_node_;
   mutable std::string kubernetes_api_token_;
   mutable std::string kubernetes_namespace_;
-  // A memoized map from version to a map from kind to name.
-  mutable std::map<std::string, std::map<std::string, std::string>>
-      version_to_kind_to_name_;
 
   const Configuration& config_;
   HealthChecker* health_checker_;
@@ -193,17 +190,11 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   KubernetesUpdater(const Configuration& config, HealthChecker* health_checker,
                     MetadataStore* store);
   ~KubernetesUpdater() {
-    if (node_watch_thread_.joinable()) {
-      node_watch_thread_.join();
-    }
-    if (pod_watch_thread_.joinable()) {
-      pod_watch_thread_.join();
-    }
-    if (service_watch_thread_.joinable()) {
-      service_watch_thread_.join();
-    }
-    if (endpoints_watch_thread_.joinable()) {
-      endpoints_watch_thread_.join();
+    for (auto& thread_it: object_watch_threads_) {
+      std::thread& watch_thread = thread_it.second;
+      if (watch_thread.joinable()) {
+        watch_thread.join();
+      }
     }
   }
 
@@ -218,15 +209,18 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   void NotifyStopUpdater();
 
  private:
+  // WatchId combines the plural Kubernetes kind and API version.
+  using WatchId = std::pair<std::string, std::string>;
+  // List of cluster level objects to watch.
+  static const std::vector<WatchId>& ClusterLevelObjectTypes();
+
   // Metadata watcher callback.
   void MetadataCallback(std::vector<ResourceMetadata>&& result_vector);
 
   KubernetesReader reader_;
   HealthChecker* health_checker_;
-  std::thread node_watch_thread_;
-  std::thread pod_watch_thread_;
-  std::thread service_watch_thread_;
-  std::thread endpoints_watch_thread_;
+  // Map from the watch IDs to the respective threads.
+  std::map<WatchId, std::thread> object_watch_threads_;
 };
 
 }
