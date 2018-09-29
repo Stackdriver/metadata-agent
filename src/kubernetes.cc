@@ -912,10 +912,8 @@ void KubernetesReader::ObjectWatchCallback(
     MetadataUpdater::UpdateCallback update_cb,
     const json::Object* object, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
-  std::vector<MetadataUpdater::ResourceMetadata> result_vector;
-  result_vector.emplace_back(
+  update_cb(
       GetObjectMetadata(object, collected_at, is_deleted, resource_mapping_cb));
-  update_cb(std::move(result_vector));
 }
 
 void KubernetesReader::WatchEndpoint(
@@ -1002,8 +1000,8 @@ void KubernetesUpdater::StartUpdater() {
     const std::string watched_node(
         config().KubernetesClusterLevelMetadata() ? "" : current_node);
 
-    auto cb = [=](std::vector<MetadataUpdater::ResourceMetadata>&& results) {
-      MetadataCallback(std::move(results));
+    auto cb = [=](MetadataUpdater::ResourceMetadata&& result) {
+      MetadataCallback(std::move(result));
     };
     object_watch_threads_.emplace(WatchId("nodes", "v1"), std::thread([=]() {
       reader_.WatchNodes(watched_node, cb);
@@ -1036,11 +1034,9 @@ void KubernetesUpdater::NotifyStopUpdater() {
 }
 
 void KubernetesUpdater::MetadataCallback(
-    std::vector<MetadataUpdater::ResourceMetadata>&& result_vector) {
-  for (MetadataUpdater::ResourceMetadata& result : result_vector) {
-    UpdateResourceCallback(result);
-    UpdateMetadataCallback(std::move(result));
-  }
+    MetadataUpdater::ResourceMetadata&& result) {
+  UpdateResourceCallback(result);
+  UpdateMetadataCallback(std::move(result));
 }
 
 }

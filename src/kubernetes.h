@@ -208,7 +208,7 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   static const std::vector<WatchId>& ClusterLevelObjectTypes();
 
   // Metadata watcher callback.
-  void MetadataCallback(std::vector<ResourceMetadata>&& result_vector);
+  void MetadataCallback(ResourceMetadata&& result);
 
   KubernetesReader reader_;
   HealthChecker* health_checker_;
