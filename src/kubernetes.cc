@@ -350,14 +350,13 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetLegacyResource(
 }
 
 std::vector<MetadataUpdater::ResourceMetadata>
-KubernetesReader::GetPodAndContainerMetadata(
+KubernetesReader::GetAllContainerMetadata(
     const json::Object* pod, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
   std::vector<MetadataUpdater::ResourceMetadata> result;
 
   const json::Object* metadata = pod->Get<json::Object>("metadata");
   const std::string pod_name = metadata->Get<json::String>("name");
-  const std::string pod_id = metadata->Get<json::String>("uid");
 
   const json::Object* spec = pod->Get<json::Object>("spec");
 
@@ -407,6 +406,15 @@ KubernetesReader::GetPodAndContainerMetadata(
         GetContainerMetadata(pod, container_spec, container_status,
                              collected_at, is_deleted));
   }
+  return result;
+}
+
+std::vector<MetadataUpdater::ResourceMetadata>
+KubernetesReader::GetPodAndContainerMetadata(
+    const json::Object* pod, Timestamp collected_at, bool is_deleted) const
+    throw(json::Exception) {
+  std::vector<MetadataUpdater::ResourceMetadata> result =
+    GetAllContainerMetadata(pod, collected_at, is_deleted);
 
   auto cb = [=](const json::Object* pod) {
     return PodResourceMappingCallback(pod);
@@ -912,10 +920,8 @@ void KubernetesReader::ObjectWatchCallback(
     MetadataUpdater::UpdateCallback update_cb,
     const json::Object* object, Timestamp collected_at, bool is_deleted) const
     throw(json::Exception) {
-  std::vector<MetadataUpdater::ResourceMetadata> result_vector;
-  result_vector.emplace_back(
+  update_cb(
       GetObjectMetadata(object, collected_at, is_deleted, resource_mapping_cb));
-  update_cb(std::move(result_vector));
 }
 
 void KubernetesReader::WatchEndpoint(
@@ -941,6 +947,19 @@ void KubernetesReader::WatchEndpoint(
     health_checker_->SetUnhealthy("kubernetes_" + name + "_thread");
   }
   LOG(INFO) << "Watch thread (" << name << ") exiting";
+}
+
+void KubernetesReader::PodMetadataCallback(
+    MetadataUpdater::ResourceMetadata&& pod_result,
+    MetadataUpdater::UpdateCallback update_cb) const throw(json::Exception) {
+  // Extract metadata for all containers.
+  const MetadataStore::Metadata& pod_metadata = pod_result.metadata();
+  const json::Object* pod = pod_metadata.metadata->As<json::Object>();
+  for (auto& container_metadata : GetAllContainerMetadata(
+           pod, pod_metadata.collected_at, pod_metadata.is_deleted)) {
+    update_cb(std::move(container_metadata));
+  }
+  update_cb(std::move(pod_result));
 }
 
 KubernetesUpdater::KubernetesUpdater(const Configuration& config,
@@ -1002,17 +1021,20 @@ void KubernetesUpdater::StartUpdater() {
     const std::string watched_node(
         config().KubernetesClusterLevelMetadata() ? "" : current_node);
 
-    auto cb = [=](std::vector<MetadataUpdater::ResourceMetadata>&& results) {
-      MetadataCallback(std::move(results));
+    auto cb = [=](MetadataUpdater::ResourceMetadata&& result) {
+      MetadataCallback(std::move(result));
+    };
+    auto pod_cb = [=](MetadataUpdater::ResourceMetadata&& result) {
+      reader_.PodMetadataCallback(std::move(result), cb);
     };
     object_watch_threads_.emplace(WatchId("nodes", "v1"), std::thread([=]() {
       reader_.WatchNodes(watched_node, cb);
     }));
     object_watch_threads_.emplace(WatchId("pods", "v1"), std::thread([=]() {
-      reader_.WatchPods(watched_node, cb);
+      reader_.WatchPods(watched_node, pod_cb);
     }));
     if (config().KubernetesClusterLevelMetadata()) {
-      for (const auto& watch_id: ClusterLevelObjectTypes()) {
+      for (const auto& watch_id : ClusterLevelObjectTypes()) {
         const std::string& plural_kind = watch_id.first;
         const std::string& api_version = watch_id.second;
         object_watch_threads_.emplace(watch_id, std::thread([=]() {
@@ -1036,11 +1058,9 @@ void KubernetesUpdater::NotifyStopUpdater() {
 }
 
 void KubernetesUpdater::MetadataCallback(
-    std::vector<MetadataUpdater::ResourceMetadata>&& result_vector) {
-  for (MetadataUpdater::ResourceMetadata& result : result_vector) {
-    UpdateResourceCallback(result);
-    UpdateMetadataCallback(std::move(result));
-  }
+    MetadataUpdater::ResourceMetadata&& result) {
+  UpdateResourceCallback(result);
+  UpdateMetadataCallback(std::move(result));
 }
 
 }
