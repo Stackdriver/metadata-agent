@@ -149,22 +149,34 @@ void FakeServer::Handler::operator()(Server::request const &request,
       }
       std::mutex body_mutex;
       std::string body;
-      body_mutex.lock();
+      std::condition_variable body_retrieved;
+      std::unique_lock<std::mutex> body_lock(body_mutex);
       connection->read([&](Server::connection::input_range range,
                            boost::system::error_code error,
                            size_t size,
                            Server::connection_ptr conn) {
-        body.append(range.begin(), range.end());
-        if (std::to_string(body.size()) == headers["Content-Length"]) {
-          body_mutex.unlock();
+        {
+          std::lock_guard<std::mutex> lock(body_mutex);
+          body.append(range.begin(), range.end());
         }
+        body_retrieved.notify_all();
       });
-      std::lock_guard<std::mutex> await_body(body_mutex);
-      connection->set_status(Server::connection::ok);
-      connection->set_headers(std::map<std::string, std::string>({
+      if (body_retrieved.wait_for(body_lock, std::chrono::seconds(3), [&]() {
+            return std::to_string(body.size()) == headers["Content-Length"];
+          })) {
+        connection->set_status(Server::connection::ok);
+        connection->set_headers(std::map<std::string, std::string>({
           {"Content-Type", "text/plain"},
-      }));
-      connection->write(handler(request.destination, headers, body));
+        }));
+        connection->write(handler(request.destination, headers, body));
+      } else {
+        LOG(ERROR) << "Failed to read POST body in fake HTTP server";
+        connection->set_status(Server::connection::internal_server_error);
+        connection->set_headers(std::map<std::string, std::string>({
+          {"Content-Type", "text/plain"},
+        }));
+        connection->write("Failed to read POST body");
+      }
       return;
     }
   }
