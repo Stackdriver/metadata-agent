@@ -64,6 +64,12 @@ class KubernetesReader {
       const std::string& plural_kind, const std::string& version,
       MetadataUpdater::UpdateCallback callback) const;
 
+  // Callback for pod metadata (also extracts container metadata).
+  void PodMetadataCallback(
+      MetadataUpdater::ResourceMetadata&& result,
+      MetadataUpdater::UpdateCallback update_cb) const
+      throw(json::Exception);
+
   // Gets the name of the node the agent is running on.
   // Returns an empty string if unable to find the current node.
   const std::string& CurrentNode() const;
@@ -146,6 +152,11 @@ class KubernetesReader {
   MetadataUpdater::ResourceMetadata GetLegacyResource(
       const json::Object* pod, const std::string& container_name) const
       throw(std::out_of_range, json::Exception);
+  // Given a pod object, return the associated container metadata for all
+  // containers in the pod.
+  std::vector<MetadataUpdater::ResourceMetadata> GetAllContainerMetadata(
+      const json::Object* pod, Timestamp collected_at, bool is_deleted) const
+      throw(json::Exception);
   // Given a pod object, return the associated pod and container metadata.
   std::vector<MetadataUpdater::ResourceMetadata> GetPodAndContainerMetadata(
       const json::Object* pod, Timestamp collected_at, bool is_deleted) const
@@ -215,7 +226,7 @@ class KubernetesUpdater : public PollingMetadataUpdater {
   static const std::vector<WatchId>& ClusterLevelObjectTypes();
 
   // Metadata watcher callback.
-  void MetadataCallback(std::vector<ResourceMetadata>&& result_vector);
+  void MetadataCallback(ResourceMetadata&& result);
 
   KubernetesReader reader_;
   HealthChecker* health_checker_;

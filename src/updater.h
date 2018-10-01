@@ -76,7 +76,7 @@ class MetadataUpdater {
   void NotifyStop();
 
   using UpdateCallback =
-      std::function<void(std::vector<MetadataUpdater::ResourceMetadata>&&)>;
+      std::function<void(MetadataUpdater::ResourceMetadata&&)>;
 
  protected:
   friend class UpdaterTest;
