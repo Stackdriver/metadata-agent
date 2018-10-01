@@ -54,6 +54,8 @@ std::tm safe_gmtime(const std::time_t* t);
 // Abstract class for a timer.
 class Timer {
  public:
+  virtual ~Timer() = default;
+
   // Initializes the timer.
   virtual void Init() = 0;
 
