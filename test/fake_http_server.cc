@@ -161,22 +161,20 @@ void FakeServer::Handler::operator()(Server::request const &request,
         }
         body_retrieved.notify_all();
       });
-      if (body_retrieved.wait_for(body_lock, std::chrono::seconds(3), [&]() {
+      bool body_status = body_retrieved.wait_for(
+          body_lock, std::chrono::seconds(3), [&]() {
             return std::to_string(body.size()) == headers["Content-Length"];
-          })) {
-        connection->set_status(Server::connection::ok);
-        connection->set_headers(std::map<std::string, std::string>({
-          {"Content-Type", "text/plain"},
-        }));
-        connection->write(handler(request.destination, headers, body));
-      } else {
-        LOG(ERROR) << "Failed to read POST body in fake HTTP server";
+          });
+      if (!body_status) {
+        LOG(ERROR) << "Reading POST body timed out in fake HTTP server";
         connection->set_status(Server::connection::internal_server_error);
-        connection->set_headers(std::map<std::string, std::string>({
-          {"Content-Type", "text/plain"},
-        }));
-        connection->write("Failed to read POST body");
+        return;
       }
+      connection->set_status(Server::connection::ok);
+      connection->set_headers(std::map<std::string, std::string>({
+          {"Content-Type", "text/plain"},
+      }));
+      connection->write(handler(request.destination, headers, body));
       return;
     }
   }
