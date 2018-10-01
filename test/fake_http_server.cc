@@ -162,14 +162,14 @@ void FakeServer::Handler::operator()(Server::request const &request,
         body_retrieved.notify_all();
       });
       bool body_status = body_retrieved.wait_for(
-          body_lock, std::chrono::seconds(3),
+          body_lock, std::chrono::seconds(5),
           [&]() {
             return std::to_string(body.size()) == headers["Content-Length"];
           });
       if (!body_status) {
         LOG(ERROR) << "Reading POST body timed out in fake HTTP server";
-        connection->set_status(Server::connection::internal_server_error);
-        return;
+        throw std::runtime_error(
+            "Reading POST body timed out in fake HTTP server");
       }
       connection->set_status(Server::connection::ok);
       connection->set_headers(std::map<std::string, std::string>({
