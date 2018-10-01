@@ -147,17 +147,19 @@ void FakeServer::Handler::operator()(Server::request const &request,
       for (const auto& h : request.headers) {
         headers[h.name] = h.value;
       }
+      std::mutex body_mutex;
       std::string body;
-      std::mutex mutex;
-      mutex.lock();
+      body_mutex.lock();
       connection->read([&](Server::connection::input_range range,
                            boost::system::error_code error,
                            size_t size,
                            Server::connection_ptr conn) {
         body.append(range.begin(), range.end());
-        mutex.unlock();
+        if (std::to_string(body.size()) == headers["Content-Length"]) {
+          body_mutex.unlock();
+        }
       });
-      mutex.lock();
+      std::lock_guard<std::mutex> await_body(body_mutex);
       connection->set_status(Server::connection::ok);
       connection->set_headers(std::map<std::string, std::string>({
           {"Content-Type", "text/plain"},
