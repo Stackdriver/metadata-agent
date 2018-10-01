@@ -104,7 +104,7 @@ void FakeServer::Handler::operator()(Server::request const &request,
       auto& stream = stream_it->second;
       connection->set_status(Server::connection::ok);
       connection->set_headers(std::map<std::string, std::string>({
-          {"Content-Type", "text/plain"},
+        {"Content-Type", "text/plain"},
       }));
 
       // Create a queue for this watcher and add to the stream.
@@ -132,7 +132,7 @@ void FakeServer::Handler::operator()(Server::request const &request,
       }
       connection->set_status(Server::connection::ok);
       connection->set_headers(std::map<std::string, std::string>({
-          {"Content-Type", "text/plain"},
+        {"Content-Type", "text/plain"},
       }));
       connection->write(handler(request.destination, headers));
       return;
@@ -162,7 +162,8 @@ void FakeServer::Handler::operator()(Server::request const &request,
         body_retrieved.notify_all();
       });
       bool body_status = body_retrieved.wait_for(
-          body_lock, std::chrono::seconds(3), [&]() {
+          body_lock, std::chrono::seconds(3),
+          [&]() {
             return std::to_string(body.size()) == headers["Content-Length"];
           });
       if (!body_status) {
@@ -172,7 +173,7 @@ void FakeServer::Handler::operator()(Server::request const &request,
       }
       connection->set_status(Server::connection::ok);
       connection->set_headers(std::map<std::string, std::string>({
-          {"Content-Type", "text/plain"},
+        {"Content-Type", "text/plain"},
       }));
       connection->write(handler(request.destination, headers, body));
       return;
