@@ -26,6 +26,16 @@
 namespace google {
 namespace testing {
 
+using GetHandler =
+    // (path, headers) -> body
+    std::function<std::string(const std::string&,
+                              std::map<std::string, std::string>&)>;
+using PostHandler =
+    // (path, headers, body) -> body
+    std::function<std::string(const std::string&,
+                              std::map<std::string, std::string>&,
+                              std::string)>;
+
 // Starts a server in a separate thread, allowing it to choose an
 // available port.
 class FakeServer {
@@ -33,8 +43,23 @@ class FakeServer {
   FakeServer();
   ~FakeServer();
 
+  // A handler for GET requests that returns a constant string.
+  static GetHandler Return(const std::string& body);
+
+  // Returns the URL for this server without a trailing slash:
+  // "http://<host>:<port>".
   std::string GetUrl();
-  void SetResponse(const std::string& path, const std::string& response);
+
+  // Sets the response for GET requests to a path.
+  void SetHandler(const std::string& path, GetHandler handler);
+
+  // Sets the response for POST requests to a path.
+  void SetHandler(const std::string& path, PostHandler handler);
+
+  // Helper method for simple GET responses.
+  void SetResponse(const std::string& path, const std::string& response) {
+    SetHandler(path, Return(response));
+  }
 
   // TODO: Consider changing the stream methods to operate on a stream
   // object, rather than looking up the path every time.
@@ -84,7 +109,8 @@ class FakeServer {
     void operator()(Server::request const &request,
                     Server::connection_ptr connection);
 
-    std::map<std::string, std::string> path_responses;
+    std::map<std::string, GetHandler> get_handlers;
+    std::map<std::string, PostHandler> post_handlers;
     std::map<std::string, Stream> path_streams;
   };
 

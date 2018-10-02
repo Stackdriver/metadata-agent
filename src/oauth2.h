@@ -34,9 +34,15 @@ constexpr const char kDefaultTokenEndpoint[] =
 class OAuth2 {
  public:
   OAuth2(const Environment& environment)
-    : environment_(environment), token_endpoint_(kDefaultTokenEndpoint) {}
+    : OAuth2(environment, ExpirationImpl<std::chrono::system_clock>::New()) {}
 
   std::string GetAuthHeaderValue();
+
+ protected:
+  OAuth2(const Environment& environment, std::unique_ptr<Expiration> expiration)
+    : environment_(environment),
+      token_expiration_(std::move(expiration)),
+      token_endpoint_(kDefaultTokenEndpoint) {}
 
  private:
   friend class OAuth2Test;
@@ -50,7 +56,7 @@ class OAuth2 {
 
   const Environment& environment_;
   std::string auth_header_value_;
-  time_point token_expiration_;
+  std::unique_ptr<Expiration> token_expiration_;
   std::string token_endpoint_;
 };
 

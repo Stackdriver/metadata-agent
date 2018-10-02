@@ -18,7 +18,10 @@
 
 #include <chrono>
 #include <ctime>
+#include <memory>
 #include <string>
+
+#include "logging.h"
 
 namespace google {
 
@@ -47,6 +50,101 @@ std::tm safe_localtime(const std::time_t* t);
 std::tm safe_gmtime(const std::time_t* t);
 
 }
+
+// Abstract class for a timer.
+class Timer {
+ public:
+  virtual ~Timer() = default;
+
+  // Initializes the timer.
+  virtual void Init() = 0;
+
+  // Waits for one duration to pass.  Returns false if the timer was
+  // canceled while waiting.
+  virtual bool Wait(time::seconds duration) = 0;
+
+  // Cancels the timer.
+  virtual void Cancel() = 0;
+};
+
+// Implementation of a timer parameterized over a clock type.
+template<typename Clock>
+class TimerImpl : public Timer {
+ public:
+  TimerImpl(bool verbose, const std::string& name)
+      : verbose_(verbose), name_(name) {}
+  void Init() override {
+    timer_.lock();
+    if (verbose_) {
+      LOG(INFO) << "Locked timer for " << name_;
+    }
+  }
+  bool Wait(time::seconds duration) override {
+    // An unlocked timer means the wait is cancelled.
+    auto start = Clock::now();
+    auto wakeup = start + duration;
+    if (verbose_) {
+      LOG(INFO) << "Trying to unlock the timer for " << name_;
+    }
+    while (!timer_.try_lock_until(wakeup)) {
+      auto now = Clock::now();
+      // Detect spurious wakeups.
+      if (now < wakeup) {
+        continue;
+      }
+      if (verbose_) {
+        LOG(INFO) << " Timer unlock timed out after "
+                  << std::chrono::duration_cast<time::seconds>(now-start).count()
+                  << "s (good) for " << name_;
+      }
+      return true;
+    }
+    return false;
+  }
+  void Cancel() override {
+    timer_.unlock();
+    if (verbose_) {
+      LOG(INFO) << "Unlocked timer for " << name_;
+    }
+  }
+ private:
+  std::timed_mutex timer_;
+  bool verbose_;
+  std::string name_;
+};
+
+// Abstract class for tracking an expiration time.
+class Expiration {
+ public:
+  virtual ~Expiration() = default;
+
+  // Returns true if the expiration time has passed.
+  virtual bool IsExpired() = 0;
+
+  // Resets the expiration time to the given number of seconds from
+  // now.
+  virtual void Reset(std::chrono::seconds duration) = 0;
+};
+
+// Implementation of an expiration parameterized over a clock type.
+template<typename Clock>
+class ExpirationImpl : public Expiration {
+ public:
+  static std::unique_ptr<Expiration> New() {
+    return std::unique_ptr<Expiration>(new ExpirationImpl<Clock>());
+  }
+
+  bool IsExpired() override {
+    return token_expiration_ < Clock::now();
+  }
+
+  void Reset(std::chrono::seconds duration) override {
+    token_expiration_ = Clock::now() + duration;
+  }
+
+ private:
+  typename Clock::time_point token_expiration_;
+};
 
 }
 
