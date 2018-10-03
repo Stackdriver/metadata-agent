@@ -53,6 +53,7 @@ MetadataReporter::MetadataReporter(
       reporter_thread_([=]() { ReportMetadata(); }) {}
 
 MetadataReporter::~MetadataReporter() {
+  NotifyStopReporter();
   if (reporter_thread_.joinable()) {
     reporter_thread_.join();
   }

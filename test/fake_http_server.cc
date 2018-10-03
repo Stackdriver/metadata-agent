@@ -50,10 +50,6 @@ GetHandler FakeServer::Return(const std::string& body) {
   };
 }
 
-std::string FakeServer::HostPort() {
-  return server_.address() + ":" + server_.port();
-}
-
 std::string FakeServer::GetUrl() {
   network::uri_builder builder;
   builder.scheme("http").host(server_.address()).port(server_.port());

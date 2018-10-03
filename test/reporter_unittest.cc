@@ -19,13 +19,13 @@ class FakeMetadataReporter : public MetadataReporter {
 };
 
 TEST(ReporterTest, MetadataReporter) {
-  // Set up a fake server representing the Resource Metadata API.  It
-  // will collect POST data from the MetadataReporter.
+  // Set up a fake server representing the Resource Metadata API.
+  // It will collect POST data from the MetadataReporter.
   std::mutex mutex;
   std::condition_variable cv;
   int post_count = 0;
-  std::map<std::string, std::string> last_headers;
-  std::string last_body;
+  std::map<std::string, std::string> response_headers;
+  std::string response_body;
   testing::FakeServer server;
   constexpr const char kUpdatePath[] =
     "/v1beta2/projects/TestProjectId/resourceMetadata:batchUpdate";
@@ -37,8 +37,8 @@ TEST(ReporterTest, MetadataReporter) {
         {
           std::lock_guard<std::mutex> lk(mutex);
           post_count++;
-          last_headers = headers;
-          last_body = body;
+          response_headers = headers;
+          response_body = body;
         }
         cv.notify_all();
         return "this POST response is ignored";
@@ -70,7 +70,7 @@ TEST(ReporterTest, MetadataReporter) {
   double period_s = 60.0;
   FakeMetadataReporter reporter(config, &store, period_s);
 
-  // The headers & body we expect to see in the POST requests.
+  // The headers and body we expect to see in the POST requests.
   std::pair<std::string, std::string> content_type(
       std::string("Content-Type"), std::string("application/json"));
   std::pair<std::string, std::string> user_agent(
@@ -92,8 +92,8 @@ TEST(ReporterTest, MetadataReporter) {
       })}
     })->ToString();
   };
-  const std::string& expected_body_active = expected_body("ACTIVE");
-  const std::string& expected_body_deleted = expected_body("DELETED");
+  const std::string expected_body_active = expected_body("ACTIVE");
+  const std::string expected_body_deleted = expected_body("DELETED");
 
   // Wait for 1st post to server, and verify contents.
   {
@@ -101,9 +101,9 @@ TEST(ReporterTest, MetadataReporter) {
     cv.wait(lk, [&post_count]{ return post_count >= 1; });
   }
   EXPECT_EQ(1, post_count);
-  EXPECT_THAT(last_headers, ::testing::Contains(content_type));
-  EXPECT_THAT(last_headers, ::testing::Contains(user_agent));
-  EXPECT_EQ(expected_body_active, last_body);
+  EXPECT_THAT(response_headers, ::testing::Contains(content_type));
+  EXPECT_THAT(response_headers, ::testing::Contains(user_agent));
+  EXPECT_EQ(expected_body_active, response_body);
 
   // Advance fake clock, wait for 2nd post, verify contents.
   testing::FakeClock::Advance(time::seconds(60));
@@ -112,9 +112,9 @@ TEST(ReporterTest, MetadataReporter) {
     cv.wait(lk, [&post_count]{ return post_count >= 2; });
   }
   EXPECT_EQ(2, post_count);
-  EXPECT_THAT(last_headers, ::testing::Contains(content_type));
-  EXPECT_THAT(last_headers, ::testing::Contains(user_agent));
-  EXPECT_EQ(expected_body_active, last_body);
+  EXPECT_THAT(response_headers, ::testing::Contains(content_type));
+  EXPECT_THAT(response_headers, ::testing::Contains(user_agent));
+  EXPECT_EQ(expected_body_active, response_body);
 
   // Mark metadata as deleted in store, advance fake clock, wait for
   // 3rd post, verify contents.
@@ -125,11 +125,9 @@ TEST(ReporterTest, MetadataReporter) {
     cv.wait(lk, [&post_count]{ return post_count >= 3; });
   }
   EXPECT_EQ(3, post_count);
-  EXPECT_THAT(last_headers, ::testing::Contains(content_type));
-  EXPECT_THAT(last_headers, ::testing::Contains(user_agent));
-  EXPECT_EQ(expected_body_deleted, last_body);
-
-  reporter.NotifyStopReporter();
+  EXPECT_THAT(response_headers, ::testing::Contains(content_type));
+  EXPECT_THAT(response_headers, ::testing::Contains(user_agent));
+  EXPECT_EQ(expected_body_deleted, response_body);
 }
 
 }  // namespace google

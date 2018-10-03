@@ -40,6 +40,7 @@ class MetadataReporter {
                    double period_s);
   ~MetadataReporter();
 
+  // Stop reporting metadata to Stackdriver.
   void NotifyStopReporter();
 
  protected:
@@ -48,7 +49,7 @@ class MetadataReporter {
       double initial_wait_s, std::unique_ptr<Timer> timer);
 
  private:
-  // Metadata reporter.
+  // Reporter loop.
   void ReportMetadata();
 
   // Send the given set of metadata.
