@@ -708,9 +708,9 @@ namespace {
 struct Watcher {
   Watcher(const std::string& endpoint,
           std::function<void(json::value)> event_callback,
-          std::unique_lock<std::mutex>&& completion, bool verbose)
+          std::shared_ptr<boost::asio::io_service> service, bool verbose)
       : name_("Watcher(" + endpoint + ")"),
-        completion_(std::move(completion)), event_parser_(event_callback),
+        service_(service), event_parser_(event_callback),
         verbose_(verbose) {}
   ~Watcher() {}  // Unlocks the completion_ lock.
 
@@ -749,13 +749,13 @@ struct Watcher {
       if (verbose_) {
         LOG(ERROR) << name_ << " => Unlocking completion mutex";
       }
-      completion_.unlock();
+      service_->stop();
     }
   }
 
  private:
   std::string name_;
-  std::unique_lock<std::mutex> completion_;
+  std::shared_ptr<boost::asio::io_service> service_;
   json::Parser event_parser_;
   bool verbose_;
 };
@@ -791,9 +791,11 @@ void KubernetesReader::WatchMaster(
   const std::string watch_param(prefix + kWatchParam);
   const std::string endpoint(
       config_.KubernetesEndpointHost() + path + watch_param);
+  auto service = std::make_shared<boost::asio::io_service>();
   http::client client(
       http::client::options()
-      .openssl_certificate(SecretPath("ca.crt")));
+      .openssl_certificate(SecretPath("ca.crt"))
+      .io_service(service));
   http::client::request request(endpoint);
   request << boost::network::header(
       "Authorization", "Bearer " + KubernetesApiToken());
@@ -811,22 +813,21 @@ void KubernetesReader::WatchMaster(
     }
     try {
       if (verbose) {
-        LOG(INFO) << "Locking completion mutex";
+        LOG(INFO) << "Resetting and running service";
       }
-      // A notification for watch completion.
-      std::mutex completion_mutex;
-      std::unique_lock<std::mutex> watch_completion(completion_mutex);
+      service->reset();
+      auto lifetime_thread = std::thread([&service]() { service->run(); });
       Watcher watcher(
         endpoint,
         [=](json::value raw_watch) {
           WatchEventCallback(callback, name, std::move(raw_watch));
         },
-        std::move(watch_completion), verbose);
+        service, verbose);
       http::client::response response = client.get(request, std::ref(watcher));
       if (verbose) {
         LOG(INFO) << "Waiting for completion";
       }
-      std::lock_guard<std::mutex> await_completion(completion_mutex);
+      lifetime_thread.join();
       if (verbose) {
         LOG(INFO) << "WatchMaster(" << name << ") completed " << body(response);
       }
