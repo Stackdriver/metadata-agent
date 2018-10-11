@@ -120,6 +120,9 @@ Configuration::Configuration()
         // Zero or a negative value means no reconnection.
         {"KubernetesUpdaterWatchReconnectIntervalSeconds",
          option(kubernetes_updater_watch_reconnect_interval_seconds_, 3600)},
+        // Zero or a negative value means no reconnection for staleness.
+        {"KubernetesUpdaterWatchReconnectMaxStalenessSeconds",
+         option(kubernetes_updater_watch_reconnect_max_staleness_seconds_, 300)},
         {"KubernetesEndpointHost",
          option(kubernetes_endpoint_host_, "https://kubernetes.default.svc")},
         {"KubernetesPodLabelSelector",
