@@ -705,7 +705,7 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
 }
 
 namespace {
-static std::shared_ptr<boost::asio::io_service>& Reset(
+std::shared_ptr<boost::asio::io_service>& Reset(
     std::shared_ptr<boost::asio::io_service>& service) {
   if (service->stopped()) {
     service->reset();
@@ -799,11 +799,11 @@ void KubernetesReader::WatchMaster(
   const std::string watch_param(prefix + kWatchParam);
   const std::string endpoint(
       config_.KubernetesEndpointHost() + path + watch_param);
-  auto service = std::make_shared<boost::asio::io_service>();
+  auto watch_service = std::make_shared<boost::asio::io_service>();
   http::client client(
       http::client::options()
       .openssl_certificate(SecretPath("ca.crt"))
-      .io_service(service));
+      .io_service(watch_service));
   http::client::request request(endpoint);
   request << boost::network::header(
       "Authorization", "Bearer " + KubernetesApiToken());
@@ -828,7 +828,7 @@ void KubernetesReader::WatchMaster(
         [=](json::value raw_watch) {
           WatchEventCallback(callback, name, std::move(raw_watch));
         },
-        Reset(service), verbose);
+        Reset(watch_service), verbose);
       http::client::response response = client.get(request, std::ref(watcher));
       if (verbose) {
         LOG(INFO) << "Waiting for completion";
