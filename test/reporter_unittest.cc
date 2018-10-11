@@ -106,7 +106,7 @@ TEST(ReporterTest, MetadataReporter) {
   EXPECT_EQ(expected_body_active, response_body);
 
   // Advance fake clock, wait for 2nd post, verify contents.
-  testing::FakeClock::Advance(time::seconds(60));
+  testing::FakeClock::AdvanceNext(time::seconds(60));
   {
     std::unique_lock<std::mutex> lk(mutex);
     cv.wait(lk, [&post_count]{ return post_count >= 2; });
@@ -119,7 +119,7 @@ TEST(ReporterTest, MetadataReporter) {
   // Mark metadata as deleted in store, advance fake clock, wait for
   // 3rd post, verify contents.
   store.UpdateMetadata(resource, std::move(m_deleted));
-  testing::FakeClock::Advance(time::seconds(60));
+  testing::FakeClock::AdvanceNext(time::seconds(60));
   {
     std::unique_lock<std::mutex> lk(mutex);
     cv.wait(lk, [&post_count]{ return post_count >= 3; });

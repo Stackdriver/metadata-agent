@@ -46,6 +46,14 @@ class FakeClock {
   // Increment fake clock's internal time.
   static void Advance(duration d) {
     std::lock_guard<std::mutex> guard(mutex_);
+    now_ += d;
+    next_ = now_;
+  }
+
+  // Increment fake clock's internal time after the next call to
+  // now().
+  static void AdvanceNext(duration d) {
+    std::lock_guard<std::mutex> guard(mutex_);
     next_ = now_ + d;
   }
 
