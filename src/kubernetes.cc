@@ -705,14 +705,22 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
 }
 
 namespace {
-struct Watcher {
+static std::shared_ptr<boost::asio::io_service>& Reset(
+    std::shared_ptr<boost::asio::io_service>& service) {
+  if (service->stopped()) {
+    service->reset();
+  }
+  return service;
+}
+
+struct Watcher : public std::thread {
   Watcher(const std::string& endpoint,
           std::function<void(json::value)> event_callback,
           std::shared_ptr<boost::asio::io_service> service, bool verbose)
-      : name_("Watcher(" + endpoint + ")"),
-        service_(service), event_parser_(event_callback),
-        verbose_(verbose) {}
-  ~Watcher() {}  // Unlocks the completion_ lock.
+      : std::thread([=]() { service->run(); }),
+        name_("Watcher(" + endpoint + ")"), service_(service),
+        event_parser_(event_callback), verbose_(verbose) {}
+  ~Watcher() {}
 
  public:
   void operator()(const boost::iterator_range<const char*>& range,
@@ -815,19 +823,17 @@ void KubernetesReader::WatchMaster(
       if (verbose) {
         LOG(INFO) << "Resetting and running service";
       }
-      service->reset();
-      auto lifetime_thread = std::thread([&service]() { service->run(); });
       Watcher watcher(
         endpoint,
         [=](json::value raw_watch) {
           WatchEventCallback(callback, name, std::move(raw_watch));
         },
-        service, verbose);
+        Reset(service), verbose);
       http::client::response response = client.get(request, std::ref(watcher));
       if (verbose) {
         LOG(INFO) << "Waiting for completion";
       }
-      lifetime_thread.join();
+      watcher.join();
       if (verbose) {
         LOG(INFO) << "WatchMaster(" << name << ") completed " << body(response);
       }
