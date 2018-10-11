@@ -19,6 +19,7 @@
 #include "../src/kubernetes.h"
 #include "../src/updater.h"
 #include "environment_util.h"
+#include "fake_clock.h"
 #include "fake_http_server.h"
 #include "gtest/gtest.h"
 #include "temp_file.h"
@@ -1276,7 +1277,7 @@ bool WaitForNewerCollectionTimestamp(const MetadataStore& store,
 void TestNodes(testing::FakeServer& server, MetadataStore& store,
                const std::string& nodes_watch_path) {
   const auto timeout = time::seconds(3);
-  server.WaitForMinTotalConnections(nodes_watch_path, 1, timeout);
+  ASSERT_TRUE(server.WaitForMinTotalConnections(nodes_watch_path, 1, timeout));
   json::value node1 = json::object({
     {"metadata", json::object({
       {"name", json::string("TestNodeName1")},
@@ -1370,7 +1371,7 @@ void TestNodes(testing::FakeServer& server, MetadataStore& store,
 void TestPods(testing::FakeServer& server, MetadataStore& store,
               const std::string& pods_watch_path) {
   const auto timeout = time::seconds(3);
-  server.WaitForMinTotalConnections(pods_watch_path, 1, timeout);
+  ASSERT_TRUE(server.WaitForMinTotalConnections(pods_watch_path, 1, timeout));
   json::value pod1 = json::object({
     {"metadata", json::object({
       {"name", json::string("TestPodName1")},
@@ -1597,8 +1598,10 @@ void TestServicesAndEndpoints(testing::FakeServer& server, MetadataStore& store,
                               const std::string& services_watch_path,
                               const std::string& endpoints_watch_path) {
   const auto timeout = time::seconds(3);
-  server.WaitForMinTotalConnections(services_watch_path, 1, timeout);
-  server.WaitForMinTotalConnections(endpoints_watch_path, 1, timeout);
+  ASSERT_TRUE(
+      server.WaitForMinTotalConnections(services_watch_path, 1, timeout));
+  ASSERT_TRUE(
+      server.WaitForMinTotalConnections(endpoints_watch_path, 1, timeout));
   json::value service1 = json::object({
     {"metadata", json::object({
       {"name", json::string("testname1")},
@@ -1957,6 +1960,65 @@ TEST_F(KubernetesTestFakeServerThreeWatchRetriesNodeLevelMetadata,
   server->TerminateAllStreams();
   server->WaitForMinTotalConnections(nodes_watch_path, 3, timeout);
   server->WaitForMinTotalConnections(pods_watch_path, 3, timeout);
+
+  // Terminate the hanging GETs on the server so that the updater will finish.
+  server->TerminateAllStreams();
+}
+
+namespace {
+class FakeKubernetesUpdater : public KubernetesUpdater {
+ public:
+  FakeKubernetesUpdater(const Configuration& config,
+                        HealthChecker* health_checker,
+                        MetadataStore* store)
+    : KubernetesUpdater(
+          config, health_checker, store,
+          WaitableTimerFactoryImpl<
+              testing::FakeClock,
+              testing::WaitTraits<testing::FakeClock>>::New()) {}
+};
+}
+
+TEST_F(KubernetesTestFakeServerThreeWatchRetriesNodeLevelMetadata,
+       KubernetesUpdaterHourlyReconnection) {
+  const std::string nodes_watch_path =
+    "/api/v1/watch/nodes/TestNodeName?watch=true";
+  const std::string pods_watch_path =
+    "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true";
+
+  // Create a fake server representing the Kubernetes master.
+  server->SetResponse("/api/v1/nodes?limit=1", "{}");
+  server->SetResponse("/api/v1/pods?limit=1", "{}");
+  server->AllowStream(nodes_watch_path);
+  server->AllowStream(pods_watch_path);
+
+  MetadataStore store(*config);
+  FakeKubernetesUpdater updater(*config, /*health_checker=*/nullptr, &store);
+  updater.Start();
+
+  // Wait for connection #1.
+  const auto timeout = time::seconds(3);
+  ASSERT_TRUE(server->WaitForMinTotalConnections(nodes_watch_path, 1, timeout));
+  ASSERT_TRUE(server->WaitForMinTotalConnections(pods_watch_path, 1, timeout));
+
+  // Advance fake clock only 30 min, not enough to trigger reconnection.
+  testing::FakeClock::Advance(std::chrono::seconds(1800));
+  EXPECT_EQ(1, server->NumWatchers(nodes_watch_path));
+  EXPECT_EQ(1, server->NumWatchers(pods_watch_path));
+
+  // Advance another 30 min to trigger connection #2.
+  //
+  // NOTE: The FakeServer doesn't clean up state when client
+  // connections are closed via io_service.stop(), so that's why it 2
+  // watchers after the reconnection..
+  testing::FakeClock::Advance(std::chrono::seconds(1800));
+  ASSERT_TRUE(server->WaitForMinTotalConnections(nodes_watch_path, 2, timeout));
+  ASSERT_TRUE(server->WaitForMinTotalConnections(pods_watch_path, 2, timeout));
+
+  // Advance 60 min to trigger connection #3.
+  testing::FakeClock::Advance(std::chrono::seconds(3600));
+  ASSERT_TRUE(server->WaitForMinTotalConnections(nodes_watch_path, 3, timeout));
+  ASSERT_TRUE(server->WaitForMinTotalConnections(pods_watch_path, 3, timeout));
 
   // Terminate the hanging GETs on the server so that the updater will finish.
   server->TerminateAllStreams();

@@ -130,6 +130,10 @@ class Configuration {
     std::lock_guard<std::mutex> lock(mutex_);
     return kubernetes_updater_watch_max_connection_failures_;
   }
+  int KubernetesUpdaterWatchReconnectIntervalSeconds() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return kubernetes_updater_watch_reconnect_interval_seconds_;
+  }
   const std::string& KubernetesEndpointHost() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return kubernetes_endpoint_host_;
@@ -216,6 +220,7 @@ class Configuration {
   int kubernetes_updater_interval_seconds_;
   int kubernetes_updater_watch_connection_retries_;
   int kubernetes_updater_watch_max_connection_failures_;
+  int kubernetes_updater_watch_reconnect_interval_seconds_;
   std::string kubernetes_endpoint_host_;
   std::string kubernetes_pod_label_selector_;
   std::string kubernetes_cluster_name_;

@@ -31,11 +31,9 @@
 #include "format.h"
 #include "http_common.h"
 #include "instance.h"
-#include "json.h"
 #include "logging.h"
 #include "resource.h"
 #include "store.h"
-#include "time.h"
 #include "util.h"
 
 namespace http = boost::network::http;
@@ -78,8 +76,17 @@ class KubernetesReader::NonRetriableError
 
 KubernetesReader::KubernetesReader(const Configuration& config,
                                    HealthChecker* health_checker)
+    : KubernetesReader(
+          config, health_checker,
+          WaitableTimerFactoryImpl<std::chrono::steady_clock>::New()) {}
+
+KubernetesReader::KubernetesReader(
+    const Configuration& config,
+    HealthChecker* health_checker,
+    std::unique_ptr<WaitableTimerFactory> waitable_timer_factory)
     : config_(config), environment_(config), health_checker_(health_checker),
-      service_account_directory_(kServiceAccountDirectory) {}
+      service_account_directory_(kServiceAccountDirectory),
+      waitable_timer_factory_(std::move(waitable_timer_factory)) {}
 
 std::string KubernetesReader::SecretPath(const std::string& secret) const {
   return service_account_directory_ + "/" + secret;
@@ -705,14 +712,6 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
 }
 
 namespace {
-std::shared_ptr<boost::asio::io_service>& Reset(
-    std::shared_ptr<boost::asio::io_service>& service) {
-  if (service->stopped()) {
-    service->reset();
-  }
-  return service;
-}
-
 struct Watcher : public std::thread {
   Watcher(const std::string& endpoint,
           std::function<void(json::value)> event_callback,
@@ -823,12 +822,26 @@ void KubernetesReader::WatchMaster(
       if (verbose) {
         LOG(INFO) << "Resetting and running service";
       }
+      if (watch_service->stopped()) {
+        watch_service->reset();
+      }
+      std::unique_ptr<WaitableTimer> timer;
+      if (config_.KubernetesUpdaterWatchReconnectIntervalSeconds() > 0) {
+        timer = waitable_timer_factory_->CreateTimer(*watch_service);
+        timer->ExpiresFromNow(std::chrono::seconds(
+            config_.KubernetesUpdaterWatchReconnectIntervalSeconds()));
+        timer->AsyncWait([watch_service](boost::system::error_code const &ec) {
+          if (ec != boost::asio::error::operation_aborted) {
+            watch_service->stop();
+          }
+        });
+      }
       Watcher watcher(
         endpoint,
         [=](json::value raw_watch) {
           WatchEventCallback(callback, name, std::move(raw_watch));
         },
-        Reset(watch_service), verbose);
+        watch_service, verbose);
       http::client::response response = client.get(request, std::ref(watcher));
       if (verbose) {
         LOG(INFO) << "Waiting for completion";
@@ -1310,7 +1323,17 @@ void KubernetesReader::WatchEndpoints(
 KubernetesUpdater::KubernetesUpdater(const Configuration& config,
                                      HealthChecker* health_checker,
                                      MetadataStore* store)
-    : reader_(config, health_checker), PollingMetadataUpdater(
+    : KubernetesUpdater(
+          config, health_checker, store,
+          WaitableTimerFactoryImpl<std::chrono::steady_clock>::New()) {}
+
+KubernetesUpdater::KubernetesUpdater(
+    const Configuration& config,
+    HealthChecker* health_checker,
+    MetadataStore* store,
+    std::unique_ptr<WaitableTimerFactory> waitable_timer_factory)
+    : reader_(config, health_checker, std::move(waitable_timer_factory)),
+      PollingMetadataUpdater(
         config, store, "KubernetesUpdater",
         config.KubernetesUpdaterIntervalSeconds(),
         [=]() { return reader_.MetadataQuery(); }) { }

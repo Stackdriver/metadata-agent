@@ -16,6 +16,8 @@
 #ifndef TIME_H_
 #define TIME_H_
 
+#include <boost/asio/basic_waitable_timer.hpp>
+#include <boost/system/error_code.hpp>
 #include <chrono>
 #include <ctime>
 #include <memory>
@@ -156,6 +158,54 @@ class ExpirationImpl : public Expiration {
 
  private:
   typename Clock::time_point token_expiration_;
+};
+
+// Abstract class for a timer that can perform asynchronous actions on
+// expiration.
+class WaitableTimer {
+ public:
+  virtual ~WaitableTimer() = default;
+  virtual void ExpiresFromNow(std::chrono::seconds duration) = 0;
+  virtual void AsyncWait(
+      std::function<void(boost::system::error_code const &)>) = 0;
+};
+
+// Implementation of WaitableTimer parameterized over a clock type.
+template<typename Clock, typename WaitTraits>
+class WaitableTimerImpl : public WaitableTimer {
+ public:
+  WaitableTimerImpl(boost::asio::io_service& service) : timer_(service) {}
+  void ExpiresFromNow(std::chrono::seconds duration) override {
+    timer_.expires_from_now(duration);
+  }
+  void AsyncWait(
+      std::function<void(boost::system::error_code const &)> handler) override {
+    timer_.async_wait(handler);
+  }
+ private:
+  boost::asio::basic_waitable_timer<Clock, WaitTraits> timer_;
+};
+
+// Abstract class for a factory of WaitableTimer types.
+class WaitableTimerFactory {
+ public:
+  virtual ~WaitableTimerFactory() = default;
+  virtual std::unique_ptr<WaitableTimer> CreateTimer(
+      boost::asio::io_service& service) = 0;
+};
+
+// Implementation of a WaitableTimer parameterized over a clock type.
+template<typename Clock, typename WaitTraits = boost::asio::wait_traits<Clock>>
+class WaitableTimerFactoryImpl : public WaitableTimerFactory {
+ public:
+  static std::unique_ptr<WaitableTimerFactory> New() {
+    return std::unique_ptr<WaitableTimerFactory>(
+        new WaitableTimerFactoryImpl<Clock, WaitTraits>());
+  }
+  std::unique_ptr<WaitableTimer> CreateTimer(
+      boost::asio::io_service& service) override {
+    return std::unique_ptr<WaitableTimer>(new WaitableTimerImpl<Clock, WaitTraits>(service));
+  }
 };
 
 }
