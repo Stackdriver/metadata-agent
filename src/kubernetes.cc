@@ -705,14 +705,22 @@ json::value KubernetesReader::QueryMaster(const std::string& path) const
 }
 
 namespace {
-struct Watcher {
+std::shared_ptr<boost::asio::io_service>& Reset(
+    std::shared_ptr<boost::asio::io_service>& service) {
+  if (service->stopped()) {
+    service->reset();
+  }
+  return service;
+}
+
+struct Watcher : public std::thread {
   Watcher(const std::string& endpoint,
           std::function<void(json::value)> event_callback,
-          std::unique_lock<std::mutex>&& completion, bool verbose)
-      : name_("Watcher(" + endpoint + ")"),
-        completion_(std::move(completion)), event_parser_(event_callback),
-        verbose_(verbose) {}
-  ~Watcher() {}  // Unlocks the completion_ lock.
+          std::shared_ptr<boost::asio::io_service> service, bool verbose)
+      : std::thread([=]() { service->run(); }),
+        name_("Watcher(" + endpoint + ")"), service_(service),
+        event_parser_(event_callback), verbose_(verbose) {}
+  ~Watcher() {}
 
  public:
   void operator()(const boost::iterator_range<const char*>& range,
@@ -749,13 +757,13 @@ struct Watcher {
       if (verbose_) {
         LOG(ERROR) << name_ << " => Unlocking completion mutex";
       }
-      completion_.unlock();
+      service_->stop();
     }
   }
 
  private:
   std::string name_;
-  std::unique_lock<std::mutex> completion_;
+  std::shared_ptr<boost::asio::io_service> service_;
   json::Parser event_parser_;
   bool verbose_;
 };
@@ -791,9 +799,11 @@ void KubernetesReader::WatchMaster(
   const std::string watch_param(prefix + kWatchParam);
   const std::string endpoint(
       config_.KubernetesEndpointHost() + path + watch_param);
+  auto watch_service = std::make_shared<boost::asio::io_service>();
   http::client client(
       http::client::options()
-      .openssl_certificate(SecretPath("ca.crt")));
+      .openssl_certificate(SecretPath("ca.crt"))
+      .io_service(watch_service));
   http::client::request request(endpoint);
   request << boost::network::header(
       "Authorization", "Bearer " + KubernetesApiToken());
@@ -811,22 +821,19 @@ void KubernetesReader::WatchMaster(
     }
     try {
       if (verbose) {
-        LOG(INFO) << "Locking completion mutex";
+        LOG(INFO) << "Resetting and running service";
       }
-      // A notification for watch completion.
-      std::mutex completion_mutex;
-      std::unique_lock<std::mutex> watch_completion(completion_mutex);
       Watcher watcher(
         endpoint,
         [=](json::value raw_watch) {
           WatchEventCallback(callback, name, std::move(raw_watch));
         },
-        std::move(watch_completion), verbose);
+        Reset(watch_service), verbose);
       http::client::response response = client.get(request, std::ref(watcher));
       if (verbose) {
         LOG(INFO) << "Waiting for completion";
       }
-      std::lock_guard<std::mutex> await_completion(completion_mutex);
+      watcher.join();
       if (verbose) {
         LOG(INFO) << "WatchMaster(" << name << ") completed " << body(response);
       }
