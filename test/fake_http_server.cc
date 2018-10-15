@@ -89,11 +89,18 @@ void FakeServer::SendStreamResponse(const std::string& path,
   stream_it->second.SendToAllQueues(response);
 }
 
-void FakeServer::TerminateAllStreams() {
+bool FakeServer::TerminateAllStreams(time::seconds timeout) {
   // Send sentinel (empty string) to all queues.
   for (auto& s : handler_.path_streams) {
     s.second.SendToAllQueues("");
   }
+
+  // Block until all queues removed.
+  bool success = true;
+  for (auto& s : handler_.path_streams) {
+    success = success && s.second.WaitUntilNoWatchers(timeout);
+  }
+  return success;
 }
 
 void FakeServer::Handler::operator()(Server::request const &request,
@@ -116,6 +123,7 @@ void FakeServer::Handler::operator()(Server::request const &request,
       while (true) {
         std::string s = stream.GetNextResponse(&my_queue);
         if (s.empty()) {
+          stream.RemoveQueue(&my_queue);
           break;
         }
         connection->write(s);
@@ -195,11 +203,27 @@ void FakeServer::Handler::Stream::AddQueue(std::queue<std::string>* queue) {
   cv_.notify_all();
 }
 
+void FakeServer::Handler::Stream::RemoveQueue(std::queue<std::string>* queue) {
+  {
+    std::lock_guard<std::mutex> lk(mutex_);
+    queues_.erase(std::remove(queues_.begin(), queues_.end(), queue),
+                  queues_.end());
+  }
+  cv_.notify_all();
+}
+
 bool FakeServer::Handler::Stream::WaitForOneWatcher(time::seconds timeout) {
   std::unique_lock<std::mutex> queues_lock(mutex_);
   return cv_.wait_for(queues_lock,
                       timeout,
                       [this]{ return queues_.size() > 0; });
+}
+
+bool FakeServer::Handler::Stream::WaitUntilNoWatchers(time::seconds timeout) {
+  std::unique_lock<std::mutex> queues_lock(mutex_);
+  return cv_.wait_for(queues_lock,
+                      timeout,
+                      [this]{ return queues_.empty(); });
 }
 
 void FakeServer::Handler::Stream::SendToAllQueues(const std::string& response) {

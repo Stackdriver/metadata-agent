@@ -1198,10 +1198,11 @@ TEST_F(KubernetesTestFakeServer, MetadataQuery) {
   EXPECT_EQ(pod_metadata->ToString(), m[3].metadata().metadata->ToString());
 }
 
-class KubernetesTestFakeServerOneWatchRetry
+class KubernetesTestFakeServerConfigurable
     : public KubernetesTestFakeServer {
  protected:
   virtual bool ClusterLevel() = 0;
+  virtual int WatchRetries() = 0;
   std::unique_ptr<Configuration> CreateConfig() override {
     return std::unique_ptr<Configuration>(
       new Configuration(std::istringstream(
@@ -1215,22 +1216,32 @@ class KubernetesTestFakeServerOneWatchRetry
         "KubernetesEndpointHost: " + server->GetUrl() + "\n"
         "KubernetesNodeName: TestNodeName\n"
         "MetadataIngestionRawContentVersion: TestVersion\n"
-        "KubernetesUpdaterWatchConnectionRetries: 1\n"
+        "KubernetesUpdaterWatchConnectionRetries: "
+        + std::to_string(WatchRetries()) + "\n"
         "KubernetesUseWatch: true\n"
       )));
   }
 };
 
 class KubernetesTestFakeServerOneWatchRetryNodeLevelMetadata
-    : public KubernetesTestFakeServerOneWatchRetry {
+    : public KubernetesTestFakeServerConfigurable {
  protected:
   bool ClusterLevel() override { return false; }
+  int WatchRetries() override { return 1; }
 };
 
 class KubernetesTestFakeServerOneWatchRetryClusterLevelMetadata
-    : public KubernetesTestFakeServerOneWatchRetry {
+    : public KubernetesTestFakeServerConfigurable {
  protected:
   bool ClusterLevel() override { return true; }
+  int WatchRetries() override { return 1; }
+};
+
+class KubernetesTestFakeServerThreeWatchRetriesNodeLevelMetadata
+    : public KubernetesTestFakeServerConfigurable {
+ protected:
+  bool ClusterLevel() override { return false; }
+  int WatchRetries() override { return 3; }
 };
 
 namespace {
@@ -1870,7 +1881,7 @@ TEST_F(KubernetesTestFakeServerOneWatchRetryNodeLevelMetadata,
   TestPods(*server, store, pods_watch_path);
 
   // Terminate the hanging GETs on the server so that the updater will finish.
-  server->TerminateAllStreams();
+  EXPECT_TRUE(server->TerminateAllStreams(time::seconds(3)));
 }
 
 TEST_F(KubernetesTestFakeServerOneWatchRetryClusterLevelMetadata,
@@ -1902,7 +1913,42 @@ TEST_F(KubernetesTestFakeServerOneWatchRetryClusterLevelMetadata,
       *server, store, services_watch_path, endpoints_watch_path);
 
   // Terminate the hanging GETs on the server so that the updater will finish.
-  server->TerminateAllStreams();
+  EXPECT_TRUE(server->TerminateAllStreams(time::seconds(3)));
+}
+
+TEST_F(KubernetesTestFakeServerThreeWatchRetriesNodeLevelMetadata,
+       KubernetesUpdaterReconnection) {
+  const std::string nodes_watch_path =
+    "/api/v1/watch/nodes/TestNodeName?watch=true";
+  const std::string pods_watch_path =
+    "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true";
+
+  // Create a fake server representing the Kubernetes master.
+  server->SetResponse("/api/v1/nodes?limit=1", "{}");
+  server->SetResponse("/api/v1/pods?limit=1", "{}");
+  server->AllowStream(nodes_watch_path);
+  server->AllowStream(pods_watch_path);
+
+  MetadataStore store(*config);
+  KubernetesUpdater updater(*config, /*health_checker=*/nullptr, &store);
+  updater.Start();
+
+  // Step 1: Wait for initial connection from watchers, then terminate
+  // all streams.
+  server->WaitForOneStreamWatcher(nodes_watch_path, time::seconds(3));
+  server->WaitForOneStreamWatcher(pods_watch_path, time::seconds(3));
+  EXPECT_TRUE(server->TerminateAllStreams(time::seconds(3)));
+
+  // Step 2: Wait for watchers to reconnect, then terminate again.
+  server->WaitForOneStreamWatcher(nodes_watch_path, time::seconds(3));
+  server->WaitForOneStreamWatcher(pods_watch_path, time::seconds(3));
+  EXPECT_TRUE(server->TerminateAllStreams(time::seconds(3)));
+
+  // Step 3: Wait for final reconnection (configuration specifies 3
+  // retries) then terminate.
+  server->WaitForOneStreamWatcher(nodes_watch_path, time::seconds(3));
+  server->WaitForOneStreamWatcher(pods_watch_path, time::seconds(3));
+  EXPECT_TRUE(server->TerminateAllStreams(time::seconds(3)));
 }
 
 }  // namespace google

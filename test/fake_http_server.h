@@ -76,7 +76,7 @@ class FakeServer {
   void SendStreamResponse(const std::string& path, const std::string& response);
 
   // Closes all open streams on the server.
-  void TerminateAllStreams();
+  bool TerminateAllStreams(time::seconds timeout);
 
  private:
   struct Handler;
@@ -95,7 +95,9 @@ class FakeServer {
     class Stream {
      public:
       void AddQueue(std::queue<std::string>* queue);
+      void RemoveQueue(std::queue<std::string>* queue);
       bool WaitForOneWatcher(time::seconds timeout);
+      bool WaitUntilNoWatchers(time::seconds timeout);
       void SendToAllQueues(const std::string& response);
       std::string GetNextResponse(std::queue<std::string>* queue);
 
