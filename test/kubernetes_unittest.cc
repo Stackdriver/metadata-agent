@@ -1863,7 +1863,7 @@ TEST_F(KubernetesTestFakeServerOneWatchRetryNodeLevelMetadata,
 
   MetadataStore store(*config);
   KubernetesUpdater updater(*config, /*health_checker=*/nullptr, &store);
-  std::thread updater_thread([&updater] { updater.Start(); });
+  updater.Start();
 
   // Test nodes & pods (but not services & endpoints).
   TestNodes(*server, store, nodes_watch_path);
@@ -1871,7 +1871,6 @@ TEST_F(KubernetesTestFakeServerOneWatchRetryNodeLevelMetadata,
 
   // Terminate the hanging GETs on the server so that the updater will finish.
   server->TerminateAllStreams();
-  updater_thread.join();
 }
 
 TEST_F(KubernetesTestFakeServerOneWatchRetryClusterLevelMetadata,
@@ -1894,7 +1893,7 @@ TEST_F(KubernetesTestFakeServerOneWatchRetryClusterLevelMetadata,
 
   MetadataStore store(*config);
   KubernetesUpdater updater(*config, /*health_checker=*/nullptr, &store);
-  std::thread updater_thread([&updater] { updater.Start(); });
+  updater.Start();
 
   // Tests for nodes, pods, services, endpoints.
   TestNodes(*server, store, nodes_watch_path);
@@ -1904,7 +1903,6 @@ TEST_F(KubernetesTestFakeServerOneWatchRetryClusterLevelMetadata,
 
   // Terminate the hanging GETs on the server so that the updater will finish.
   server->TerminateAllStreams();
-  updater_thread.join();
 }
 
 }  // namespace google
