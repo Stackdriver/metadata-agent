@@ -1,4 +1,4 @@
-This is the Stackdriver Metadata Agent.
+This is the Stackdriver Metadata agent.
 
 # Prerequisites
 
