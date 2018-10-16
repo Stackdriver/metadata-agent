@@ -78,8 +78,14 @@ class KubernetesReader::NonRetriableError
 
 KubernetesReader::KubernetesReader(const Configuration& config,
                                    HealthChecker* health_checker)
+    : KubernetesReader(config, health_checker, SleeperImpl::New()) {}
+
+KubernetesReader::KubernetesReader(const Configuration& config,
+                                   HealthChecker* health_checker,
+                                   std::unique_ptr<Sleeper> sleeper)
     : config_(config), environment_(config), health_checker_(health_checker),
-      service_account_directory_(kServiceAccountDirectory) {}
+      service_account_directory_(kServiceAccountDirectory),
+      sleeper_(std::move(sleeper)) {}
 
 std::string KubernetesReader::SecretPath(const std::string& secret) const {
   return service_account_directory_ + "/" + secret;
@@ -837,21 +843,29 @@ void KubernetesReader::WatchMaster(
       if (verbose) {
         LOG(INFO) << "WatchMaster(" << name << ") completed " << body(response);
       }
+      if (status(response) >= 300) {
+        throw boost::system::system_error(
+            boost::system::errc::make_error_code(
+                boost::system::errc::not_connected),
+            format::Substitute("Server responded with '{{message}}' ({{code}})",
+                               {{"message", status_message(response)},
+                                {"code", format::str(status(response))}}));
+      }
       // Connection closed without an error; reset failure count.
       failures = 0;
     } catch (const boost::system::system_error& e) {
       LOG(ERROR) << "Failed to query " << endpoint << ": " << e.what();
-      ++failures;
-      if (failures > config_.KubernetesUpdaterWatchMaxConnectionFailures()) {
+      if (failures >= config_.KubernetesUpdaterWatchMaxConnectionFailures()) {
         LOG(ERROR) << "WatchMaster(" << name << "): Exiting after "
                    << failures << " failures";
         throw QueryException(endpoint + " -> " + e.what());
       }
+      ++failures;
       double backoff = fmin(pow(1.5, failures), 30);
       if (verbose) {
         LOG(INFO) << "Backing off for " << backoff << " seconds";
       }
-      std::this_thread::sleep_for(time::seconds(backoff));
+      sleeper_->SleepFor(backoff);
     }
   }
 }
@@ -1310,10 +1324,17 @@ void KubernetesReader::WatchEndpoints(
 KubernetesUpdater::KubernetesUpdater(const Configuration& config,
                                      HealthChecker* health_checker,
                                      MetadataStore* store)
-    : reader_(config, health_checker), PollingMetadataUpdater(
-        config, store, "KubernetesUpdater",
-        config.KubernetesUpdaterIntervalSeconds(),
-        [=]() { return reader_.MetadataQuery(); }) { }
+    : KubernetesUpdater(config, health_checker, store, SleeperImpl::New()) {}
+
+KubernetesUpdater::KubernetesUpdater(const Configuration& config,
+                                     HealthChecker* health_checker,
+                                     MetadataStore* store,
+                                     std::unique_ptr<Sleeper> sleeper)
+    : reader_(config, health_checker, std::move(sleeper)),
+      PollingMetadataUpdater(
+          config, store, "KubernetesUpdater",
+          config.KubernetesUpdaterIntervalSeconds(),
+          [=]() { return reader_.MetadataQuery(); }) { }
 
 void KubernetesUpdater::ValidateDynamicConfiguration() const
     throw(ConfigurationValidationError) {
