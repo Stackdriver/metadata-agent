@@ -20,6 +20,10 @@ GTEST_HEADERS=$(GTEST_DIR)/include/gtest/*.h \
               $(GTEST_DIR)/include/gtest/internal/*.h
 GTEST_SRCS_=$(GTEST_SOURCEDIR)/*.cc $(GTEST_SOURCEDIR)/*.h $(GTEST_HEADERS)
 GMOCK_DIR=$(LIBDIR)/googletest/googlemock
+GMOCK_SOURCEDIR=$(GMOCK_DIR)/src
+GMOCK_HEADERS=$(GMOCK_DIR)/include/gtest/*.h \
+              $(GMOCK_DIR)/include/gtest/internal/*.h
+GMOCK_SRCS_=$(GMOCK_SOURCEDIR)/*.cc $(GMOCK_SOURCEDIR)/*.h $(GMOCK_HEADERS)
 
 # TODO: Factor out the common variables.
 CPP_NETLIB_DIR=$(LIBDIR)/cpp-netlib
@@ -86,6 +90,7 @@ UTIL_SOURCES=$(TEST_DIR)/fake_clock.cc $(TEST_DIR)/fake_http_server.cc
 UTIL_OBJS=$(UTIL_SOURCES:$(TEST_DIR)/%.cc=%.o)
 
 GTEST_LIB=gtest_lib.a
+GMOCK_LIB=gmock_lib.a
 
 all: $(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(TESTS)
 
@@ -98,7 +103,7 @@ test: $(TESTS)
 	done
 
 clean:
-	$(RM) $(TESTS) $(GTEST_LIB) $(TEST_OBJS) $(UTIL_OBJS)
+	$(RM) $(TESTS) $(GTEST_LIB) $(GMOCK_LIB) $(TEST_OBJS) $(UTIL_OBJS)
 
 purge: clean
 	$(RM) init-submodules
@@ -122,21 +127,28 @@ $(SRC_DIR)/%.o: $(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(SRC_DIR)
 	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
 $(GTEST_SOURCEDIR)/gtest-all.cc $(GTEST_SOURCEDIR)/gtest_main.cc: init-submodules
+$(GMOCK_SOURCEDIR)/gmock-all.cc $(GMOCK_SOURCEDIR)/gmock_main.cc: init-submodules
 
 gtest-all.o: $(GTEST_SOURCEDIR)/gtest-all.cc
 	$(CXX) -c $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -o $@ $^
+gmock-all.o: $(GMOCK_SOURCEDIR)/gmock-all.cc
+	$(CXX) -c $(CPPFLAGS) -I$(GMOCK_DIR) $(CXXFLAGS) -o $@ $^
 
 gtest_main.o: $(GTEST_SOURCEDIR)/gtest_main.cc
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $^
+gmock_main.o: $(GMOCK_SOURCEDIR)/gmock_main.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $^
 
 $(GTEST_LIB): gtest-all.o gtest_main.o
 	$(AR) $(ARFLAGS) $@ $^
+$(GMOCK_LIB): gmock-all.o gmock_main.o
+	$(AR) $(ARFLAGS) $@ $^
 
-$(TESTS): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
+$(TESTS): $(GTEST_LIB) $(GMOCK_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 
 # All unittest objects depend on GTEST_LIB.
 # Some headers need CPP_NETLIB_LIBS and YAML_CPP_LIBS.
-$(TESTS:%=%.o): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
+$(TESTS:%=%.o): $(GTEST_LIB) $(GMOCK_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
 
 api_server_unittest: api_server_unittest.o $(SRC_DIR)/api_server.o $(SRC_DIR)/configuration.o $(SRC_DIR)/store.o $(SRC_DIR)/json.o $(SRC_DIR)/resource.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/health_checker.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@

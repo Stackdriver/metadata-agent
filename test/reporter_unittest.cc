@@ -8,6 +8,22 @@
 
 namespace google {
 
+namespace {
+MATCHER_P(ContainsAll, map, "") {
+  std::vector<std::string> missing;
+  for (const auto& kv : map) {
+    if (!::testing::Value(arg, ::testing::Contains(kv))) {
+      missing.push_back(::testing::PrintToString(kv));
+    }
+  }
+  if (!missing.empty()) {
+    *result_listener << "does not contain "
+                     << boost::algorithm::join(missing, " or ");
+  }
+  return missing.empty();
+}
+}  // namespace
+
 // MetadataReporter that uses a FakeClock.
 class FakeMetadataReporter : public MetadataReporter {
  public:
@@ -21,8 +37,8 @@ class FakeMetadataReporter : public MetadataReporter {
 TEST(ReporterTest, MetadataReporter) {
   // Set up a fake server representing the Resource Metadata API.
   // It will collect POST data from the MetadataReporter.
-  std::mutex mutex;
-  std::condition_variable cv;
+  std::mutex post_data_mutex;
+  std::condition_variable post_data_cv;
   int post_count = 0;
   std::map<std::string, std::string> response_headers;
   std::string response_body;
@@ -35,12 +51,12 @@ TEST(ReporterTest, MetadataReporter) {
           const std::map<std::string, std::string>& headers,
           const std::string& body) -> std::string {
         {
-          std::lock_guard<std::mutex> lk(mutex);
+          std::lock_guard<std::mutex> lk(post_data_mutex);
           post_count++;
           response_headers = headers;
           response_body = body;
         }
-        cv.notify_all();
+        post_data_cv.notify_all();
         return "this POST response is ignored";
       });
 
@@ -54,27 +70,20 @@ TEST(ReporterTest, MetadataReporter) {
   ));
   MetadataStore store(config);
   MonitoredResource resource("type", {});
-  MetadataStore::Metadata m(
+  store.UpdateMetadata(resource, MetadataStore::Metadata(
       "default-version",
       false,
       time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
       time::rfc3339::FromString("2018-03-03T01:32:45.678901234Z"),
-      json::object({{"f", json::string("hello")}}));
-  MetadataStore::Metadata m_deleted(
-      "default-version",
-      true,
-      time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
-      time::rfc3339::FromString("2018-03-03T01:32:45.678901234Z"),
-      json::object({{"f", json::string("hello")}}));
-  store.UpdateMetadata(resource, std::move(m));
+      json::object({{"f", json::string("hello")}})));
   double period_s = 60.0;
   FakeMetadataReporter reporter(config, &store, period_s);
 
   // The headers and body we expect to see in the POST requests.
-  std::pair<std::string, std::string> content_type(
-      std::string("Content-Type"), std::string("application/json"));
-  std::pair<std::string, std::string> user_agent(
-      std::string("User-Agent"), std::string("metadata-agent/0.0.21-1"));
+  std::map<std::string, std::string> expected_headers{
+    {"Content-Type", "application/json"},
+    {"User-Agent", "metadata-agent/0.0.21-1"},
+  };
   auto expected_body = [](const std::string& state) -> std::string {
     return json::object({
       {"entries", json::array({
@@ -97,36 +106,38 @@ TEST(ReporterTest, MetadataReporter) {
 
   // Wait for 1st post to server, and verify contents.
   {
-    std::unique_lock<std::mutex> lk(mutex);
-    cv.wait(lk, [&post_count]{ return post_count >= 1; });
+    std::unique_lock<std::mutex> lk(post_data_mutex);
+    post_data_cv.wait(lk, [&post_count]{ return post_count >= 1; });
   }
   EXPECT_EQ(1, post_count);
-  EXPECT_THAT(response_headers, ::testing::Contains(content_type));
-  EXPECT_THAT(response_headers, ::testing::Contains(user_agent));
+  EXPECT_THAT(response_headers, ContainsAll(expected_headers));
   EXPECT_EQ(expected_body_active, response_body);
 
   // Advance fake clock, wait for 2nd post, verify contents.
   testing::FakeClock::AdvanceNext(time::seconds(60));
   {
-    std::unique_lock<std::mutex> lk(mutex);
-    cv.wait(lk, [&post_count]{ return post_count >= 2; });
+    std::unique_lock<std::mutex> lk(post_data_mutex);
+    post_data_cv.wait(lk, [&post_count]{ return post_count >= 2; });
   }
   EXPECT_EQ(2, post_count);
-  EXPECT_THAT(response_headers, ::testing::Contains(content_type));
-  EXPECT_THAT(response_headers, ::testing::Contains(user_agent));
+  EXPECT_THAT(response_headers, ContainsAll(expected_headers));
   EXPECT_EQ(expected_body_active, response_body);
 
   // Mark metadata as deleted in store, advance fake clock, wait for
   // 3rd post, verify contents.
-  store.UpdateMetadata(resource, std::move(m_deleted));
+  store.UpdateMetadata(resource, MetadataStore::Metadata(
+      "default-version",
+      true,
+      time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
+      time::rfc3339::FromString("2018-03-03T01:32:45.678901234Z"),
+      json::object({{"f", json::string("hello")}})));
   testing::FakeClock::AdvanceNext(time::seconds(60));
   {
-    std::unique_lock<std::mutex> lk(mutex);
-    cv.wait(lk, [&post_count]{ return post_count >= 3; });
+    std::unique_lock<std::mutex> lk(post_data_mutex);
+    post_data_cv.wait(lk, [&post_count]{ return post_count >= 3; });
   }
   EXPECT_EQ(3, post_count);
-  EXPECT_THAT(response_headers, ::testing::Contains(content_type));
-  EXPECT_THAT(response_headers, ::testing::Contains(user_agent));
+  EXPECT_THAT(response_headers, ContainsAll(expected_headers));
   EXPECT_EQ(expected_body_deleted, response_body);
 }
 
