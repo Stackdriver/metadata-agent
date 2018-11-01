@@ -17,7 +17,10 @@ steps:
   - -c
   - make purge && make -j4 DEB_PKG=stackdriver-metadata.deb DISTRO=xenial deb
 - name: 'ubuntu:xenial'
-  args: [ 'cp', '/workspace/src/stackdriver-metadata.deb', '/workspace/pkg/docker/stackdriver-metadata.deb' ]
+  args: 
+  - cp
+  - /workspace/src/stackdriver-metadata.deb
+  - /workspace/pkg/docker/stackdriver-metadata.deb
 - name: 'gcr.io/cloud-builders/docker'
   args:
   - build
