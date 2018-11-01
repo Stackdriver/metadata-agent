@@ -1,13 +1,33 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/metadata-agent-xenial-build-container', 'build/x86_64_xenial' ]
+  args:
+  - build
+  - -t
+  - gcr.io/$PROJECT_ID/metadata-agent-xenial-build-container
+  - build/x86_64_xenial
 - name: 'gcr.io/cloud-builders/docker'
-  args: [ 'run', '-v', '/workspace:/workspace', '-w', '/workspace/src/',  'gcr.io/$PROJECT_ID/metadata-agent-xenial-build-container', '/bin/bash', '-c', 'make purge && make -j4 DISTRO=xenial deb' ]
+  args:
+  - run
+  - -v
+  - /workspace:/workspace
+  - -w
+  - /workspace/src/
+  - gcr.io/$PROJECT_ID/metadata-agent-xenial-build-container
+  - /bin/bash
+  - -c
+  - make purge && make -j4 DEB_PKG=stackdriver-metadata.deb DISTRO=xenial deb
 - name: 'ubuntu:xenial'
-  args: [ 'cp', '/workspace/src/stackdriver-metadata_${_METADATA_AGENT_VERSION}.xenial.deb', '/workspace/pkg/docker/stackdriver-metadata_${_METADATA_AGENT_VERSION}.xenial.deb' ]
+  args: [ 'cp', '/workspace/src/stackdriver-metadata.deb', '/workspace/pkg/docker/stackdriver-metadata.deb' ]
 - name: 'gcr.io/cloud-builders/docker'
-  args: [ 'build', '--build-arg', 'package=stackdriver-metadata_${_METADATA_AGENT_VERSION}.xenial.deb', '-t', 'gcr.io/$PROJECT_ID/metadata-agent-xenial', '-f', 'pkg/docker/Dockerfile-xenial', 'pkg/docker' ]
+  args:
+  - build
+  - --build-arg
+  - package=stackdriver-metadata.deb
+  - -t
+  - gcr.io/$PROJECT_ID/metadata-agent-xenial:$BUILD_ID
+  - -f
+  - pkg/docker/Dockerfile-xenial
+  - pkg/docker
 images:
-- 'gcr.io/$PROJECT_ID/metadata-agent-xenial'
-substitutions:
-  _METADATA_AGENT_VERSION: 0.0.21-1
+- 'gcr.io/$PROJECT_ID/metadata-agent-xenial:$BUILD_ID'
+
