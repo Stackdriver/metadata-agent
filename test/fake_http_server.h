@@ -68,15 +68,19 @@ class FakeServer {
   // responses over a hanging GET.
   void AllowStream(const std::string& path);
 
-  // Blocks until at least one client has connected to the given path.
-  // Returns false if the timeout is reached with no client connections.
-  bool WaitForOneStreamWatcher(const std::string& path, time::seconds timeout);
+  // Blocks until the total number of connections to the given path
+  // has reached at least min_connections (including connections that
+  // have since been closed).  Returns false if the timeout is reached
+  // before seeing enough client connections.
+  bool WaitForTotalConnections(const std::string& path,
+                               int min_connections,
+                               time::seconds timeout);
 
   // Sends a streaming response to all watchers for the given path.
   void SendStreamResponse(const std::string& path, const std::string& response);
 
   // Closes all open streams on the server.
-  bool TerminateAllStreams(time::seconds timeout);
+  void TerminateAllStreams();
 
  private:
   struct Handler;
@@ -94,10 +98,10 @@ class FakeServer {
     // take ownership.
     class Stream {
      public:
+      Stream() : total_connections_(0) {}
       void AddQueue(std::queue<std::string>* queue);
       void RemoveQueue(std::queue<std::string>* queue);
-      bool WaitForOneWatcher(time::seconds timeout);
-      bool WaitUntilNoWatchers(time::seconds timeout);
+      bool WaitForTotalConnections(int min_connections, time::seconds timeout);
       void SendToAllQueues(const std::string& response);
       std::string GetNextResponse(std::queue<std::string>* queue);
 
@@ -106,6 +110,7 @@ class FakeServer {
       std::condition_variable cv_;
       // The vector elements are not owned by the Stream object.
       std::vector<std::queue<std::string>*> queues_;
+      int total_connections_;
     };
 
     void operator()(Server::request const &request,
