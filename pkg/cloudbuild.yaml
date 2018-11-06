@@ -16,6 +16,7 @@ steps:
   - /bin/bash
   - -c
   - make purge && make -j4 DEB_PKG=stackdriver-metadata.deb DISTRO=xenial deb
+# TODO: Remove the need for this `cp` build step.
 - name: 'ubuntu:xenial'
   args: 
   - cp
@@ -32,5 +33,7 @@ steps:
   - pkg/docker/Dockerfile-xenial
   - pkg/docker
 images:
+# The $BUILD_ID can be used to inspect the build logs to determine the version
+# of the metadata agent that is included in the build.
 - 'gcr.io/$PROJECT_ID/metadata-agent-xenial:$BUILD_ID'
 
