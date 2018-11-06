@@ -1269,7 +1269,7 @@ bool WaitForNewerCollectionTimestamp(const MetadataStore& store,
 // to the store.
 void TestNodes(testing::FakeServer& server, MetadataStore& store,
                const std::string& nodes_watch_path) {
-  server.WaitForTotalConnections(nodes_watch_path, 1, time::seconds(3));
+  server.WaitForConnectionCounter(nodes_watch_path, 1, time::seconds(3));
   json::value node1 = json::object({
     {"metadata", json::object({
       {"name", json::string("TestNodeName1")},
@@ -1362,7 +1362,7 @@ void TestNodes(testing::FakeServer& server, MetadataStore& store,
 // to the store.
 void TestPods(testing::FakeServer& server, MetadataStore& store,
               const std::string& pods_watch_path) {
-  server.WaitForTotalConnections(pods_watch_path, 1, time::seconds(3));
+  server.WaitForConnectionCounter(pods_watch_path, 1, time::seconds(3));
   json::value pod1 = json::object({
     {"metadata", json::object({
       {"name", json::string("TestPodName1")},
@@ -1588,8 +1588,8 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
 void TestServicesAndEndpoints(testing::FakeServer& server, MetadataStore& store,
                               const std::string& services_watch_path,
                               const std::string& endpoints_watch_path) {
-  server.WaitForTotalConnections(services_watch_path, 1, time::seconds(3));
-  server.WaitForTotalConnections(endpoints_watch_path, 1, time::seconds(3));
+  server.WaitForConnectionCounter(services_watch_path, 1, time::seconds(3));
+  server.WaitForConnectionCounter(endpoints_watch_path, 1, time::seconds(3));
   json::value service1 = json::object({
     {"metadata", json::object({
       {"name", json::string("testname1")},
@@ -1935,19 +1935,19 @@ TEST_F(KubernetesTestFakeServerThreeWatchRetriesNodeLevelMetadata,
 
   // Step 1: Wait for initial connection from watchers, then terminate
   // all streams.
-  server->WaitForTotalConnections(nodes_watch_path, 1, time::seconds(3));
-  server->WaitForTotalConnections(pods_watch_path, 1, time::seconds(3));
+  server->WaitForConnectionCounter(nodes_watch_path, 1, time::seconds(3));
+  server->WaitForConnectionCounter(pods_watch_path, 1, time::seconds(3));
   server->TerminateAllStreams();
 
   // Step 2: Wait for watchers to reconnect, then terminate again.
-  server->WaitForTotalConnections(nodes_watch_path, 2, time::seconds(3));
-  server->WaitForTotalConnections(pods_watch_path, 2, time::seconds(3));
+  server->WaitForConnectionCounter(nodes_watch_path, 2, time::seconds(3));
+  server->WaitForConnectionCounter(pods_watch_path, 2, time::seconds(3));
   server->TerminateAllStreams();
 
   // Step 3: Wait for final reconnection (configuration specifies 3
   // retries) then terminate.
-  server->WaitForTotalConnections(nodes_watch_path, 3, time::seconds(3));
-  server->WaitForTotalConnections(pods_watch_path, 3, time::seconds(3));
+  server->WaitForConnectionCounter(nodes_watch_path, 3, time::seconds(3));
+  server->WaitForConnectionCounter(pods_watch_path, 3, time::seconds(3));
   server->TerminateAllStreams();
 }
 

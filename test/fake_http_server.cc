@@ -69,15 +69,15 @@ void FakeServer::AllowStream(const std::string& path) {
   handler_.path_streams[path];
 }
 
-bool FakeServer::WaitForTotalConnections(const std::string& path,
-                                         int min_connections,
-                                         time::seconds timeout) {
+bool FakeServer::WaitForConnectionCounter(const std::string& path,
+                                          int min_connections,
+                                          time::seconds timeout) {
   auto stream_it = handler_.path_streams.find(path);
   if (stream_it == handler_.path_streams.end()) {
     LOG(ERROR) << "Attempted to wait for an unknown path " << path;
     return false;
   }
-  return stream_it->second.WaitForTotalConnections(min_connections, timeout);
+  return stream_it->second.WaitForConnectionCounter(min_connections, timeout);
 }
 
 void FakeServer::SendStreamResponse(const std::string& path,
@@ -191,7 +191,7 @@ void FakeServer::Handler::Stream::AddQueue(std::queue<std::string>* queue) {
   {
     std::lock_guard<std::mutex> lk(mutex_);
     queues_.push_back(queue);
-    total_connections_++;
+    connection_counter_++;
   }
   // Notify the condition variable to unblock any calls to
   // WaitForOneStreamWatcher().
@@ -207,12 +207,12 @@ void FakeServer::Handler::Stream::RemoveQueue(std::queue<std::string>* queue) {
   cv_.notify_all();
 }
 
-bool FakeServer::Handler::Stream::WaitForTotalConnections(
+bool FakeServer::Handler::Stream::WaitForConnectionCounter(
     int min_connections, time::seconds timeout) {
   std::unique_lock<std::mutex> queues_lock(mutex_);
   return cv_.wait_for(
       queues_lock, timeout, [this, min_connections]{
-        return total_connections_ >= min_connections;
+        return connection_counter_ >= min_connections;
       });
 }
 
