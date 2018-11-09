@@ -92,7 +92,7 @@ This is the Stackdriver Metadata agent.
    available from Homebrew as of 2018/05/17*.
 
        $ brew install openssl
-       $ brew install boost\@1.60 -c++11 && \
+       $ brew install boost\@1.60 -c++11 && brew link --force boost\@1.60 && \
          (cd /usr/local/lib && ln -s libboost_thread-mt.a libboost_thread.a && \
           ln -s libboost_thread-mt.dylib libboost_thread.dylib)
        $ brew install yajl
