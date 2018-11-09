@@ -68,10 +68,10 @@ class FakeServer {
   // responses over a hanging GET.
   void AllowStream(const std::string& path);
 
-  // Blocks until the total number of connections to the given path
-  // has reached at least min_connections (including connections that
-  // have since been closed).  Returns false if the timeout is reached
-  // before seeing enough client connections.
+  // Blocks until the total number of connections (including
+  // connections that have since been closed) to the given path has
+  // reached at least min_connections.  Returns false if the timeout
+  // is reached before seeing enough client connections.
   bool WaitForConnectionCounter(const std::string& path,
                                 int min_connections,
                                 time::seconds timeout);
