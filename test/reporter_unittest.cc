@@ -6,6 +6,8 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+#include <boost/algorithm/string/join.hpp>
+
 namespace google {
 
 namespace {
@@ -67,6 +69,7 @@ TEST(ReporterTest, MetadataReporter) {
       "ProjectId: TestProjectId\n"
       "MetadataIngestionEndpointFormat: " + server.GetUrl() +
       "/v1beta2/projects/{{project_id}}/resourceMetadata:batchUpdate\n"
+      "MetadataReporterUserAgent: metadata-agent/1.2.3-4\n"
   ));
   MetadataStore store(config);
   MonitoredResource resource("type", {});
@@ -82,7 +85,7 @@ TEST(ReporterTest, MetadataReporter) {
   // The headers and body we expect to see in the POST requests.
   std::map<std::string, std::string> expected_headers{
     {"Content-Type", "application/json"},
-    {"User-Agent", "metadata-agent/0.0.21-1"},
+    {"User-Agent", "metadata-agent/1.2.3-4"},
   };
   auto expected_body = [](const std::string& state) -> std::string {
     return json::object({
@@ -114,7 +117,7 @@ TEST(ReporterTest, MetadataReporter) {
   EXPECT_EQ(expected_body_active, response_body);
 
   // Advance fake clock, wait for 2nd post, verify contents.
-  testing::FakeClock::AdvanceNext(time::seconds(60));
+  testing::FakeClock::AdvanceAfterNextNowCall(time::seconds(60));
   {
     std::unique_lock<std::mutex> lk(post_data_mutex);
     post_data_cv.wait(lk, [&post_count]{ return post_count >= 2; });
@@ -131,7 +134,7 @@ TEST(ReporterTest, MetadataReporter) {
       time::rfc3339::FromString("2018-03-03T01:23:45.678901234Z"),
       time::rfc3339::FromString("2018-03-03T01:32:45.678901234Z"),
       json::object({{"f", json::string("hello")}})));
-  testing::FakeClock::AdvanceNext(time::seconds(60));
+  testing::FakeClock::AdvanceAfterNextNowCall(time::seconds(60));
   {
     std::unique_lock<std::mutex> lk(post_data_mutex);
     post_data_cv.wait(lk, [&post_count]{ return post_count >= 3; });

@@ -288,12 +288,12 @@ TEST_F(UpdaterTest, PollingMetadataUpdater) {
   EXPECT_EQ(1, store.GetMetadataMap().size());
 
   // Advance fake clock, wait for 2nd update, verify store.
-  testing::FakeClock::AdvanceNext(time::seconds(60));
+  testing::FakeClock::AdvanceAfterNextNowCall(time::seconds(60));
   EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_1", {})));
   EXPECT_EQ(2, store.GetMetadataMap().size());
 
   // Advance fake clock, wait for 3rd update, verify store.
-  testing::FakeClock::AdvanceNext(time::seconds(60));
+  testing::FakeClock::AdvanceAfterNextNowCall(time::seconds(60));
   EXPECT_TRUE(WaitForResource(store, MonitoredResource("test_resource_2", {})));
   EXPECT_EQ(3, store.GetMetadataMap().size());
 

@@ -78,6 +78,10 @@ class TimerImpl : public Timer {
   TimerImpl(bool verbose, const std::string& name)
       : verbose_(verbose), name_(name) {}
 
+  ~TimerImpl() {
+    Cancel();
+  }
+
   void Init() override {
     timer_.lock();
     if (verbose_) {
