@@ -95,6 +95,7 @@ This is the Stackdriver Metadata agent.
        $ brew install boost\@1.60 -c++11 && \
          (cd /usr/local/lib && ln -s libboost_thread-mt.a libboost_thread.a && \
           ln -s libboost_thread-mt.dylib libboost_thread.dylib)
+       $ brew link --force boost\@1.60
        $ brew install yajl
 
 2. Install build dependencies:
