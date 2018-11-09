@@ -66,9 +66,9 @@ void MetadataReporter::NotifyStopReporter() {
 void MetadataReporter::ReportMetadata() {
   LOG(INFO) << "Metadata reporter started";
   timer_->Init();
+  LOG(INFO) << "Initialized timer";
   // Wait for the first collection to complete.
   // TODO: Come up with a more robust synchronization mechanism.
-  LOG(INFO) << "Initialized timer";
   timer_->Wait(time::seconds(initial_wait_));
   LOG(INFO) << "Finished waiting " << initial_wait_.count() << " seconds";
   do {
