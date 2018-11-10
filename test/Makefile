@@ -20,6 +20,10 @@ GTEST_HEADERS=$(GTEST_DIR)/include/gtest/*.h \
               $(GTEST_DIR)/include/gtest/internal/*.h
 GTEST_SRCS_=$(GTEST_SOURCEDIR)/*.cc $(GTEST_SOURCEDIR)/*.h $(GTEST_HEADERS)
 GMOCK_DIR=$(LIBDIR)/googletest/googlemock
+GMOCK_SOURCEDIR=$(GMOCK_DIR)/src
+GMOCK_HEADERS=$(GMOCK_DIR)/include/gtest/*.h \
+              $(GMOCK_DIR)/include/gtest/internal/*.h
+GMOCK_SRCS_=$(GMOCK_SOURCEDIR)/*.cc $(GMOCK_SOURCEDIR)/*.h $(GMOCK_HEADERS)
 
 # TODO: Factor out the common variables.
 CPP_NETLIB_DIR=$(LIBDIR)/cpp-netlib
@@ -76,6 +80,7 @@ TESTS=\
       kubernetes_unittest \
       logging_unittest \
       oauth2_unittest \
+      reporter_unittest \
       resource_unittest \
       store_unittest \
       time_unittest \
@@ -120,15 +125,18 @@ $(YAML_CPP_LIBS): $(SRC_DIR)/build-yaml-cpp
 $(SRC_DIR)/%.o: $(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(SRC_DIR)/%.cc
 	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
-$(GTEST_SOURCEDIR)/gtest-all.cc $(GTEST_SOURCEDIR)/gtest_main.cc: init-submodules
+$(GTEST_SOURCEDIR)/gtest-all.cc: init-submodules
+$(GMOCK_SOURCEDIR)/gmock-all.cc $(GMOCK_SOURCEDIR)/gmock_main.cc: init-submodules
 
 gtest-all.o: $(GTEST_SOURCEDIR)/gtest-all.cc
 	$(CXX) -c $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -o $@ $^
+gmock-all.o: $(GMOCK_SOURCEDIR)/gmock-all.cc
+	$(CXX) -c $(CPPFLAGS) -I$(GMOCK_DIR) $(CXXFLAGS) -o $@ $^
 
-gtest_main.o: $(GTEST_SOURCEDIR)/gtest_main.cc
+gmock_main.o: $(GMOCK_SOURCEDIR)/gmock_main.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $^
 
-$(GTEST_LIB): gtest-all.o gtest_main.o
+$(GTEST_LIB): gtest-all.o gmock-all.o gmock_main.o
 	$(AR) $(ARFLAGS) $@ $^
 
 $(TESTS): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
@@ -160,6 +168,8 @@ logging_unittest: logging_unittest.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o
 oauth2_unittest: oauth2_unittest.o fake_clock.o fake_http_server.o $(SRC_DIR)/oauth2.o $(SRC_DIR)/base64.o $(SRC_DIR)/configuration.o $(SRC_DIR)/environment.o $(SRC_DIR)/format.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 resource_unittest: resource_unittest.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+reporter_unittest: reporter_unittest.o fake_clock.o fake_http_server.o $(SRC_DIR)/reporter.o $(SRC_DIR)/base64.o $(SRC_DIR)/configuration.o $(SRC_DIR)/environment.o $(SRC_DIR)/format.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/oauth2.o $(SRC_DIR)/resource.o $(SRC_DIR)/store.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 store_unittest: store_unittest.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/configuration.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@

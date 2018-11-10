@@ -35,10 +35,26 @@ class FakeClock {
   using duration = time::seconds;
   using time_point = std::chrono::time_point<FakeClock>;
   static constexpr const bool is_steady = false;
-  static time_point now() { return now_; }
+
+  static time_point now() {
+    std::lock_guard<std::mutex> guard(mutex_);
+    time_point now = now_;
+    now_ = future_now_;
+    return now;
+  }
 
   // Increment fake clock's internal time.
-  static void Advance(duration d) { now_ += d; }
+  static void Advance(duration d) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    now_ += d;
+    future_now_ = now_;
+  }
+
+  // Increment fake clock's internal time after the next call to now().
+  static void AdvanceAfterNextNowCall(duration d) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    future_now_ = now_ + d;
+  }
 
  private:
   FakeClock() = delete;
@@ -46,6 +62,8 @@ class FakeClock {
   FakeClock(FakeClock const&) = delete;
 
   static time_point now_;
+  static time_point future_now_;
+  static std::mutex mutex_;
 };
 
 }  // namespace testing

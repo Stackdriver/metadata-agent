@@ -51,8 +51,8 @@ PollingMetadataUpdater::PollingMetadataUpdater(
     std::function<std::vector<ResourceMetadata>()> query_metadata)
     : PollingMetadataUpdater(
           config, store, name, period_s, query_metadata,
-          std::unique_ptr<Timer>(new TimerImpl<std::chrono::high_resolution_clock>(
-              config.VerboseLogging(), name))) {}
+          TimerImpl<std::chrono::high_resolution_clock>::New(
+              config.VerboseLogging(), name)) {}
 
 PollingMetadataUpdater::PollingMetadataUpdater(
     const Configuration& config, MetadataStore* store,

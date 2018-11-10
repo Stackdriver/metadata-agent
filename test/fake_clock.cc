@@ -20,6 +20,8 @@ namespace google {
 namespace testing {
 
 FakeClock::time_point FakeClock::now_;
+FakeClock::time_point FakeClock::future_now_;
+std::mutex FakeClock::mutex_;
 
 }  // namespace testing
 }  // namespace google
