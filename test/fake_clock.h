@@ -66,18 +66,22 @@ class FakeClock {
   static std::mutex mutex_;
 };
 
-// Traits that allow basic_waitable_timer::async_wait() to work with a
-// FakeClock.
-template<typename Clock>
-struct WaitTraits {
-  static typename Clock::duration to_wait_duration(
-      const typename Clock::duration & d) {
-    return d < time::seconds(0.001) ? d : time::seconds(0.001);
-  }
-};
-
 }  // namespace testing
 }  // namespace google
+
+namespace boost {
+namespace asio {
+// Specialize boost::asio::wait_traits so that
+// basic_waitable_timer::async_wait() will work with a FakeClock.
+template<>
+struct wait_traits<google::testing::FakeClock> {
+  static google::testing::FakeClock::duration to_wait_duration(
+      const google::testing::FakeClock::duration& d) {
+    return d < google::time::seconds(0.001) ? d : google::time::seconds(0.001);
+  }
+};
+}  // namespace asio
+}  // namespace boost
 
 namespace std {
 // Allow using std::timed_mutex::try_lock_until with a FakeClock.

@@ -160,51 +160,49 @@ class ExpirationImpl : public Expiration {
   typename Clock::time_point token_expiration_;
 };
 
-// Abstract class for a timer that can perform asynchronous actions on
-// expiration.
-class WaitableTimer {
+// Abstract class for performing an asynchronous action after a delay.
+class DelayTimer {
  public:
-  virtual ~WaitableTimer() = default;
-  virtual void ExpiresFromNow(std::chrono::seconds duration) = 0;
-  virtual void AsyncWait(
-      std::function<void(boost::system::error_code const &)>) = 0;
+  virtual ~DelayTimer() = default;
+  virtual void RunAsyncAfter(
+      std::chrono::seconds duration,
+      std::function<void(const boost::system::error_code&)> handler) = 0;
 };
 
-// Implementation of WaitableTimer parameterized over a clock type.
+// Implementation of DelayTimer parameterized over a clock type.
 template<typename Clock, typename WaitTraits>
-class WaitableTimerImpl : public WaitableTimer {
+class DelayTimerImpl : public DelayTimer {
  public:
-  WaitableTimerImpl(boost::asio::io_service& service) : timer_(service) {}
-  void ExpiresFromNow(std::chrono::seconds duration) override {
+  DelayTimerImpl(boost::asio::io_service& service) : timer_(service) {}
+  void RunAsyncAfter(
+      std::chrono::seconds duration,
+      std::function<void(const boost::system::error_code&)> handler) override {
     timer_.expires_from_now(duration);
-  }
-  void AsyncWait(
-      std::function<void(boost::system::error_code const &)> handler) override {
     timer_.async_wait(handler);
   }
  private:
   boost::asio::basic_waitable_timer<Clock, WaitTraits> timer_;
 };
 
-// Abstract class for a factory of WaitableTimer types.
-class WaitableTimerFactory {
+// Abstract class for a factory of DelayTimer types.
+class DelayTimerFactory {
  public:
-  virtual ~WaitableTimerFactory() = default;
-  virtual std::unique_ptr<WaitableTimer> CreateTimer(
+  virtual ~DelayTimerFactory() = default;
+  virtual std::unique_ptr<DelayTimer> CreateTimer(
       boost::asio::io_service& service) = 0;
 };
 
-// Implementation of a WaitableTimer parameterized over a clock type.
+// Implementation of a DelayTimer parameterized over a clock type.
 template<typename Clock, typename WaitTraits = boost::asio::wait_traits<Clock>>
-class WaitableTimerFactoryImpl : public WaitableTimerFactory {
+class DelayTimerFactoryImpl : public DelayTimerFactory {
  public:
-  static std::unique_ptr<WaitableTimerFactory> New() {
-    return std::unique_ptr<WaitableTimerFactory>(
-        new WaitableTimerFactoryImpl<Clock, WaitTraits>());
+  static std::unique_ptr<DelayTimerFactory> New() {
+    return std::unique_ptr<DelayTimerFactory>(
+        new DelayTimerFactoryImpl<Clock, WaitTraits>());
   }
-  std::unique_ptr<WaitableTimer> CreateTimer(
+  std::unique_ptr<DelayTimer> CreateTimer(
       boost::asio::io_service& service) override {
-    return std::unique_ptr<WaitableTimer>(new WaitableTimerImpl<Clock, WaitTraits>(service));
+    return std::unique_ptr<DelayTimer>(new DelayTimerImpl<Clock, WaitTraits>(service));
   }
 };
 

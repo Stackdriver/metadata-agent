@@ -1224,7 +1224,7 @@ class KubernetesTestFakeServerConfigurable : public KubernetesTestFakeServer {
 class KubernetesTestFakeServerOneWatchRetryNodeLevelMetadata
     : public KubernetesTestFakeServerConfigurable {
  protected:
-  std::string ExtraConfig() {
+  std::string ExtraConfig() override {
     return
       "KubernetesClusterLevelMetadata: false\n"
       "KubernetesUpdaterWatchConnectionRetries: 1\n";
@@ -1234,7 +1234,7 @@ class KubernetesTestFakeServerOneWatchRetryNodeLevelMetadata
 class KubernetesTestFakeServerOneWatchRetryClusterLevelMetadata
     : public KubernetesTestFakeServerConfigurable {
  protected:
-  std::string ExtraConfig() {
+  std::string ExtraConfig() override {
     return
       "KubernetesClusterLevelMetadata: true\n"
       "KubernetesUpdaterWatchConnectionRetries: 1\n";
@@ -1244,7 +1244,7 @@ class KubernetesTestFakeServerOneWatchRetryClusterLevelMetadata
 class KubernetesTestFakeServerThreeWatchRetriesNodeLevelMetadata
     : public KubernetesTestFakeServerConfigurable {
  protected:
-  std::string ExtraConfig() {
+  std::string ExtraConfig() override {
     return
       "KubernetesClusterLevelMetadata: false\n"
       "KubernetesUpdaterWatchConnectionRetries: 3\n";
@@ -1973,9 +1973,7 @@ class FakeKubernetesUpdater : public KubernetesUpdater {
                         MetadataStore* store)
     : KubernetesUpdater(
           config, health_checker, store,
-          WaitableTimerFactoryImpl<
-              testing::FakeClock,
-              testing::WaitTraits<testing::FakeClock>>::New()) {}
+          DelayTimerFactoryImpl<testing::FakeClock>::New()) {}
 };
 }
 
@@ -1985,6 +1983,7 @@ TEST_F(KubernetesTestFakeServerThreeWatchRetriesNodeLevelMetadata,
     "/api/v1/watch/nodes/TestNodeName?watch=true";
   const std::string pods_watch_path =
     "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true";
+  const auto timeout = time::seconds(3);
 
   // Create a fake server representing the Kubernetes master.
   server->SetResponse("/api/v1/nodes?limit=1", "{}");
@@ -1997,25 +1996,20 @@ TEST_F(KubernetesTestFakeServerThreeWatchRetriesNodeLevelMetadata,
   updater.Start();
 
   // Wait for connection #1.
-  const auto timeout = time::seconds(3);
   ASSERT_TRUE(server->WaitForMinTotalConnections(nodes_watch_path, 1, timeout));
   ASSERT_TRUE(server->WaitForMinTotalConnections(pods_watch_path, 1, timeout));
 
-  // Advance fake clock only 30 min, not enough to trigger reconnection.
+  // Advance fake clock only 30 minutes, not enough to trigger reconnection.
   testing::FakeClock::Advance(std::chrono::seconds(1800));
   EXPECT_EQ(1, server->NumWatchers(nodes_watch_path));
   EXPECT_EQ(1, server->NumWatchers(pods_watch_path));
 
-  // Advance another 30 min to trigger connection #2.
-  //
-  // NOTE: The FakeServer doesn't clean up state when client
-  // connections are closed via io_service.stop(), so that's why it 2
-  // watchers after the reconnection..
+  // Advance another 30 minutes to trigger connection #2.
   testing::FakeClock::Advance(std::chrono::seconds(1800));
   ASSERT_TRUE(server->WaitForMinTotalConnections(nodes_watch_path, 2, timeout));
   ASSERT_TRUE(server->WaitForMinTotalConnections(pods_watch_path, 2, timeout));
 
-  // Advance 60 min to trigger connection #3.
+  // Advance 60 minutes to trigger connection #3.
   testing::FakeClock::Advance(std::chrono::seconds(3600));
   ASSERT_TRUE(server->WaitForMinTotalConnections(nodes_watch_path, 3, timeout));
   ASSERT_TRUE(server->WaitForMinTotalConnections(pods_watch_path, 3, timeout));

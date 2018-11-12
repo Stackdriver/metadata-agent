@@ -78,15 +78,15 @@ KubernetesReader::KubernetesReader(const Configuration& config,
                                    HealthChecker* health_checker)
     : KubernetesReader(
           config, health_checker,
-          WaitableTimerFactoryImpl<std::chrono::steady_clock>::New()) {}
+          DelayTimerFactoryImpl<std::chrono::steady_clock>::New()) {}
 
 KubernetesReader::KubernetesReader(
     const Configuration& config,
     HealthChecker* health_checker,
-    std::unique_ptr<WaitableTimerFactory> waitable_timer_factory)
+    std::unique_ptr<DelayTimerFactory> delay_timer_factory)
     : config_(config), environment_(config), health_checker_(health_checker),
       service_account_directory_(kServiceAccountDirectory),
-      waitable_timer_factory_(std::move(waitable_timer_factory)) {}
+      delay_timer_factory_(std::move(delay_timer_factory)) {}
 
 std::string KubernetesReader::SecretPath(const std::string& secret) const {
   return service_account_directory_ + "/" + secret;
@@ -825,12 +825,12 @@ void KubernetesReader::WatchMaster(
       if (watch_service->stopped()) {
         watch_service->reset();
       }
-      std::unique_ptr<WaitableTimer> timer;
+      std::unique_ptr<DelayTimer> timer;
       if (config_.KubernetesUpdaterWatchReconnectIntervalSeconds() > 0) {
-        timer = waitable_timer_factory_->CreateTimer(*watch_service);
-        timer->ExpiresFromNow(std::chrono::seconds(
-            config_.KubernetesUpdaterWatchReconnectIntervalSeconds()));
-        timer->AsyncWait([watch_service](boost::system::error_code const &ec) {
+        timer = delay_timer_factory_->CreateTimer(*watch_service);
+        timer->RunAsyncAfter(std::chrono::seconds(
+            config_.KubernetesUpdaterWatchReconnectIntervalSeconds()),
+            [watch_service](boost::system::error_code const &ec) {
           if (ec != boost::asio::error::operation_aborted) {
             watch_service->stop();
           }
@@ -1325,14 +1325,14 @@ KubernetesUpdater::KubernetesUpdater(const Configuration& config,
                                      MetadataStore* store)
     : KubernetesUpdater(
           config, health_checker, store,
-          WaitableTimerFactoryImpl<std::chrono::steady_clock>::New()) {}
+          DelayTimerFactoryImpl<std::chrono::steady_clock>::New()) {}
 
 KubernetesUpdater::KubernetesUpdater(
     const Configuration& config,
     HealthChecker* health_checker,
     MetadataStore* store,
-    std::unique_ptr<WaitableTimerFactory> waitable_timer_factory)
-    : reader_(config, health_checker, std::move(waitable_timer_factory)),
+    std::unique_ptr<DelayTimerFactory> delay_timer_factory)
+    : reader_(config, health_checker, std::move(delay_timer_factory)),
       PollingMetadataUpdater(
         config, store, "KubernetesUpdater",
         config.KubernetesUpdaterIntervalSeconds(),
