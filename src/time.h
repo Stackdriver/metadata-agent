@@ -20,6 +20,7 @@
 #include <ctime>
 #include <memory>
 #include <string>
+#include <thread>
 
 #include "logging.h"
 
@@ -144,6 +145,28 @@ class ExpirationImpl : public Expiration {
 
  private:
   typename Clock::time_point token_expiration_;
+};
+
+// Abstract class representing an object that can sleep.
+// Used for mocking out std::this_thread::sleep_for() in tests.
+class Sleeper {
+ public:
+  virtual ~Sleeper() = default;
+
+  // Sleeps for the given number of seconds.
+  virtual void SleepFor(double seconds) = 0;
+};
+
+// Implementation of the Sleeper interface using std::this_thread::sleep_for().
+class SleeperImpl : public Sleeper {
+ public:
+  static std::unique_ptr<Sleeper> New() {
+    return std::unique_ptr<Sleeper>(new SleeperImpl());
+  }
+
+  void SleepFor(double seconds) override {
+    std::this_thread::sleep_for(time::seconds(seconds));
+  }
 };
 
 }

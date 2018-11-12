@@ -20,6 +20,7 @@
 #include "../src/updater.h"
 #include "environment_util.h"
 #include "fake_http_server.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "temp_file.h"
 
@@ -1202,6 +1203,7 @@ class KubernetesTestFakeServerConfigurable
     : public KubernetesTestFakeServer {
  protected:
   virtual bool ClusterLevel() = 0;
+  virtual int WatchMaxFailures() = 0;
   virtual int WatchRetries() = 0;
   std::unique_ptr<Configuration> CreateConfig() override {
     return std::unique_ptr<Configuration>(
@@ -1218,6 +1220,8 @@ class KubernetesTestFakeServerConfigurable
         "MetadataIngestionRawContentVersion: TestVersion\n"
         "KubernetesUpdaterWatchConnectionRetries: "
         + std::to_string(WatchRetries()) + "\n"
+        "KubernetesUpdaterWatchMaxConnectionFailures: "
+        + std::to_string(WatchMaxFailures()) + "\n"
         "KubernetesUseWatch: true\n"
       )));
   }
@@ -1227,6 +1231,7 @@ class KubernetesTestFakeServerOneWatchRetryNodeLevelMetadata
     : public KubernetesTestFakeServerConfigurable {
  protected:
   bool ClusterLevel() override { return false; }
+  int WatchMaxFailures() override { return 15; }
   int WatchRetries() override { return 1; }
 };
 
@@ -1234,6 +1239,7 @@ class KubernetesTestFakeServerOneWatchRetryClusterLevelMetadata
     : public KubernetesTestFakeServerConfigurable {
  protected:
   bool ClusterLevel() override { return true; }
+  int WatchMaxFailures() override { return 15; }
   int WatchRetries() override { return 1; }
 };
 
@@ -1241,7 +1247,16 @@ class KubernetesTestFakeServerThreeWatchRetriesNodeLevelMetadata
     : public KubernetesTestFakeServerConfigurable {
  protected:
   bool ClusterLevel() override { return false; }
+  int WatchMaxFailures() override { return 15; }
   int WatchRetries() override { return 3; }
+};
+
+class KubernetesTestFakeServerMaxThreeFailuresNodeLevelMetadata
+    : public KubernetesTestFakeServerConfigurable {
+ protected:
+  bool ClusterLevel() override { return false; }
+  int WatchMaxFailures() override { return 3; }
+  int WatchRetries() override { /* infinite retries */ return 0; }
 };
 
 namespace {
@@ -1949,6 +1964,54 @@ TEST_F(KubernetesTestFakeServerThreeWatchRetriesNodeLevelMetadata,
   server->WaitForConnectionCounter(nodes_watch_path, 3, time::seconds(3));
   server->WaitForConnectionCounter(pods_watch_path, 3, time::seconds(3));
   server->TerminateAllStreams();
+}
+
+namespace {
+class MockSleeper : public Sleeper {
+ public:
+  MOCK_METHOD1(SleepFor, void(double seconds));
+};
+
+// Polls health_checker until it has at least one unhealthy component.
+// Returns false if newer timestamp not found after 3 seconds (polling
+// every 100 millis).
+bool WaitForUnhealthyComponents(const HealthChecker& health_checker) {
+  for (int i = 0; i < 30; i++){
+    if (health_checker.UnhealthyComponents().size() > 0) {
+      return true;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  return false;
+}
+}
+
+TEST_F(KubernetesTestFakeServerMaxThreeFailuresNodeLevelMetadata,
+       KubernetesUpdaterBackoffOnFailures) {
+  // Create a fake server representing the Kubernetes master, but
+  // don't register streams for the nodes or pods watch paths, so they
+  // will return 404s.
+  //
+  // This will cause the updater to backoff 3 times and then give up.
+  server->SetResponse("/api/v1/nodes?limit=1", "{}");
+  server->SetResponse("/api/v1/pods?limit=1", "{}");
+
+  MetadataStore store(*config);
+  HealthChecker health_checker(*config, store);
+  // Note: These expectations don't check the order in which the
+  // SleepFor() calls are invoked.  Each is called twice, once each
+  // for the nodes & pods watchers.
+  auto sleeper = std::unique_ptr<MockSleeper>(new MockSleeper());
+  EXPECT_CALL(*sleeper, SleepFor(1.5)).Times(2);
+  EXPECT_CALL(*sleeper, SleepFor(2.25)).Times(2);
+  EXPECT_CALL(*sleeper, SleepFor(3.375)).Times(2);
+  KubernetesUpdater updater(*config, &health_checker, &store, std::move(sleeper));
+  updater.Start();
+
+  EXPECT_TRUE(WaitForUnhealthyComponents(health_checker));
+  EXPECT_THAT(health_checker.UnhealthyComponents(),
+              ::testing::UnorderedElementsAre("kubernetes_node_thread",
+                                              "kubernetes_pod_thread"));
 }
 
 }  // namespace google
