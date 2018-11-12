@@ -1198,27 +1198,24 @@ TEST_F(KubernetesTestFakeServer, MetadataQuery) {
   EXPECT_EQ(pod_metadata->ToString(), m[3].metadata().metadata->ToString());
 }
 
-class KubernetesTestFakeServerConfigurable
-    : public KubernetesTestFakeServer {
+class KubernetesTestFakeServerConfigurable : public KubernetesTestFakeServer {
  protected:
-  virtual bool ClusterLevel() = 0;
-  virtual int WatchRetries() = 0;
+  virtual std::string ExtraConfig() {
+    return "";
+  }
   std::unique_ptr<Configuration> CreateConfig() override {
     return std::unique_ptr<Configuration>(
       new Configuration(std::istringstream(
         "InstanceId: TestID\n"
         "InstanceResourceType: gce_instance\n"
         "InstanceZone: TestZone\n"
-        "KubernetesClusterLevelMetadata: "
-        + std::string(ClusterLevel() ? "true" : "false") + "\n"
         "KubernetesClusterLocation: TestClusterLocation\n"
         "KubernetesClusterName: TestClusterName\n"
         "KubernetesEndpointHost: " + server->GetUrl() + "\n"
         "KubernetesNodeName: TestNodeName\n"
         "MetadataIngestionRawContentVersion: TestVersion\n"
-        "KubernetesUpdaterWatchConnectionRetries: "
-        + std::to_string(WatchRetries()) + "\n"
         "KubernetesUseWatch: true\n"
+        + ExtraConfig()
       )));
   }
 };
@@ -1226,22 +1223,31 @@ class KubernetesTestFakeServerConfigurable
 class KubernetesTestFakeServerOneWatchRetryNodeLevelMetadata
     : public KubernetesTestFakeServerConfigurable {
  protected:
-  bool ClusterLevel() override { return false; }
-  int WatchRetries() override { return 1; }
+  std::string ExtraConfig() {
+    return
+      "KubernetesClusterLevelMetadata: false\n"
+      "KubernetesUpdaterWatchConnectionRetries: 1\n";
+  }
 };
 
 class KubernetesTestFakeServerOneWatchRetryClusterLevelMetadata
     : public KubernetesTestFakeServerConfigurable {
  protected:
-  bool ClusterLevel() override { return true; }
-  int WatchRetries() override { return 1; }
+  std::string ExtraConfig() {
+    return
+      "KubernetesClusterLevelMetadata: true\n"
+      "KubernetesUpdaterWatchConnectionRetries: 1\n";
+  }
 };
 
 class KubernetesTestFakeServerThreeWatchRetriesNodeLevelMetadata
     : public KubernetesTestFakeServerConfigurable {
  protected:
-  bool ClusterLevel() override { return false; }
-  int WatchRetries() override { return 3; }
+  std::string ExtraConfig() {
+    return
+      "KubernetesClusterLevelMetadata: false\n"
+      "KubernetesUpdaterWatchConnectionRetries: 3\n";
+  }
 };
 
 namespace {
@@ -1269,7 +1275,7 @@ bool WaitForNewerCollectionTimestamp(const MetadataStore& store,
 // to the store.
 void TestNodes(testing::FakeServer& server, MetadataStore& store,
                const std::string& nodes_watch_path) {
-  server.WaitForConnectionCounter(nodes_watch_path, 1, time::seconds(3));
+  server.WaitForMinTotalConnections(nodes_watch_path, 1, time::seconds(3));
   json::value node1 = json::object({
     {"metadata", json::object({
       {"name", json::string("TestNodeName1")},
@@ -1362,7 +1368,7 @@ void TestNodes(testing::FakeServer& server, MetadataStore& store,
 // to the store.
 void TestPods(testing::FakeServer& server, MetadataStore& store,
               const std::string& pods_watch_path) {
-  server.WaitForConnectionCounter(pods_watch_path, 1, time::seconds(3));
+  server.WaitForMinTotalConnections(pods_watch_path, 1, time::seconds(3));
   json::value pod1 = json::object({
     {"metadata", json::object({
       {"name", json::string("TestPodName1")},
@@ -1588,8 +1594,8 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
 void TestServicesAndEndpoints(testing::FakeServer& server, MetadataStore& store,
                               const std::string& services_watch_path,
                               const std::string& endpoints_watch_path) {
-  server.WaitForConnectionCounter(services_watch_path, 1, time::seconds(3));
-  server.WaitForConnectionCounter(endpoints_watch_path, 1, time::seconds(3));
+  server.WaitForMinTotalConnections(services_watch_path, 1, time::seconds(3));
+  server.WaitForMinTotalConnections(endpoints_watch_path, 1, time::seconds(3));
   json::value service1 = json::object({
     {"metadata", json::object({
       {"name", json::string("testname1")},
@@ -1933,21 +1939,22 @@ TEST_F(KubernetesTestFakeServerThreeWatchRetriesNodeLevelMetadata,
   KubernetesUpdater updater(*config, /*health_checker=*/nullptr, &store);
   updater.Start();
 
-  // Step 1: Wait for initial connection from watchers, then terminate
-  // all streams.
-  server->WaitForConnectionCounter(nodes_watch_path, 1, time::seconds(3));
-  server->WaitForConnectionCounter(pods_watch_path, 1, time::seconds(3));
-  server->TerminateAllStreams();
+  // Step 1: Wait for initial connection from watchers.
+  server->WaitForMinTotalConnections(nodes_watch_path, 1, time::seconds(3));
+  server->WaitForMinTotalConnections(pods_watch_path, 1, time::seconds(3));
 
-  // Step 2: Wait for watchers to reconnect, then terminate again.
-  server->WaitForConnectionCounter(nodes_watch_path, 2, time::seconds(3));
-  server->WaitForConnectionCounter(pods_watch_path, 2, time::seconds(3));
+  // Step 2: Terminate all streams and wait for watchers to reconnect.
   server->TerminateAllStreams();
+  server->WaitForMinTotalConnections(nodes_watch_path, 2, time::seconds(3));
+  server->WaitForMinTotalConnections(pods_watch_path, 2, time::seconds(3));
 
-  // Step 3: Wait for final reconnection (configuration specifies 3
-  // retries) then terminate.
-  server->WaitForConnectionCounter(nodes_watch_path, 3, time::seconds(3));
-  server->WaitForConnectionCounter(pods_watch_path, 3, time::seconds(3));
+  // Step 3: Terminate again and wait for final reconnection
+  // (configuration specifies 3 retries) then terminate.
+  server->TerminateAllStreams();
+  server->WaitForMinTotalConnections(nodes_watch_path, 3, time::seconds(3));
+  server->WaitForMinTotalConnections(pods_watch_path, 3, time::seconds(3));
+
+  // Terminate the hanging GETs on the server so that the updater will finish.
   server->TerminateAllStreams();
 }
 

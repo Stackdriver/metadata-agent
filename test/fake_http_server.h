@@ -72,9 +72,9 @@ class FakeServer {
   // connections that have since been closed) to the given path has
   // reached at least min_connections.  Returns false if the timeout
   // is reached before seeing enough client connections.
-  bool WaitForConnectionCounter(const std::string& path,
-                                int min_connections,
-                                time::seconds timeout);
+  bool WaitForMinTotalConnections(const std::string& path,
+                                  int min_connections,
+                                  time::seconds timeout);
 
   // Sends a streaming response to all watchers for the given path.
   void SendStreamResponse(const std::string& path, const std::string& response);

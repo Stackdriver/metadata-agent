@@ -69,9 +69,9 @@ void FakeServer::AllowStream(const std::string& path) {
   handler_.path_streams[path];
 }
 
-bool FakeServer::WaitForConnectionCounter(const std::string& path,
-                                          int min_connections,
-                                          time::seconds timeout) {
+bool FakeServer::WaitForMinTotalConnections(const std::string& path,
+                                            int min_connections,
+                                            time::seconds timeout) {
   auto stream_it = handler_.path_streams.find(path);
   if (stream_it == handler_.path_streams.end()) {
     LOG(ERROR) << "Attempted to wait for an unknown path " << path;
@@ -191,7 +191,7 @@ void FakeServer::Handler::Stream::AddQueue(std::queue<std::string>* queue) {
   {
     std::lock_guard<std::mutex> lk(mutex_);
     queues_.push_back(queue);
-    connection_counter_++;
+    ++connection_counter_;
   }
   // Notify the condition variable to unblock any calls to
   // WaitForOneStreamWatcher().
@@ -200,6 +200,7 @@ void FakeServer::Handler::Stream::AddQueue(std::queue<std::string>* queue) {
 
 void FakeServer::Handler::Stream::RemoveQueue(std::queue<std::string>* queue) {
   {
+    // See https://en.wikipedia.org/wiki/Erase-remove_idiom.
     std::lock_guard<std::mutex> lk(mutex_);
     queues_.erase(std::remove(queues_.begin(), queues_.end(), queue),
                   queues_.end());
