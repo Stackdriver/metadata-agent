@@ -77,7 +77,7 @@ template<>
 struct wait_traits<google::testing::FakeClock> {
   static google::testing::FakeClock::duration to_wait_duration(
       const google::testing::FakeClock::duration& d) {
-    return d < google::time::seconds(0.001) ? d : google::time::seconds(0.001);
+    return std::min(d, google::time::seconds(0.001));
   }
 };
 }  // namespace asio

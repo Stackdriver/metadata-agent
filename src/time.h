@@ -165,23 +165,24 @@ class DelayTimer {
  public:
   virtual ~DelayTimer() = default;
   virtual void RunAsyncAfter(
-      std::chrono::seconds duration,
+      time::seconds duration,
       std::function<void(const boost::system::error_code&)> handler) = 0;
 };
 
 // Implementation of DelayTimer parameterized over a clock type.
-template<typename Clock, typename WaitTraits>
+template<typename Clock>
 class DelayTimerImpl : public DelayTimer {
  public:
   DelayTimerImpl(boost::asio::io_service& service) : timer_(service) {}
   void RunAsyncAfter(
-      std::chrono::seconds duration,
+      time::seconds duration,
       std::function<void(const boost::system::error_code&)> handler) override {
-    timer_.expires_from_now(duration);
+    timer_.expires_from_now(
+        std::chrono::duration_cast<typename Clock::duration>(duration));
     timer_.async_wait(handler);
   }
  private:
-  boost::asio::basic_waitable_timer<Clock, WaitTraits> timer_;
+  boost::asio::basic_waitable_timer<Clock> timer_;
 };
 
 // Abstract class for a factory of DelayTimer types.
@@ -193,16 +194,16 @@ class DelayTimerFactory {
 };
 
 // Implementation of a DelayTimer parameterized over a clock type.
-template<typename Clock, typename WaitTraits = boost::asio::wait_traits<Clock>>
+template<typename Clock>
 class DelayTimerFactoryImpl : public DelayTimerFactory {
  public:
   static std::unique_ptr<DelayTimerFactory> New() {
     return std::unique_ptr<DelayTimerFactory>(
-        new DelayTimerFactoryImpl<Clock, WaitTraits>());
+        new DelayTimerFactoryImpl<Clock>());
   }
   std::unique_ptr<DelayTimer> CreateTimer(
       boost::asio::io_service& service) override {
-    return std::unique_ptr<DelayTimer>(new DelayTimerImpl<Clock, WaitTraits>(service));
+    return std::unique_ptr<DelayTimer>(new DelayTimerImpl<Clock>(service));
   }
 };
 
