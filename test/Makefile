@@ -32,23 +32,31 @@ NETWORK_URI_DIR=$(CPP_NETLIB_DIR)/deps/uri
 NETWORK_URI_LIBDIR=$(NETWORK_URI_DIR)/src
 YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
 YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
+PROMETHEUS_CPP_DIR=$(LIBDIR)/prometheus-cpp
+PROMETHEUS_CPP_LIBDIR=$(PROMETHEUS_CPP_DIR)
+PROMETHEUS_CPP_CORE_LIBDIR=$(PROMETHEUS_CPP_LIBDIR)/core
 
 CPP_NETLIB_LIBS=\
     $(CPP_NETLIB_LIBDIR)/libcppnetlib-client-connections.a \
     $(CPP_NETLIB_LIBDIR)/libcppnetlib-server-parsers.a \
     $(NETWORK_URI_LIBDIR)/libnetwork-uri.a
 YAML_CPP_LIBS=$(YAML_CPP_LIBDIR)/libyaml-cpp.a
+PROMETHEUS_CPP_LIBS=\
+    $(PROMETHEUS_CPP_CORE_LIBDIR)/libprometheus-cpp-core.a
 
 CPPFLAGS+= \
     -isystem $(GTEST_DIR)/include -I$(GMOCK_DIR)/include \
-    -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include
+    -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include \
+    -I$(PROMETHEUS_CPP_CORE_LIBDIR)/include
 CXXFLAGS=\
     -std=c++11 -g -pthread -Wno-write-strings -Wno-deprecated
-LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR)
+LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR) \
+        -L$(PROMETHEUS_CPP_CORE_LIBDIR)
 LDLIBS=\
     -lcppnetlib-client-connections -lcppnetlib-server-parsers -lnetwork-uri \
     -lboost_program_options -lboost_system -lboost_thread -lboost_filesystem \
-    -lboost_regex -lpthread -lyajl -lssl -lcrypto -lyaml-cpp
+    -lboost_regex -lpthread -lyajl -lssl -lcrypto -lyaml-cpp \
+    -lprometheus-cpp-core
 
 UNAME_S=$(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
@@ -115,14 +123,16 @@ init-submodules:
 $(SRC_DIR)/init-submodules:
 	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
-$(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp: $(SRC_DIR)/init-submodules
+$(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(SRC_DIR)/build-prometheus-cpp: $(SRC_DIR)/init-submodules
 	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
 $(CPP_NETLIB_LIBS): $(SRC_DIR)/build-cpp-netlib
 
 $(YAML_CPP_LIBS): $(SRC_DIR)/build-yaml-cpp
 
-$(SRC_DIR)/%.o: $(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(SRC_DIR)/%.cc
+$(PROMETHEUS_CPP_LIBS): $(SRC_DIR)/build-prometheus-cpp
+
+$(SRC_DIR)/%.o: $(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(SRC_DIR)/build-prometheus-cpp $(SRC_DIR)/%.cc
 	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
 $(GTEST_SOURCEDIR)/gtest-all.cc: init-submodules
@@ -139,14 +149,14 @@ gmock_main.o: $(GMOCK_SOURCEDIR)/gmock_main.cc
 $(GTEST_LIB): gtest-all.o gmock-all.o gmock_main.o
 	$(AR) $(ARFLAGS) $@ $^
 
-$(TESTS): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
+$(TESTS): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS) $(PROMETHEUS_CPP_LIBS)
 
 # All unittest objects depend on GTEST_LIB.
 # Some headers need CPP_NETLIB_LIBS and YAML_CPP_LIBS.
-$(TESTS:%=%.o): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
+$(TESTS:%=%.o): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS) $(PROMETHEUS_CPP_LIBS)
 
 api_server_unittest: api_server_unittest.o $(SRC_DIR)/api_server.o $(SRC_DIR)/configuration.o $(SRC_DIR)/store.o $(SRC_DIR)/json.o $(SRC_DIR)/resource.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/health_checker.o
-	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lprometheus-cpp-core -o $@
 base64_unittest: base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 configuration_unittest: configuration_unittest.o $(SRC_DIR)/configuration.o

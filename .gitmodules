@@ -10,3 +10,6 @@
 	path = lib/googletest
 	url = https://github.com/google/googletest
 	ignore = dirty
+[submodule "lib/prometheus-cpp"]
+	path = lib/prometheus-cpp
+	url = https://github.com/jupp0r/prometheus-cpp

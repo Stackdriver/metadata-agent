@@ -24,13 +24,14 @@
 namespace google {
 
 MetadataAgent::MetadataAgent(const Configuration& config)
-    : config_(config), store_(config_), health_checker_(config, store_) {}
+    : config_(config), store_(config_), health_checker_(config, store_),
+      registry_(std::make_shared<prometheus::Registry>()) {}
 
 MetadataAgent::~MetadataAgent() {}
 
 void MetadataAgent::Start() {
   metadata_api_server_.reset(new MetadataApiServer(
-      config_, &health_checker_, store_, config_.MetadataApiNumThreads(),
+      config_, &health_checker_, registry_, store_, config_.MetadataApiNumThreads(),
       config_.MetadataApiBindAddress(), config_.MetadataApiPort()));
   reporter_.reset(new MetadataReporter(
       config_, &store_, config_.MetadataReporterIntervalSeconds()));

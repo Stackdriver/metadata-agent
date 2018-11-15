@@ -23,7 +23,10 @@ NETWORK_URI_DIR=$(CPP_NETLIB_DIR)/deps/uri
 NETWORK_URI_LIBDIR=$(NETWORK_URI_DIR)/src
 YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
 YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
-SUBMODULE_DIRS=$(CPP_NETLIB_DIR) $(YAML_CPP_DIR)
+PROMETHEUS_CPP_DIR=$(LIBDIR)/prometheus-cpp
+PROMETHEUS_CPP_LIBDIR=$(PROMETHEUS_CPP_DIR)
+PROMETHEUS_CPP_CORE_LIBDIR=$(PROMETHEUS_CPP_LIBDIR)/core
+SUBMODULE_DIRS=$(CPP_NETLIB_DIR) $(YAML_CPP_DIR) $(PROMETHEUS_CPP_DIR)
 
 GIT=git
 GIT_VERSION=$(shell $(GIT) --version | grep -oh '[0-9]\+\.[0-9]\+\.[0-9]\+')
@@ -33,14 +36,16 @@ CMAKE=cmake
 CPPFLAGS=\
     -DAGENT_VERSION='$(PKG_VERSION)-$(PKG_RELEASE)' \
     -DENABLE_DOCKER_METADATA \
-    -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include
+    -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include \
+    -I$(PROMETHEUS_CPP_CORE_LIBDIR)/include
 CXXFLAGS=\
     -std=c++11 -g -pthread -Wno-write-strings -Wno-deprecated
-LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR)
+LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR) \
+	-L$(PROMETHEUS_CPP_CORE_LIBDIR)
 LDLIBS=\
     -lcppnetlib-client-connections -lcppnetlib-server-parsers -lnetwork-uri \
     -lboost_program_options -lboost_system -lboost_thread -lboost_filesystem \
-    -lpthread -lyajl -lssl -lcrypto -lyaml-cpp
+    -lpthread -lyajl -lssl -lcrypto -lyaml-cpp -lprometheus-cpp-core
 SED_EXTRA=-e 's/-Wall/-Wall -Wno-deprecated/'
 
 UNAME_S=$(shell uname -s)
@@ -88,7 +93,9 @@ CPP_NETLIB_LIBS=\
     $(NETWORK_URI_LIBDIR)/libnetwork-uri.a
 YAML_CPP_LIBS=\
     $(YAML_CPP_LIBDIR)/libyaml-cpp.a
-LIBS=$(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS)
+PROMETHEUS_CPP_LIBS=\
+    $(PROMETHEUS_CPP_CORE_LIBDIR)/libprometheus-cpp-core.a
+LIBS=$(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS) $(PROMETHEUS_CPP_LIBS)
 
 sbindir=/opt/stackdriver/metadata/sbin
 INSTALL=/usr/bin/install
@@ -167,7 +174,7 @@ clean:
 	$(RM) metadatad $(OBJS)
 
 purge: clean
-	$(RM) -r init-submodules build-cpp-netlib build-yaml-cpp
+	$(RM) -r init-submodules build-cpp-netlib build-yaml-cpp build-prometheus-cpp
 	(cd .. && git submodule deinit -f $(SUBMODULE_DIRS:../%=%))
 
 init-submodules:
@@ -183,6 +190,8 @@ ifneq ($(findstring $(GIT_VERSION),2.7.0 2.7.1 2.7.2 2.7.3 2.7.4 2.7.5 2.7.6 2.8
 	    deps/*/.git
 	cd $(CPP_NETLIB_DIR) && $(SED_I) -e 's@/src/.git/@../../../../../../../.git/@' \
 	    libs/network/doc/_ext/breathe/.git
+	cd $(PROMETHEUS_CPP_DIR) && $(SED_I) -e 's@/src/.git/@../../../../.git/@' \
+	    3rdparty/*/.git
 endif
 	touch init-submodules
 
@@ -217,12 +226,28 @@ build-yaml-cpp: $(YAML_CPP_DIR)/Makefile
 	$(MAKE)
 	touch build-yaml-cpp
 
+$(PROMETHEUS_CPP_DIR)/Makefile: init-submodules
+	cd $(PROMETHEUS_CPP_DIR) && \
+	$(CMAKE) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
+	    -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
+	    -DENABLE_PUSH=OFF -DENABLE_PULL=OFF -DENABLE_COMPRESSION=OFF \
+	    -DENABLE_TESTING=OFF
+
+$(PROMETHEUS_CPP_LIBS): build-prometheus-cpp
+
+build-prometheus-cpp: $(PROMETHEUS_CPP_DIR)/Makefile
+	cd $(PROMETHEUS_CPP_DIR) && \
+	$(MAKE)
+	touch build-prometheus-cpp
+
 cpp-netlib: $(CPP_NETLIB_LIBS)
 
 yaml-cpp: $(YAML_CPP_LIBS)
 
-submodules: cpp-netlib yaml-cpp
+prometheus-cpp: $(PROMETHEUS_CPP_LIBS)
+
+submodules: cpp-netlib yaml-cpp prometheus-cpp
 
 all: submodules metadatad
 
-.PHONY: all submodules cpp-netlib yaml-cpp purge clean install deb rpm
+.PHONY: all submodules cpp-netlib yaml-cpp prometheus-cpp purge clean install deb rpm
