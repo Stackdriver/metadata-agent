@@ -50,8 +50,11 @@ CPPFLAGS+= \
     -I$(PROMETHEUS_CPP_CORE_LIBDIR)/include
 CXXFLAGS=\
     -std=c++11 -g -pthread -Wno-write-strings -Wno-deprecated
-LDFLAGS=-L$(CPP_NETLIB_LIBDIR) -L$(NETWORK_URI_LIBDIR) -L$(YAML_CPP_LIBDIR) \
-        -L$(PROMETHEUS_CPP_CORE_LIBDIR)
+LDFLAGS=\
+    -L$(CPP_NETLIB_LIBDIR) \
+    -L$(NETWORK_URI_LIBDIR) \
+    -L$(YAML_CPP_LIBDIR) \
+    -L$(PROMETHEUS_CPP_CORE_LIBDIR)
 LDLIBS=\
     -lcppnetlib-client-connections -lcppnetlib-server-parsers -lnetwork-uri \
     -lboost_program_options -lboost_system -lboost_thread -lboost_filesystem \
