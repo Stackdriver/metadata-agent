@@ -108,7 +108,7 @@ TEST_F(ApiServerTest, SerializationToPrometheusTextForNullPtr) {
   google::Configuration config;
   google::MetadataApiServer server(
     config,
-    /*heapth_checker=*/nullptr,
+    /*health_checker=*/nullptr,
     /*std::shared_ptr<prometheus::Collectable>=*/nullptr,
     MetadataStore(config),
     0, "", 8080);
@@ -119,7 +119,7 @@ TEST_F(ApiServerTest, SerializationToPrometheusTextForEmptyRegistry) {
   google::Configuration config;
   std::shared_ptr<prometheus::Registry> registry;
   google::MetadataApiServer server(
-    config, /*heapth_checker=*/nullptr, registry,
+    config, /*health_checker=*/nullptr, registry,
     MetadataStore(config),
     0, "", 8080);
   EXPECT_EQ("", SerializeMetricsToPrometheusTextFormat(server));
@@ -141,7 +141,7 @@ TEST_F(ApiServerTest, SerializationToPrometheusTextWithLabeledCounter) {
     "# TYPE test_metric_counter counter\n"
     "test_metric_counter{foo=\"bar\"} 0.000000\n";
   google::MetadataApiServer server(
-    config, /*heapth_checker=*/nullptr, registry,
+    config, /*health_checker=*/nullptr, registry,
     MetadataStore(config),
     0, "", 8080);
   EXPECT_EQ(expected_result, SerializeMetricsToPrometheusTextFormat(server));
