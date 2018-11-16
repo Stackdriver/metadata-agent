@@ -125,24 +125,6 @@ TEST_F(ApiServerTest, SerializationToPrometheusTextForEmptyRegistry) {
   EXPECT_EQ("", SerializeMetricsToPrometheusTextFormat(server));
 }
 
-TEST_F(ApiServerTest, SerializationToPrometheusTextForNonEmptyRegistry) {
-  google::Configuration config;
-  auto registry = std::make_shared<prometheus::Registry>();
-  prometheus::BuildCounter()
-      .Name("test_metric_counter")
-      .Help("help on test_metric_counter")
-      .Register(*registry);
-  std::string expected_result =
-    "# HELP test_metric_counter help on test_metric_counter\n"
-    "# TYPE test_metric_counter counter\n";
-  google::MetadataApiServer server(
-    config, /*heapth_checker=*/nullptr, registry,
-    MetadataStore(config),
-    0, "", 8080);
-  EXPECT_EQ(expected_result, SerializeMetricsToPrometheusTextFormat(server));
-}
-
-
 TEST_F(ApiServerTest, SerializationToPrometheusTextWithLabeledCounter) {
   google::Configuration config;
   auto registry = std::make_shared<prometheus::Registry>();
