@@ -68,14 +68,16 @@ void MetadataApiServer::Dispatcher::log(const HttpServer::string_type& info) con
 }
 
 
-MetadataApiServer::MetadataApiServer(const Configuration& config,
-                                     const HealthChecker* health_checker,
-                                     const std::shared_ptr<prometheus::Collectable> collectable,
-                                     const MetadataStore& store,
-                                     int server_threads,
-                                     const std::string& host, int port)
-    : config_(config), health_checker_(health_checker), collectable_(collectable),
-      store_(store),
+MetadataApiServer::MetadataApiServer(
+    const Configuration& config,
+    const HealthChecker* health_checker,
+    const std::shared_ptr<prometheus::Collectable> collectable,
+    const MetadataStore& store,
+    int server_threads,
+    const std::string& host,
+    int port)
+    : config_(config), health_checker_(health_checker),
+      collectable_(collectable), store_(store),
       dispatcher_({
         {{"GET", "/monitoredResource/"},
          [=](const HttpServer::request& request,
