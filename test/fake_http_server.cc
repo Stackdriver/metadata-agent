@@ -202,8 +202,7 @@ void FakeServer::Handler::Stream::RemoveQueue(std::queue<std::string>* queue) {
   {
     // See https://en.wikipedia.org/wiki/Erase-remove_idiom.
     std::lock_guard<std::mutex> lk(mutex_);
-    queues_.erase(std::remove(queues_.begin(), queues_.end(), queue),
-                  queues_.end());
+    queues_.erase(std::find(queues_.begin(), queues_.end(), queue));
   }
   cv_.notify_all();
 }

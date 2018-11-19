@@ -1275,7 +1275,8 @@ bool WaitForNewerCollectionTimestamp(const MetadataStore& store,
 // to the store.
 void TestNodes(testing::FakeServer& server, MetadataStore& store,
                const std::string& nodes_watch_path) {
-  server.WaitForMinTotalConnections(nodes_watch_path, 1, time::seconds(3));
+  const auto timeout = time::seconds(3);
+  server.WaitForMinTotalConnections(nodes_watch_path, 1, timeout);
   json::value node1 = json::object({
     {"metadata", json::object({
       {"name", json::string("TestNodeName1")},
@@ -1368,7 +1369,8 @@ void TestNodes(testing::FakeServer& server, MetadataStore& store,
 // to the store.
 void TestPods(testing::FakeServer& server, MetadataStore& store,
               const std::string& pods_watch_path) {
-  server.WaitForMinTotalConnections(pods_watch_path, 1, time::seconds(3));
+  const auto timeout = time::seconds(3);
+  server.WaitForMinTotalConnections(pods_watch_path, 1, timeout);
   json::value pod1 = json::object({
     {"metadata", json::object({
       {"name", json::string("TestPodName1")},
@@ -1594,8 +1596,9 @@ void TestPods(testing::FakeServer& server, MetadataStore& store,
 void TestServicesAndEndpoints(testing::FakeServer& server, MetadataStore& store,
                               const std::string& services_watch_path,
                               const std::string& endpoints_watch_path) {
-  server.WaitForMinTotalConnections(services_watch_path, 1, time::seconds(3));
-  server.WaitForMinTotalConnections(endpoints_watch_path, 1, time::seconds(3));
+  const auto timeout = time::seconds(3);
+  server.WaitForMinTotalConnections(services_watch_path, 1, timeout);
+  server.WaitForMinTotalConnections(endpoints_watch_path, 1, timeout);
   json::value service1 = json::object({
     {"metadata", json::object({
       {"name", json::string("testname1")},
@@ -1928,6 +1931,7 @@ TEST_F(KubernetesTestFakeServerThreeWatchRetriesNodeLevelMetadata,
     "/api/v1/watch/nodes/TestNodeName?watch=true";
   const std::string pods_watch_path =
     "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true";
+  const auto timeout = time::seconds(3);
 
   // Create a fake server representing the Kubernetes master.
   server->SetResponse("/api/v1/nodes?limit=1", "{}");
@@ -1940,19 +1944,19 @@ TEST_F(KubernetesTestFakeServerThreeWatchRetriesNodeLevelMetadata,
   updater.Start();
 
   // Step 1: Wait for initial connection from watchers.
-  server->WaitForMinTotalConnections(nodes_watch_path, 1, time::seconds(3));
-  server->WaitForMinTotalConnections(pods_watch_path, 1, time::seconds(3));
+  server->WaitForMinTotalConnections(nodes_watch_path, 1, timeout);
+  server->WaitForMinTotalConnections(pods_watch_path, 1, timeout);
 
   // Step 2: Terminate all streams and wait for watchers to reconnect.
   server->TerminateAllStreams();
-  server->WaitForMinTotalConnections(nodes_watch_path, 2, time::seconds(3));
-  server->WaitForMinTotalConnections(pods_watch_path, 2, time::seconds(3));
+  server->WaitForMinTotalConnections(nodes_watch_path, 2, timeout);
+  server->WaitForMinTotalConnections(pods_watch_path, 2, timeout);
 
   // Step 3: Terminate again and wait for final reconnection
-  // (configuration specifies 3 retries) then terminate.
+  // (configuration specifies 3 retries).
   server->TerminateAllStreams();
-  server->WaitForMinTotalConnections(nodes_watch_path, 3, time::seconds(3));
-  server->WaitForMinTotalConnections(pods_watch_path, 3, time::seconds(3));
+  server->WaitForMinTotalConnections(nodes_watch_path, 3, timeout);
+  server->WaitForMinTotalConnections(pods_watch_path, 3, timeout);
 
   // Terminate the hanging GETs on the server so that the updater will finish.
   server->TerminateAllStreams();
