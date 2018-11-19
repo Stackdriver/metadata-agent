@@ -101,7 +101,8 @@ class FakeServer {
       Stream() : connection_counter_(0) {}
       void AddQueue(std::queue<std::string>* queue);
       void RemoveQueue(std::queue<std::string>* queue);
-      bool WaitForConnectionCounter(int min_connections, time::seconds timeout);
+      bool WaitForMinTotalConnections(int min_connections,
+				      time::seconds timeout);
       void SendToAllQueues(const std::string& response);
       std::string GetNextResponse(std::queue<std::string>* queue);
 

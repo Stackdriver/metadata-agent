@@ -77,7 +77,7 @@ bool FakeServer::WaitForMinTotalConnections(const std::string& path,
     LOG(ERROR) << "Attempted to wait for an unknown path " << path;
     return false;
   }
-  return stream_it->second.WaitForConnectionCounter(min_connections, timeout);
+  return stream_it->second.WaitForMinTotalConnections(min_connections, timeout);
 }
 
 void FakeServer::SendStreamResponse(const std::string& path,
@@ -200,14 +200,13 @@ void FakeServer::Handler::Stream::AddQueue(std::queue<std::string>* queue) {
 
 void FakeServer::Handler::Stream::RemoveQueue(std::queue<std::string>* queue) {
   {
-    // See https://en.wikipedia.org/wiki/Erase-remove_idiom.
     std::lock_guard<std::mutex> lk(mutex_);
     queues_.erase(std::find(queues_.begin(), queues_.end(), queue));
   }
   cv_.notify_all();
 }
 
-bool FakeServer::Handler::Stream::WaitForConnectionCounter(
+bool FakeServer::Handler::Stream::WaitForMinTotalConnections(
     int min_connections, time::seconds timeout) {
   std::unique_lock<std::mutex> queues_lock(mutex_);
   return cv_.wait_for(
