@@ -77,6 +77,13 @@ template<>
 struct wait_traits<google::testing::FakeClock> {
   static google::testing::FakeClock::duration to_wait_duration(
       const google::testing::FakeClock::duration& d) {
+    // This is the idiom for using a timer with a fake clock; for
+    // example, see the "Jumping Through Time" section of
+    // http://blog.think-async.com/2007/08/time-travel.html.
+    //
+    // Note that basic_waitable_timer uses WaitTraits, which require
+    // to_wait_duration, not to_posix_duration:
+    // https://www.boost.org/doc/libs/1_66_0/doc/html/boost_asio/reference/WaitTraits.html
     return std::min(d, google::time::seconds(0.001));
   }
 };
