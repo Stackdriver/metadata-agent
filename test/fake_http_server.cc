@@ -69,14 +69,15 @@ void FakeServer::AllowStream(const std::string& path) {
   handler_.path_streams[path];
 }
 
-bool FakeServer::WaitForOneStreamWatcher(const std::string& path,
-                                         time::seconds timeout) {
+bool FakeServer::WaitForMinTotalConnections(const std::string& path,
+                                            int min_connections,
+                                            time::seconds timeout) {
   auto stream_it = handler_.path_streams.find(path);
   if (stream_it == handler_.path_streams.end()) {
     LOG(ERROR) << "Attempted to wait for an unknown path " << path;
     return false;
   }
-  return stream_it->second.WaitForOneWatcher(timeout);
+  return stream_it->second.WaitForMinTotalConnections(min_connections, timeout);
 }
 
 void FakeServer::SendStreamResponse(const std::string& path,
@@ -116,6 +117,7 @@ void FakeServer::Handler::operator()(Server::request const &request,
       while (true) {
         std::string s = stream.GetNextResponse(&my_queue);
         if (s.empty()) {
+          stream.RemoveQueue(&my_queue);
           break;
         }
         connection->write(s);
@@ -189,17 +191,28 @@ void FakeServer::Handler::Stream::AddQueue(std::queue<std::string>* queue) {
   {
     std::lock_guard<std::mutex> lk(mutex_);
     queues_.push_back(queue);
+    ++connection_counter_;
   }
   // Notify the condition variable to unblock any calls to
   // WaitForOneStreamWatcher().
   cv_.notify_all();
 }
 
-bool FakeServer::Handler::Stream::WaitForOneWatcher(time::seconds timeout) {
+void FakeServer::Handler::Stream::RemoveQueue(std::queue<std::string>* queue) {
+  {
+    std::lock_guard<std::mutex> lk(mutex_);
+    queues_.erase(std::find(queues_.begin(), queues_.end(), queue));
+  }
+  cv_.notify_all();
+}
+
+bool FakeServer::Handler::Stream::WaitForMinTotalConnections(
+    int min_connections, time::seconds timeout) {
   std::unique_lock<std::mutex> queues_lock(mutex_);
-  return cv_.wait_for(queues_lock,
-                      timeout,
-                      [this]{ return queues_.size() > 0; });
+  return cv_.wait_for(
+      queues_lock, timeout, [this, min_connections]{
+        return connection_counter_ >= min_connections;
+      });
 }
 
 void FakeServer::Handler::Stream::SendToAllQueues(const std::string& response) {
