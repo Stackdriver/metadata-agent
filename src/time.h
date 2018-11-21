@@ -16,6 +16,8 @@
 #ifndef TIME_H_
 #define TIME_H_
 
+#include <boost/asio/basic_waitable_timer.hpp>
+#include <boost/system/error_code.hpp>
 #include <chrono>
 #include <ctime>
 #include <memory>
@@ -156,6 +158,53 @@ class ExpirationImpl : public Expiration {
 
  private:
   typename Clock::time_point token_expiration_;
+};
+
+// Abstract class for performing an asynchronous action after a delay.
+class DelayTimer {
+ public:
+  virtual ~DelayTimer() = default;
+  virtual void RunAsyncAfter(
+      time::seconds duration,
+      std::function<void(const boost::system::error_code&)> handler) = 0;
+};
+
+// Implementation of DelayTimer parameterized over a clock type.
+template<typename Clock>
+class DelayTimerImpl : public DelayTimer {
+ public:
+  DelayTimerImpl(boost::asio::io_service& service) : timer_(service) {}
+  void RunAsyncAfter(
+      time::seconds duration,
+      std::function<void(const boost::system::error_code&)> handler) override {
+    timer_.expires_from_now(
+        std::chrono::duration_cast<typename Clock::duration>(duration));
+    timer_.async_wait(handler);
+  }
+ private:
+  boost::asio::basic_waitable_timer<Clock> timer_;
+};
+
+// Abstract class for a factory of DelayTimer types.
+class DelayTimerFactory {
+ public:
+  virtual ~DelayTimerFactory() = default;
+  virtual std::unique_ptr<DelayTimer> CreateTimer(
+      boost::asio::io_service& service) = 0;
+};
+
+// Implementation of a DelayTimer parameterized over a clock type.
+template<typename Clock>
+class DelayTimerFactoryImpl : public DelayTimerFactory {
+ public:
+  static std::unique_ptr<DelayTimerFactory> New() {
+    return std::unique_ptr<DelayTimerFactory>(
+        new DelayTimerFactoryImpl<Clock>());
+  }
+  std::unique_ptr<DelayTimer> CreateTimer(
+      boost::asio::io_service& service) override {
+    return std::unique_ptr<DelayTimer>(new DelayTimerImpl<Clock>(service));
+  }
 };
 
 }

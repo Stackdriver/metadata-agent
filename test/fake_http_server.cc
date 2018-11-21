@@ -30,7 +30,7 @@ FakeServer::FakeServer()
     // is not documented).
     : server_(Server::options(handler_)
                   .thread_pool(
-                      std::make_shared<boost::network::utils::thread_pool>(5))
+                      std::make_shared<boost::network::utils::thread_pool>(6))
                   .address("127.0.0.1")
                   .port("")) {
   server_.listen();
@@ -67,6 +67,15 @@ void FakeServer::SetHandler(const std::string& path, PostHandler handler) {
 void FakeServer::AllowStream(const std::string& path) {
   // Initialize entry for path with default Stream object.
   handler_.path_streams[path];
+}
+
+int FakeServer::NumWatchers(const std::string& path) {
+  auto stream_it = handler_.path_streams.find(path);
+  if (stream_it == handler_.path_streams.end()) {
+    LOG(ERROR) << "No stream for path " << path;
+    return -1;
+  }
+  return stream_it->second.NumWatchers();
 }
 
 bool FakeServer::WaitForMinTotalConnections(const std::string& path,
@@ -194,7 +203,7 @@ void FakeServer::Handler::Stream::AddQueue(std::queue<std::string>* queue) {
     ++connection_counter_;
   }
   // Notify the condition variable to unblock any calls to
-  // WaitForOneStreamWatcher().
+  // WaitForMinTotalConnections().
   cv_.notify_all();
 }
 
@@ -204,6 +213,11 @@ void FakeServer::Handler::Stream::RemoveQueue(std::queue<std::string>* queue) {
     queues_.erase(std::find(queues_.begin(), queues_.end(), queue));
   }
   cv_.notify_all();
+}
+
+int FakeServer::Handler::Stream::NumWatchers() {
+  std::unique_lock<std::mutex> queues_lock(mutex_);
+  return queues_.size();
 }
 
 bool FakeServer::Handler::Stream::WaitForMinTotalConnections(

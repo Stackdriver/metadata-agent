@@ -117,6 +117,9 @@ Configuration::Configuration()
          option(kubernetes_updater_watch_connection_retries_, 0)},
         {"KubernetesUpdaterWatchMaxConnectionFailures",
          option(kubernetes_updater_watch_max_connection_failures_, 15)},
+        // Zero or a negative value means no reconnection.
+        {"KubernetesUpdaterWatchReconnectIntervalSeconds",
+         option(kubernetes_updater_watch_reconnect_interval_seconds_, 3600)},
         {"KubernetesEndpointHost",
          option(kubernetes_endpoint_host_, "https://kubernetes.default.svc")},
         {"KubernetesPodLabelSelector",
