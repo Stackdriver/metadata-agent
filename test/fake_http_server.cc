@@ -72,8 +72,8 @@ void FakeServer::AllowStream(const std::string& path) {
 int FakeServer::NumWatchers(const std::string& path) {
   auto stream_it = handler_.path_streams.find(path);
   if (stream_it == handler_.path_streams.end()) {
-    LOG(ERROR) << "Attempted to wait for an unknown path " << path;
-    return false;
+    LOG(ERROR) << "No stream for path " << path;
+    return -1;
   }
   return stream_it->second.NumWatchers();
 }
