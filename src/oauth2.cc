@@ -32,6 +32,7 @@
 #include "http_common.h"
 #include "json.h"
 #include "logging.h"
+#include "measures.h"
 #include "time.h"
 
 namespace http = boost::network::http;
@@ -139,6 +140,17 @@ std::string Sign(const std::string& data, const PKey& pkey) {
   return std::string(reinterpret_cast<char*>(result.get()), actual_result_size);
 }
 
+} // namespace
+
+OAuth2::OAuth2(const Environment& environment)
+  : OAuth2(environment, ExpirationImpl<std::chrono::system_clock>::New()) {}
+
+OAuth2::OAuth2(const Environment& environment,
+               std::unique_ptr<Expiration> expiration)
+  : environment_(environment),
+    token_expiration_(std::move(expiration)),
+    token_endpoint_(kDefaultTokenEndpoint) {
+  ::google::GceApiRequestErrors();
 }
 
 json::value OAuth2::ComputeTokenFromCredentials() const {
@@ -249,11 +261,14 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
     return parsed_token;
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
-    return nullptr;
   } catch (const boost::system::system_error& e) {
     LOG(ERROR) << "HTTP error: " << e.what();
-    return nullptr;
   }
+
+  ::opencensus::stats::Record(
+    {{::google::GceApiRequestErrors(), 1}},
+    {{::google::MethodTagKey(), "oauth2"}});
+  return nullptr;
 }
 
 json::value OAuth2::GetMetadataToken() const {

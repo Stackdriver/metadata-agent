@@ -17,7 +17,6 @@
 #define AGENT_H_
 
 #include <memory>
-#include <prometheus/registry.h>
 
 #include "store.h"
 #include "health_checker.h"
@@ -61,10 +60,6 @@ class MetadataAgent {
     return &health_checker_;
   }
 
-  std::shared_ptr<prometheus::Registry> prometheus_registry() {
-    return registry_;
-  }
-
  private:
   const Configuration& config_;
 
@@ -72,8 +67,6 @@ class MetadataAgent {
   MetadataStore store_;
 
   HealthChecker health_checker_;
-
-  std::shared_ptr<prometheus::Registry> registry_;
 
   // The Metadata API server.
   std::unique_ptr<MetadataApiServer> metadata_api_server_;

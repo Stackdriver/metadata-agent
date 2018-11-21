@@ -15,6 +15,8 @@
  **/
 
 #include "../src/oauth2.h"
+
+#include "../src/measures.h"
 #include "environment_util.h"
 #include "fake_clock.h"
 #include "fake_http_server.h"
@@ -22,12 +24,18 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+#include <opencensus/stats/stats.h>
+#include <opencensus/stats/testing/test_utils.h>
 #include <sstream>
 
 namespace google {
 
 class OAuth2Test : public ::testing::Test {
  protected:
+  void SetUp() override {
+    ::opencensus::stats::testing::TestUtils::Flush();
+  }
+
   static void SetTokenEndpointForTest(OAuth2* auth,
                                       const std::string& endpoint) {
     auth->SetTokenEndpointForTest(endpoint);
@@ -116,6 +124,32 @@ TEST_F(OAuth2Test, GetAuthHeaderValueUsingTokenFromMetadataServerAsFallback) {
   SetTokenEndpointForTest(&auth, oauth_server.GetUrl() + "/oauth2/v3/token");
 
   EXPECT_EQ("Bearer the-access-token", auth.GetAuthHeaderValue());
+}
+
+TEST_F(OAuth2Test, GetApiRequestErrorMetric) {
+  testing::FakeServer oauth_server;
+  testing::TemporaryFile credentials_file(
+    std::string(test_info_->name()) + "_creds.json",
+    "{\"client_email\":\"user@example.com\",\"private_key\":\"some_key\"}");
+  Configuration config(std::istringstream(
+      "CredentialsFile: '" + credentials_file.FullPath().native() + "'\n"
+  ));
+  Environment environment(config);
+  OAuth2 auth(environment);
+  SetTokenEndpointForTest(&auth, oauth_server.GetUrl() + "/oauth2/v3/token");
+
+  ::opencensus::stats::View errors_view(
+      ::google::GceApiRequestErrorsCumulative());
+
+  // no record exists before internal function sent request to oauth_server
+  EXPECT_THAT(errors_view.GetData().int_data(),
+              ::testing::UnorderedElementsAre());
+
+  auth.GetAuthHeaderValue();
+  ::opencensus::stats::testing::TestUtils::Flush();
+  EXPECT_THAT(errors_view.GetData().int_data(),
+                ::testing::UnorderedElementsAre(::testing::Pair(
+                    ::testing::ElementsAre("oauth2"), 1)));
 }
 
 TEST_F(OAuth2Test, GetAuthHeaderValueTokenJsonMissingField) {

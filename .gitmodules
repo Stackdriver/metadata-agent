@@ -13,3 +13,6 @@
 [submodule "lib/prometheus-cpp"]
 	path = lib/prometheus-cpp
 	url = https://github.com/jupp0r/prometheus-cpp
+[submodule "lib/opencensus-cpp"]
+	path = lib/opencensus-cpp
+	url = https://github.com/census-instrumentation/opencensus-cpp

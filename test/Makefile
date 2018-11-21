@@ -35,6 +35,11 @@ YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
 PROMETHEUS_CPP_DIR=$(LIBDIR)/prometheus-cpp
 PROMETHEUS_CPP_LIBDIR=$(PROMETHEUS_CPP_DIR)
 PROMETHEUS_CPP_CORE_LIBDIR=$(PROMETHEUS_CPP_LIBDIR)/core
+OPENCENSUS_CPP_DIR=$(LIBDIR)/opencensus-cpp
+OPENCENSUS_CPP_OPENCENSUS_DIR=$(OPENCENSUS_CPP_DIR)/opencensus
+OPENCENSUS_CPP_OPENCENSUS_LIBDIR=$(OPENCENSUS_CPP_OPENCENSUS_DIR)
+OPENCENSUS_CPP_ABSL_INCLUDEDIR=$(OPENCENSUS_CPP_DIR)/abseil-src
+OPENCENSUS_CPP_ABSL_LIBDIR=$(OPENCENSUS_CPP_DIR)/abseil-build/absl
 
 CPP_NETLIB_LIBS=\
     $(CPP_NETLIB_LIBDIR)/libcppnetlib-client-connections.a \
@@ -43,23 +48,67 @@ CPP_NETLIB_LIBS=\
 YAML_CPP_LIBS=$(YAML_CPP_LIBDIR)/libyaml-cpp.a
 PROMETHEUS_CPP_LIBS=\
     $(PROMETHEUS_CPP_CORE_LIBDIR)/libprometheus-cpp-core.a
+OPENCENSUS_CPP_LIBS=\
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/base/libabsl_base.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/base/libabsl_internal_malloc_internal.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/base/libabsl_internal_throw_delegate.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/base/libabsl_internal_spinlock_wait.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/base/libabsl_dynamic_annotations.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/debugging/libabsl_stacktrace.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/debugging/libabsl_symbolize.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/numeric/libabsl_int128.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/synchronization/libabsl_synchronization.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/strings/libabsl_strings.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/time/libabsl_time.a \
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/exporters/stats/stdout/libopencensus_exporters_stats_stdout.a \
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/stats/libopencensus_stats_core.a \
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/stats/libopencensus_stats_test_utils.a \
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/tags/libopencensus_tags.a
 
 CPPFLAGS+= \
     -isystem $(GTEST_DIR)/include -I$(GMOCK_DIR)/include \
     -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include \
-    -I$(PROMETHEUS_CPP_CORE_LIBDIR)/include
+    -I$(PROMETHEUS_CPP_CORE_LIBDIR)/include \
+    -I$(OPENCENSUS_CPP_DIR) -I$(OPENCENSUS_CPP_ABSL_INCLUDEDIR)
 CXXFLAGS=\
     -std=c++11 -g -pthread -Wno-write-strings -Wno-deprecated
 LDFLAGS=\
     -L$(CPP_NETLIB_LIBDIR) \
     -L$(NETWORK_URI_LIBDIR) \
     -L$(YAML_CPP_LIBDIR) \
-    -L$(PROMETHEUS_CPP_CORE_LIBDIR)
+    -L$(PROMETHEUS_CPP_CORE_LIBDIR) \
+    -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/stats \
+    -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/context \
+    -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/exporters/stats/prometheus \
+    -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/trace \
+    -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/tags \
+    -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/common/internal \
+    -L$(OPENCENSUS_CPP_ABSL_LIBDIR)/numeric \
+    -L$(OPENCENSUS_CPP_ABSL_LIBDIR)/strings \
+    -L$(OPENCENSUS_CPP_ABSL_LIBDIR)/synchronization \
+    -L$(OPENCENSUS_CPP_ABSL_LIBDIR)/time \
+    -L$(OPENCENSUS_CPP_ABSL_LIBDIR)/debugging \
+    -L$(OPENCENSUS_CPP_ABSL_LIBDIR)/base
 LDLIBS=\
     -lcppnetlib-client-connections -lcppnetlib-server-parsers -lnetwork-uri \
     -lboost_program_options -lboost_system -lboost_thread -lboost_filesystem \
     -lboost_regex -lpthread -lyajl -lssl -lcrypto -lyaml-cpp \
-    -lprometheus-cpp-core
+    -lprometheus-cpp-core \
+    -lopencensus_exporters_stats_prometheus \
+    -lopencensus_exporters_stats_prometheus_utils \
+    -lopencensus_stats_core -lopencensus_stats_test_utils -lopencensus_stats_recording \
+    -lopencensus_tags -lopencensus_tags_context_util \
+    -lopencensus_context \
+    -lopencensus_trace_context_util \
+    -lopencensus_trace_with_span \
+    -lopencensus_trace \
+    -lopencensus_common_random \
+    -labsl_strings -labsl_synchronization -labsl_time \
+    -labsl_int128 \
+    -labsl_stacktrace -labsl_symbolize \
+    -labsl_demangle_internal -labsl_internal_debugging_internal \
+    -labsl_base -labsl_dynamic_annotations -labsl_internal_spinlock_wait \
+    -labsl_internal_malloc_internal -labsl_internal_throw_delegate
 
 UNAME_S=$(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
@@ -80,6 +129,7 @@ TEST_DIR=.
 TEST_SOURCES=$(wildcard $(TEST_DIR)/*_unittest.cc)
 TEST_OBJS=$(TEST_SOURCES:$(TEST_DIR)/%.cc=%.o)
 TESTS=\
+      internal/measures_utils_unittest \
       api_server_unittest \
       base64_unittest \
       configuration_unittest \
@@ -126,7 +176,7 @@ init-submodules:
 $(SRC_DIR)/init-submodules:
 	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
-$(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(SRC_DIR)/build-prometheus-cpp: $(SRC_DIR)/init-submodules
+$(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(SRC_DIR)/build-prometheus-cpp $(SRC_DIR)/build-opencensus-cpp: $(SRC_DIR)/init-submodules
 	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
 $(CPP_NETLIB_LIBS): $(SRC_DIR)/build-cpp-netlib
@@ -135,7 +185,9 @@ $(YAML_CPP_LIBS): $(SRC_DIR)/build-yaml-cpp
 
 $(PROMETHEUS_CPP_LIBS): $(SRC_DIR)/build-prometheus-cpp
 
-$(SRC_DIR)/%.o: $(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(SRC_DIR)/build-prometheus-cpp $(SRC_DIR)/%.cc
+$(OPENCENSUS_CPP_LIBS): $(SRC_DIR)/build-opencensus-cpp
+
+$(SRC_DIR)/%.o: $(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(SRC_DIR)/build-prometheus-cpp $(SRC_DIR)/build-opencensus-cpp $(SRC_DIR)/%.cc
 	cd $(SRC_DIR) && $(MAKE) $(@:$(SRC_DIR)/%=%)
 
 $(GTEST_SOURCEDIR)/gtest-all.cc: init-submodules
@@ -152,14 +204,16 @@ gmock_main.o: $(GMOCK_SOURCEDIR)/gmock_main.cc
 $(GTEST_LIB): gtest-all.o gmock-all.o gmock_main.o
 	$(AR) $(ARFLAGS) $@ $^
 
-$(TESTS): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS) $(PROMETHEUS_CPP_LIBS)
+$(TESTS): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS) $(PROMETHEUS_CPP_LIBS) $(OPENCENSUS_CPP_LIBS)
 
 # All unittest objects depend on GTEST_LIB.
 # Some headers need CPP_NETLIB_LIBS and YAML_CPP_LIBS.
-$(TESTS:%=%.o): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS) $(PROMETHEUS_CPP_LIBS)
+$(TESTS:%=%.o): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS) $(PROMETHEUS_CPP_LIBS) $(OPENCENSUS_CPP_LIBS)
 
-api_server_unittest: api_server_unittest.o $(SRC_DIR)/api_server.o $(SRC_DIR)/configuration.o $(SRC_DIR)/store.o $(SRC_DIR)/json.o $(SRC_DIR)/resource.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/health_checker.o
-	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lprometheus-cpp-core -o $@
+internal/measures_utils_unittest: internal/measures_utils_unittest.o $(SRC_DIR)/internal/measures_utils.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+api_server_unittest: api_server_unittest.o $(SRC_DIR)/api_server.o $(SRC_DIR)/internal/measures_utils.o $(SRC_DIR)/configuration.o $(SRC_DIR)/store.o $(SRC_DIR)/json.o $(SRC_DIR)/resource.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/health_checker.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 base64_unittest: base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 configuration_unittest: configuration_unittest.o $(SRC_DIR)/configuration.o
@@ -178,11 +232,11 @@ kubernetes_unittest: kubernetes_unittest.o fake_http_server.o $(SRC_DIR)/kuberne
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 logging_unittest: logging_unittest.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-oauth2_unittest: oauth2_unittest.o fake_clock.o fake_http_server.o $(SRC_DIR)/oauth2.o $(SRC_DIR)/base64.o $(SRC_DIR)/configuration.o $(SRC_DIR)/environment.o $(SRC_DIR)/format.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o
+oauth2_unittest: oauth2_unittest.o fake_clock.o fake_http_server.o $(SRC_DIR)/oauth2.o $(SRC_DIR)/base64.o $(SRC_DIR)/configuration.o $(SRC_DIR)/environment.o $(SRC_DIR)/format.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/measures.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 resource_unittest: resource_unittest.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-reporter_unittest: reporter_unittest.o fake_clock.o fake_http_server.o $(SRC_DIR)/reporter.o $(SRC_DIR)/base64.o $(SRC_DIR)/configuration.o $(SRC_DIR)/environment.o $(SRC_DIR)/format.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/oauth2.o $(SRC_DIR)/resource.o $(SRC_DIR)/store.o $(SRC_DIR)/time.o
+reporter_unittest: reporter_unittest.o fake_clock.o fake_http_server.o $(SRC_DIR)/reporter.o $(SRC_DIR)/base64.o $(SRC_DIR)/configuration.o $(SRC_DIR)/environment.o $(SRC_DIR)/format.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/measures.o $(SRC_DIR)/oauth2.o $(SRC_DIR)/resource.o $(SRC_DIR)/store.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 store_unittest: store_unittest.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/configuration.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@

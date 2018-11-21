@@ -18,7 +18,6 @@
 
 #define BOOST_NETWORK_ENABLE_HTTPS
 #include <boost/network/protocol/http/server.hpp>
-#include <prometheus/collectable.h>
 #include <functional>
 #include <map>
 #include <memory>
@@ -44,7 +43,6 @@ class MetadataApiServer {
  public:
   MetadataApiServer(const Configuration& config,
                     const HealthChecker* health_checker,
-                    const std::shared_ptr<prometheus::Collectable> collectable,
                     const MetadataStore& store, int server_threads,
                     const std::string& host, int port);
   ~MetadataApiServer();
@@ -81,7 +79,6 @@ class MetadataApiServer {
                      std::shared_ptr<HttpServer::connection> conn);
   void HandleMetrics(const HttpServer::request& request,
                      std::shared_ptr<HttpServer::connection> conn);
-  std::string SerializeMetricsToPrometheusTextFormat() const;
 
   const Configuration& config_;
   const HealthChecker* health_checker_;
@@ -89,7 +86,6 @@ class MetadataApiServer {
   Dispatcher dispatcher_;
   HttpServer server_;
   std::vector<std::thread> server_pool_;
-  std::shared_ptr<prometheus::Collectable> collectable_;
 };
 
 }

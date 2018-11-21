@@ -26,7 +26,12 @@ YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
 PROMETHEUS_CPP_DIR=$(LIBDIR)/prometheus-cpp
 PROMETHEUS_CPP_LIBDIR=$(PROMETHEUS_CPP_DIR)
 PROMETHEUS_CPP_CORE_LIBDIR=$(PROMETHEUS_CPP_LIBDIR)/core
-SUBMODULE_DIRS=$(CPP_NETLIB_DIR) $(YAML_CPP_DIR) $(PROMETHEUS_CPP_DIR)
+OPENCENSUS_CPP_DIR=$(LIBDIR)/opencensus-cpp
+OPENCENSUS_CPP_OPENCENSUS_DIR=$(OPENCENSUS_CPP_DIR)/opencensus
+OPENCENSUS_CPP_OPENCENSUS_LIBDIR=$(OPENCENSUS_CPP_OPENCENSUS_DIR)
+OPENCENSUS_CPP_ABSL_INCLUDEDIR=$(OPENCENSUS_CPP_DIR)/abseil-src
+OPENCENSUS_CPP_ABSL_LIBDIR=$(OPENCENSUS_CPP_DIR)/abseil-build/absl
+SUBMODULE_DIRS=$(CPP_NETLIB_DIR) $(YAML_CPP_DIR) $(PROMETHEUS_CPP_DIR) $(OPENCENSUS_CPP_DIR)
 
 GIT=git
 GIT_VERSION=$(shell $(GIT) --version | grep -oh '[0-9]\+\.[0-9]\+\.[0-9]\+')
@@ -37,18 +42,46 @@ CPPFLAGS=\
     -DAGENT_VERSION='$(PKG_VERSION)-$(PKG_RELEASE)' \
     -DENABLE_DOCKER_METADATA \
     -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include \
-    -I$(PROMETHEUS_CPP_CORE_LIBDIR)/include
+    -I$(PROMETHEUS_CPP_CORE_LIBDIR)/include -I$(OPENCENSUS_CPP_DIR) \
+    -I$(OPENCENSUS_CPP_ABSL_INCLUDEDIR)
 CXXFLAGS=\
     -std=c++11 -g -pthread -Wno-write-strings -Wno-deprecated
 LDFLAGS=\
     -L$(CPP_NETLIB_LIBDIR) \
     -L$(NETWORK_URI_LIBDIR) \
     -L$(YAML_CPP_LIBDIR) \
-    -L$(PROMETHEUS_CPP_CORE_LIBDIR)
+    -L$(PROMETHEUS_CPP_CORE_LIBDIR) \
+    -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/stats \
+    -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/context \
+    -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/exporters/stats/prometheus \
+    -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/trace \
+    -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/tags \
+    -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/common/internal \
+    -L$(OPENCENSUS_CPP_ABSL_LIBDIR)/numeric \
+    -L$(OPENCENSUS_CPP_ABSL_LIBDIR)/strings \
+    -L$(OPENCENSUS_CPP_ABSL_LIBDIR)/synchronization \
+    -L$(OPENCENSUS_CPP_ABSL_LIBDIR)/time \
+    -L$(OPENCENSUS_CPP_ABSL_LIBDIR)/debugging \
+    -L$(OPENCENSUS_CPP_ABSL_LIBDIR)/base
 LDLIBS=\
     -lcppnetlib-client-connections -lcppnetlib-server-parsers -lnetwork-uri \
     -lboost_program_options -lboost_system -lboost_thread -lboost_filesystem \
-    -lpthread -lyajl -lssl -lcrypto -lyaml-cpp -lprometheus-cpp-core
+    -lpthread -lyajl -lssl -lcrypto -lyaml-cpp -lprometheus-cpp-core \
+    -lopencensus_exporters_stats_prometheus \
+    -lopencensus_exporters_stats_prometheus_utils \
+    -lopencensus_stats_core -lopencensus_stats_recording \
+    -lopencensus_tags -lopencensus_tags_context_util \
+    -lopencensus_context \
+    -lopencensus_trace_context_util \
+    -lopencensus_trace_with_span \
+    -lopencensus_trace \
+    -lopencensus_common_random \
+    -labsl_strings -labsl_synchronization -labsl_time \
+    -labsl_int128 \
+    -labsl_stacktrace -labsl_symbolize \
+    -labsl_demangle_internal -labsl_internal_debugging_internal \
+    -labsl_base -labsl_dynamic_annotations -labsl_internal_spinlock_wait \
+    -labsl_internal_malloc_internal -labsl_internal_throw_delegate
 SED_EXTRA=-e 's/-Wall/-Wall -Wno-deprecated/'
 
 UNAME_S=$(shell uname -s)
@@ -79,6 +112,8 @@ SRCS=\
      kubernetes.cc \
      resource.cc \
      oauth2.cc \
+     measures.cc \
+     internal/measures_utils.cc \
      logging.cc \
      local_stream_http.cc \
      local_stream_delegate.cc \
@@ -98,7 +133,32 @@ YAML_CPP_LIBS=\
     $(YAML_CPP_LIBDIR)/libyaml-cpp.a
 PROMETHEUS_CPP_LIBS=\
     $(PROMETHEUS_CPP_CORE_LIBDIR)/libprometheus-cpp-core.a
-LIBS=$(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS) $(PROMETHEUS_CPP_LIBS)
+OPENCENSUS_CPP_LIBS=\
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/base/libabsl_base.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/base/libabsl_internal_malloc_internal.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/base/libabsl_internal_throw_delegate.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/base/libabsl_internal_spinlock_wait.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/base/libabsl_dynamic_annotations.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/debugging/libabsl_demangle_internal.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/debugging/libabsl_internal_debugging_internal.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/debugging/libabsl_stacktrace.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/debugging/libabsl_symbolize.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/numeric/libabsl_int128.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/synchronization/libabsl_synchronization.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/strings/libabsl_strings.a \
+    $(OPENCENSUS_CPP_ABSL_LIBDIR)/time/libabsl_time.a \
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/exporters/stats/prometheus/libopencensus_exporters_stats_prometheus.a \
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/exporters/stats/prometheus/libopencensus_exporters_stats_prometheus_utils.a \
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/stats/libopencensus_stats_core.a \
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/context/libopencensus_context.a \
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/tags/libopencensus_tags.a \
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/tags/libopencensus_tags_context_util.a \
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/trace/libopencensus_trace.a \
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/trace/libopencensus_trace_with_span.a \
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/trace/libopencensus_trace_context_util.a \
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/context/libopencensus_context.a \
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/common/internal/libopencensus_common_random.a
+LIBS=$(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS) $(PROMETHEUS_CPP_LIBS) $(OPENCENSUS_CPP_LIBS)
 
 sbindir=/opt/stackdriver/metadata/sbin
 INSTALL=/usr/bin/install
@@ -177,7 +237,7 @@ clean:
 	$(RM) metadatad $(OBJS)
 
 purge: clean
-	$(RM) -r init-submodules build-cpp-netlib build-yaml-cpp build-prometheus-cpp
+	$(RM) -r init-submodules build-cpp-netlib build-yaml-cpp build-prometheus-cpp build-opencensus-cpp
 	(cd .. && git submodule deinit -f $(SUBMODULE_DIRS:../%=%))
 
 init-submodules:
@@ -243,14 +303,26 @@ build-prometheus-cpp: $(PROMETHEUS_CPP_DIR)/Makefile
 	$(MAKE)
 	touch build-prometheus-cpp
 
+$(OPENCENSUS_CPP_DIR)/Makefile: init-submodules
+	cd $(OPENCENSUS_CPP_DIR) && \
+	$(CMAKE) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
+	    -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
+	    -DBUILD_TESTING=OFF
+
+$(OPENCENSUS_CPP_LIBS): build-opencensus-cpp
+
+build-opencensus-cpp: $(OPENCENSUS_CPP_DIR)/Makefile
+	cd $(OPENCENSUS_CPP_DIR) && \
+	$(MAKE)
+	touch build-opencensus-cpp
+
 cpp-netlib: $(CPP_NETLIB_LIBS)
-
 yaml-cpp: $(YAML_CPP_LIBS)
-
 prometheus-cpp: $(PROMETHEUS_CPP_LIBS)
+opencensus-cpp: $(OPENCENSUS_CPP_LIBS)
 
-submodules: cpp-netlib yaml-cpp prometheus-cpp
+submodules: cpp-netlib yaml-cpp prometheus-cpp opencensus-cpp
 
 all: submodules metadatad
 
-.PHONY: all submodules cpp-netlib yaml-cpp prometheus-cpp purge clean install deb rpm
+.PHONY: all submodules cpp-netlib yaml-cpp prometheus-cpp opencensus-cpp purge clean install deb rpm

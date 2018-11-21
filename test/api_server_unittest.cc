@@ -19,19 +19,11 @@
 #include "../src/store.h"
 #include "gtest/gtest.h"
 
-#include <prometheus/registry.h>
-
 namespace google {
 
 class ApiServerTest : public ::testing::Test {
  protected:
   using Dispatcher = MetadataApiServer::Dispatcher;
-
-  static std::string SerializeMetricsToPrometheusTextFormat(
-      const google::MetadataApiServer& api_server) {
-    return api_server.SerializeMetricsToPrometheusTextFormat();
-  }
-
   std::unique_ptr<Dispatcher> CreateDispatcher(
       const std::map<std::pair<std::string, std::string>,
                      std::function<void()>>& handlers) {
@@ -103,48 +95,4 @@ TEST_F(ApiServerTest, DispatcherSubstringCheck) {
   InvokeDispatcher(dispatcher, "GET", "/testPath/subPath/");
   EXPECT_TRUE(handler_called);
 }
-
-TEST_F(ApiServerTest, SerializationToPrometheusTextForNullPtr) {
-  google::Configuration config;
-  google::MetadataApiServer server(
-    config,
-    /*health_checker=*/nullptr,
-    /*std::shared_ptr<prometheus::Collectable>=*/nullptr,
-    MetadataStore(config),
-    0, "", 8080);
-  EXPECT_EQ("", SerializeMetricsToPrometheusTextFormat(server));
-}
-
-TEST_F(ApiServerTest, SerializationToPrometheusTextForEmptyRegistry) {
-  google::Configuration config;
-  std::shared_ptr<prometheus::Registry> registry;
-  google::MetadataApiServer server(
-    config, /*health_checker=*/nullptr, registry,
-    MetadataStore(config),
-    0, "", 8080);
-  EXPECT_EQ("", SerializeMetricsToPrometheusTextFormat(server));
-}
-
-TEST_F(ApiServerTest, SerializationToPrometheusTextWithLabeledCounter) {
-  google::Configuration config;
-  auto registry = std::make_shared<prometheus::Registry>();
-  auto& counter_family = prometheus::BuildCounter()
-      .Name("test_metric_counter")
-      .Help("help on test_metric_counter")
-      .Register(*registry);
-
-  // Add a labeled counter
-  counter_family.Add({{"foo", "bar"}});
-
-  std::string expected_result =
-    "# HELP test_metric_counter help on test_metric_counter\n"
-    "# TYPE test_metric_counter counter\n"
-    "test_metric_counter{foo=\"bar\"} 0.000000\n";
-  google::MetadataApiServer server(
-    config, /*health_checker=*/nullptr, registry,
-    MetadataStore(config),
-    0, "", 8080);
-  EXPECT_EQ(expected_result, SerializeMetricsToPrometheusTextFormat(server));
-}
-
 }  // namespace google

@@ -17,11 +17,11 @@
 #include "api_server.h"
 
 #include <boost/range/irange.hpp>
-#include <prometheus/text_serializer.h>
 
 #include "configuration.h"
 #include "health_checker.h"
 #include "http_common.h"
+#include "internal/measures_utils.h"
 #include "logging.h"
 #include "store.h"
 
@@ -68,16 +68,12 @@ void MetadataApiServer::Dispatcher::log(const HttpServer::string_type& info) con
 }
 
 
-MetadataApiServer::MetadataApiServer(
-    const Configuration& config,
-    const HealthChecker* health_checker,
-    const std::shared_ptr<prometheus::Collectable> collectable,
-    const MetadataStore& store,
-    int server_threads,
-    const std::string& host,
-    int port)
-    : config_(config), health_checker_(health_checker),
-      collectable_(collectable), store_(store),
+MetadataApiServer::MetadataApiServer(const Configuration& config,
+                                     const HealthChecker* health_checker,
+                                     const MetadataStore& store,
+                                     int server_threads,
+                                     const std::string& host, int port)
+    : config_(config), health_checker_(health_checker), store_(store),
       dispatcher_({
         {{"GET", "/monitoredResource/"},
          [=](const HttpServer::request& request,
@@ -213,7 +209,7 @@ void MetadataApiServer::HandleHealthz(
 void MetadataApiServer::HandleMetrics(
     const HttpServer::request& request,
     std::shared_ptr<HttpServer::connection> conn) {
-  std::string response = SerializeMetricsToPrometheusTextFormat();
+  std::string response = internal::SerializeMetricsToPrometheusTextFormat();
   conn->set_status(HttpServer::connection::ok);
   conn->set_headers(std::map<std::string, std::string>({
     {"Connection", "close"},
@@ -223,13 +219,4 @@ void MetadataApiServer::HandleMetrics(
   conn->write(response);
 }
 
-std::string MetadataApiServer::SerializeMetricsToPrometheusTextFormat() const {
-  if (!collectable_) {
-    return "";
-  }
-
-  prometheus::TextSerializer text_serializer;
-  return std::move(text_serializer.Serialize(collectable_->Collect()));
-}
-
-}
+} // namespace google
