@@ -37,7 +37,7 @@ Logger::Logger(const char* file, int line, Severity severity, LogStream* stream)
   (*this) << kSeverities_[severity]
           << time_val
           << std::hex << std::this_thread::get_id() << std::dec << " "
-          << file_ << ":" << line_ << " ";
+          << file_ << ":" << line_ << "] ";
 }
 
 Logger::~Logger() {
