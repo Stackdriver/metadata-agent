@@ -716,12 +716,12 @@ struct Watcher : public std::thread {
   Watcher(const std::string& endpoint,
           std::function<void(json::value)> event_callback,
           std::shared_ptr<boost::asio::io_service> service,
-          DelayTimer* silence_timer,
+          std::unique_ptr<DelayTimer> silence_timer,
           int max_silence_seconds,
           bool verbose)
       : std::thread([=]() { service->run(); }),
         name_("Watcher(" + endpoint + ")"), service_(service),
-        event_parser_(event_callback), silence_timer_(silence_timer),
+        event_parser_(event_callback), silence_timer_(std::move(silence_timer)),
         max_silence_seconds_(max_silence_seconds), verbose_(verbose) {}
   ~Watcher() {}
 
@@ -762,13 +762,15 @@ struct Watcher : public std::thread {
       }
       service_->stop();
     } else {
-      silence_timer_->RunAsyncAfter(std::chrono::seconds(
-          max_silence_seconds_),
-          [this](boost::system::error_code const &ec) {
-        if (ec != boost::asio::error::operation_aborted) {
-          service_->stop();
-        }
-      });
+      if (max_silence_seconds_ > 0 && silence_timer_ != nullptr) {
+        silence_timer_->RunAsyncAfter(std::chrono::seconds(
+            max_silence_seconds_),
+            [this](boost::system::error_code const &ec) {
+          if (ec != boost::asio::error::operation_aborted) {
+            service_->stop();
+          }
+        });
+      }
     }
   }
 
@@ -776,7 +778,7 @@ struct Watcher : public std::thread {
   std::string name_;
   std::shared_ptr<boost::asio::io_service> service_;
   json::Parser event_parser_;
-  DelayTimer* silence_timer_;
+  std::unique_ptr<DelayTimer> silence_timer_;
   int max_silence_seconds_;
   bool verbose_;
 };
@@ -839,10 +841,10 @@ void KubernetesReader::WatchMaster(
       if (watch_service->stopped()) {
         watch_service->reset();
       }
-      std::unique_ptr<DelayTimer> timer;
+      std::unique_ptr<DelayTimer> reconnect_timer;
       if (config_.KubernetesUpdaterWatchReconnectIntervalSeconds() > 0) {
-        timer = delay_timer_factory_->CreateTimer(*watch_service);
-        timer->RunAsyncAfter(std::chrono::seconds(
+        reconnect_timer = delay_timer_factory_->CreateTimer(*watch_service);
+        reconnect_timer->RunAsyncAfter(std::chrono::seconds(
             config_.KubernetesUpdaterWatchReconnectIntervalSeconds()),
             [watch_service](boost::system::error_code const &ec) {
           if (ec != boost::asio::error::operation_aborted) {
@@ -866,7 +868,7 @@ void KubernetesReader::WatchMaster(
         [=](json::value raw_watch) {
           WatchEventCallback(callback, name, std::move(raw_watch));
         },
-        watch_service, timer.get(),
+        watch_service, std::move(silence_timer),
         config_.KubernetesUpdaterWatchReconnectMaxSilenceSeconds(), verbose);
       http::client::response response = client.get(request, std::ref(watcher));
       if (verbose) {
