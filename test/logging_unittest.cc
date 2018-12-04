@@ -34,7 +34,7 @@ TEST(LoggingTest, Logger) {
   }
 
   EXPECT_TRUE(boost::regex_match(out.str(), boost::regex(
-     "W\\d{4} \\d{2}:\\d{2}:\\d{2} .+ "
+     "W\\d{4} \\d{2}:\\d{2}:\\d{2} \\d+ "
      "somefile.cc:123] Test message\n")));
 }
 
