@@ -24,6 +24,7 @@
 #include "docker.h"
 #include "instance.h"
 #include "kubernetes.h"
+#include "measures.h"
 #include "time.h"
 
 namespace google {
@@ -91,6 +92,9 @@ int main(int ac, char** av) {
   kubernetes_updater.Start();
 
   server.Start();
+
+  // Only register all the views after all the measures are initialized.
+  ::google::RegisterAllViewsForExport();
 
   // Wait for the server to shut down.
   google::cleanup_state->Wait();

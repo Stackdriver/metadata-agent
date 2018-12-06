@@ -19,7 +19,6 @@
 #include "api_server.h"
 #include "configuration.h"
 #include "health_checker.h"
-#include "measures.h"
 #include "reporter.h"
 
 namespace google {
@@ -35,7 +34,6 @@ void MetadataAgent::Start() {
       config_.MetadataApiBindAddress(), config_.MetadataApiPort()));
   reporter_.reset(new MetadataReporter(
       config_, &store_, config_.MetadataReporterIntervalSeconds()));
-  ::google::RegisterAllViewsForExport();
 }
 
 void MetadataAgent::Stop() {
