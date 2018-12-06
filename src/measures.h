@@ -21,8 +21,6 @@
 
 namespace google {
 
-extern const absl::string_view kGceApiRequestErrors;
-
 // Measure accessors. If the measure variable is not initialized, these methods
 // will initialize the variable.
 //
