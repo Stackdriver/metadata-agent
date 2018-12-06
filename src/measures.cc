@@ -23,7 +23,7 @@ namespace google {
 
 namespace {
 
-constexpr char kCount[] = "1";
+ABSL_CONST_INIT const absl::string_view kCount = "1";
 
 } // namespace
 
