@@ -23,7 +23,6 @@ namespace google {
 
 namespace {
 
-constexpr char kUnitBytes[] = "By";
 constexpr char kCount[] = "1";
 
 } // namespace
