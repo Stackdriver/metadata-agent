@@ -214,7 +214,7 @@ void MetadataApiServer::HandleMetrics(
   conn->set_headers(std::map<std::string, std::string>({
     {"Connection", "close"},
     {"Content-Length", std::to_string(response.size())},
-    {"Content-Type", "application/json"},
+    {"Content-Type", "text/plain; version=0.0.4"},
   }));
   conn->write(response);
 }
