@@ -23,15 +23,27 @@ namespace google {
 
 extern const absl::string_view kGceApiRequestErrors;
 
-// measures
+// Measure accessors. If the measure variable is not initialized, these methods
+// will initialize the variable.
+//
+// Reference of measure: https://opencensus.io/stats/measure/
 ::opencensus::stats::MeasureInt64 GceApiRequestErrors();
 
-// tag keys
+// Tag key accessors. If the tag key variable is not initialized, these methods
+// will initialize the variable.
+//
+// Reference of measure: https://opencensus.io/tag/key/
 ::opencensus::stats::TagKey MethodTagKey();
 
-// view descriptors
+// View Descriptor accessors. If the view descriptor variable is not
+// initialized, these methods will initialize the variable.
 const ::opencensus::stats::ViewDescriptor& GceApiRequestErrorsCumulative();
 
+// Register all the view descriptors declared above as view for export.
+//
+// Measures should be registered before calling RegisterAllViewsForExport(),
+// otherwise calling this function will create invalid views, which exporter
+// cannot export meaningful data.
 void RegisterAllViewsForExport();
 
 } // namespace google
