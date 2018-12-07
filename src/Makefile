@@ -112,7 +112,7 @@ SRCS=\
      kubernetes.cc \
      resource.cc \
      oauth2.cc \
-     measures.cc \
+     metrics.cc \
      internal/measures_utils.cc \
      logging.cc \
      local_stream_http.cc \

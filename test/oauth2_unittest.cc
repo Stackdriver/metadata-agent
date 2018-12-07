@@ -16,7 +16,7 @@
 
 #include "../src/oauth2.h"
 
-#include "../src/measures.h"
+#include "../src/metrics.h"
 #include "environment_util.h"
 #include "fake_clock.h"
 #include "fake_http_server.h"
@@ -139,7 +139,7 @@ TEST_F(OAuth2Test, GetApiRequestErrorMetric) {
   SetTokenEndpointForTest(&auth, oauth_server.GetUrl() + "/oauth2/v3/token");
 
   ::opencensus::stats::View errors_view(
-      ::google::GceApiRequestErrorsCumulative());
+      ::google::Metrics::GceApiRequestErrorsCumulative());
 
   // No record exists before internal function sent request to oauth_server.
   EXPECT_THAT(errors_view.GetData().int_data(), ::testing::IsEmpty());

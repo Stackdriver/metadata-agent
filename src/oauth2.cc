@@ -32,7 +32,7 @@
 #include "http_common.h"
 #include "json.h"
 #include "logging.h"
-#include "measures.h"
+#include "metrics.h"
 #include "time.h"
 
 namespace http = boost::network::http;
@@ -254,9 +254,7 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
     LOG(ERROR) << "HTTP error: " << e.what();
   }
 
-  ::opencensus::stats::Record(
-    {{::google::GceApiRequestErrors(), 1}},
-    {{::google::MethodTagKey(), "oauth2"}});
+  ::google::Metrics::RecordGceApiRequestErrors(1, "oauth2");
   return nullptr;
 }
 
