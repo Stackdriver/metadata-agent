@@ -32,10 +32,6 @@ namespace google {
 
 class OAuth2Test : public ::testing::Test {
  protected:
-  void SetUp() override {
-    ::opencensus::stats::testing::TestUtils::Flush();
-  }
-
   static void SetTokenEndpointForTest(OAuth2* auth,
                                       const std::string& endpoint) {
     auth->SetTokenEndpointForTest(endpoint);
@@ -126,7 +122,10 @@ TEST_F(OAuth2Test, GetAuthHeaderValueUsingTokenFromMetadataServerAsFallback) {
   EXPECT_EQ("Bearer the-access-token", auth.GetAuthHeaderValue());
 }
 
-TEST_F(OAuth2Test, GetApiRequestErrorMetric) {
+TEST_F(OAuth2Test, PropagateGceApiRequestErrorsCumulativeToView) {
+  // Flush to prevents other test contaminate the metrics.
+  ::opencensus::stats::testing::TestUtils::Flush();
+
   testing::FakeServer oauth_server;
   testing::TemporaryFile credentials_file(
     std::string(test_info_->name()) + "_creds.json",
@@ -145,7 +144,10 @@ TEST_F(OAuth2Test, GetApiRequestErrorMetric) {
   EXPECT_THAT(errors_view.GetData().int_data(), ::testing::IsEmpty());
 
   auth.GetAuthHeaderValue();
+
+  // Flush to propagate recorded stats to views.
   ::opencensus::stats::testing::TestUtils::Flush();
+
   EXPECT_THAT(errors_view.GetData().int_data(),
                 ::testing::UnorderedElementsAre(
                     ::testing::Pair(::testing::ElementsAre("oauth2"), 1)));
