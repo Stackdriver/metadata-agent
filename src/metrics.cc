@@ -25,7 +25,7 @@ namespace google {
 
 namespace {
 
-ABSL_CONST_INIT const absl::string_view kCount = "1";
+constexpr const char kCount[] = "1";
 
 } // namespace
 
