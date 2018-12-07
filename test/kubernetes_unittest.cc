@@ -1262,12 +1262,12 @@ class KubernetesTestFakeServerMaxThreeFailuresNodeLevelMetadata
 namespace {
 
 // Polls store until collected_at for resource is newer than
-// last_timestamp.  Returns false if newer timestamp not found after 3
-// seconds (polling every 100 millis).
+// last_timestamp.  Returns false if newer timestamp not found after
+// at least 3 seconds (polling every 100 millis at least).
 bool WaitForNewerCollectionTimestamp(const MetadataStore& store,
                                      const MonitoredResource& resource,
                                      Timestamp last_timestamp) {
-  for (int i = 0; i < 30; i++){
+  for (int i = 0; i < 30; i++) {
     const auto metadata_map = store.GetMetadataMap();
     const auto m = metadata_map.find(resource);
     if (m != metadata_map.end() && m->second.collected_at > last_timestamp) {
@@ -1872,6 +1872,11 @@ void TestServicesAndEndpoints(testing::FakeServer& server, MetadataStore& store,
   }
 }
 
+void InitHealthyServer(testing::FakeServer* server) {
+  server->SetResponse("/api/v1/nodes?limit=1", "{}");
+  server->SetResponse("/api/v1/pods?limit=1", "{}");
+}
+
 }  // namespace
 
 TEST_F(KubernetesTestFakeServerOneWatchRetryNodeLevelMetadata,
@@ -1882,8 +1887,7 @@ TEST_F(KubernetesTestFakeServerOneWatchRetryNodeLevelMetadata,
     "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true";
 
   // Create a fake server representing the Kubernetes master.
-  server->SetResponse("/api/v1/nodes?limit=1", "{}");
-  server->SetResponse("/api/v1/pods?limit=1", "{}");
+  InitHealthyServer(server.get());
   server->AllowStream(nodes_watch_path);
   server->AllowStream(pods_watch_path);
 
@@ -1910,8 +1914,7 @@ TEST_F(KubernetesTestFakeServerOneWatchRetryClusterLevelMetadata,
   const std::string endpoints_watch_path =
     "/api/v1/watch/endpoints/?watch=true";
 
-  server->SetResponse("/api/v1/nodes?limit=1", "{}");
-  server->SetResponse("/api/v1/pods?limit=1", "{}");
+  InitHealthyServer(server.get());
   server->AllowStream(nodes_watch_path);
   server->AllowStream(pods_watch_path);
   server->AllowStream(services_watch_path);
@@ -1939,8 +1942,7 @@ TEST_F(KubernetesTestFakeServerThreeWatchRetriesNodeLevelMetadata,
     "/api/v1/pods?fieldSelector=spec.nodeName%3DTestNodeName&watch=true";
 
   // Create a fake server representing the Kubernetes master.
-  server->SetResponse("/api/v1/nodes?limit=1", "{}");
-  server->SetResponse("/api/v1/pods?limit=1", "{}");
+  InitHealthyServer(server.get());
   server->AllowStream(nodes_watch_path);
   server->AllowStream(pods_watch_path);
 
@@ -1975,7 +1977,8 @@ class MockSleeper : public Sleeper {
 // Polls health_checker until it has at least one unhealthy component.
 // Returns false if newer timestamp not found after 3 seconds (polling
 // every 100 millis).
-bool WaitForUnhealthyComponents(const HealthChecker& health_checker) {
+bool WaitForUnhealthyComponentsAtLeast3Seconds(
+    const HealthChecker& health_checker) {
   for (int i = 0; i < 30; i++){
     if (health_checker.UnhealthyComponents().size() > 0) {
       return true;
@@ -1993,8 +1996,7 @@ TEST_F(KubernetesTestFakeServerMaxThreeFailuresNodeLevelMetadata,
   // will return 404s.
   //
   // This will cause the updater to backoff 3 times and then give up.
-  server->SetResponse("/api/v1/nodes?limit=1", "{}");
-  server->SetResponse("/api/v1/pods?limit=1", "{}");
+  InitHealthyServer(server.get());
 
   MetadataStore store(*config);
   HealthChecker health_checker(*config, store);
@@ -2008,7 +2010,7 @@ TEST_F(KubernetesTestFakeServerMaxThreeFailuresNodeLevelMetadata,
   KubernetesUpdater updater(*config, &health_checker, &store, std::move(sleeper));
   updater.Start();
 
-  EXPECT_TRUE(WaitForUnhealthyComponents(health_checker));
+  EXPECT_TRUE(WaitForUnhealthyComponentsAtLeast3Seconds(health_checker));
   EXPECT_THAT(health_checker.UnhealthyComponents(),
               ::testing::UnorderedElementsAre("kubernetes_node_thread",
                                               "kubernetes_pod_thread"));
