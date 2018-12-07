@@ -141,15 +141,14 @@ TEST_F(OAuth2Test, GetApiRequestErrorMetric) {
   ::opencensus::stats::View errors_view(
       ::google::GceApiRequestErrorsCumulative());
 
-  // no record exists before internal function sent request to oauth_server
-  EXPECT_THAT(errors_view.GetData().int_data(),
-              ::testing::UnorderedElementsAre());
+  // No record exists before internal function sent request to oauth_server.
+  EXPECT_THAT(errors_view.GetData().int_data(), ::testing::IsEmpty());
 
   auth.GetAuthHeaderValue();
   ::opencensus::stats::testing::TestUtils::Flush();
   EXPECT_THAT(errors_view.GetData().int_data(),
-                ::testing::UnorderedElementsAre(::testing::Pair(
-                    ::testing::ElementsAre("oauth2"), 1)));
+                ::testing::UnorderedElementsAre(
+                    ::testing::Pair(::testing::ElementsAre("oauth2"), 1)));
 }
 
 TEST_F(OAuth2Test, GetAuthHeaderValueTokenJsonMissingField) {
