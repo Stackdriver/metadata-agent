@@ -129,7 +129,6 @@ TEST_DIR=.
 TEST_SOURCES=$(wildcard $(TEST_DIR)/*_unittest.cc)
 TEST_OBJS=$(TEST_SOURCES:$(TEST_DIR)/%.cc=%.o)
 TESTS=\
-      internal/measures_utils_unittest \
       api_server_unittest \
       base64_unittest \
       configuration_unittest \
@@ -137,6 +136,7 @@ TESTS=\
       format_unittest \
       health_checker_unittest \
       instance_unittest \
+      metrics_unittest \
       json_unittest \
       kubernetes_unittest \
       logging_unittest \
@@ -210,9 +210,7 @@ $(TESTS): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS) $(PROMETHEUS_CPP_LIBS
 # Some headers need CPP_NETLIB_LIBS and YAML_CPP_LIBS.
 $(TESTS:%=%.o): $(GTEST_LIB) $(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS) $(PROMETHEUS_CPP_LIBS) $(OPENCENSUS_CPP_LIBS)
 
-internal/measures_utils_unittest: internal/measures_utils_unittest.o $(SRC_DIR)/internal/measures_utils.o
-	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
-api_server_unittest: api_server_unittest.o $(SRC_DIR)/api_server.o $(SRC_DIR)/internal/measures_utils.o $(SRC_DIR)/configuration.o $(SRC_DIR)/store.o $(SRC_DIR)/json.o $(SRC_DIR)/resource.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/health_checker.o
+api_server_unittest: api_server_unittest.o $(SRC_DIR)/api_server.o $(SRC_DIR)/metrics.o $(SRC_DIR)/configuration.o $(SRC_DIR)/store.o $(SRC_DIR)/json.o $(SRC_DIR)/resource.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o $(SRC_DIR)/health_checker.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 base64_unittest: base64_unittest.o $(SRC_DIR)/base64.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
@@ -231,6 +229,8 @@ json_unittest: json_unittest.o $(SRC_DIR)/json.o
 kubernetes_unittest: kubernetes_unittest.o fake_http_server.o $(SRC_DIR)/kubernetes.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/environment.o $(SRC_DIR)/time.o $(SRC_DIR)/store.o $(SRC_DIR)/resource.o $(SRC_DIR)/updater.o $(SRC_DIR)/instance.o $(SRC_DIR)/format.o $(SRC_DIR)/configuration.o $(SRC_DIR)/health_checker.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 logging_unittest: logging_unittest.o $(SRC_DIR)/logging.o $(SRC_DIR)/time.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+metrics_unittest: metrics_unittest.o $(SRC_DIR)/metrics.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 oauth2_unittest: oauth2_unittest.o fake_clock.o fake_http_server.o $(SRC_DIR)/oauth2.o $(SRC_DIR)/base64.o $(SRC_DIR)/configuration.o $(SRC_DIR)/environment.o $(SRC_DIR)/format.o $(SRC_DIR)/json.o $(SRC_DIR)/logging.o $(SRC_DIR)/metrics.o $(SRC_DIR)/time.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@

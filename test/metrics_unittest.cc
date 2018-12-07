@@ -14,21 +14,14 @@
  * limitations under the License.
  **/
 
-#include "measures_utils.h"
-
-#include <opencensus/exporters/stats/prometheus/prometheus_exporter.h>
-#include <prometheus/text_serializer.h>
+#include "../../src/metrics.h"
+#include "gtest/gtest.h"
 
 namespace google {
-namespace internal {
 
-std::string SerializeMetricsToPrometheusTextFormat() {
-  static const auto* const text_serializer =
-      new ::prometheus::TextSerializer();
-  static auto* const exporter =
-      new ::opencensus::exporters::stats::PrometheusExporter();
-  return text_serializer->Serialize(exporter->Collect());
+TEST(SerializeToPrometheusTextTest, Initialization) {
+  EXPECT_EQ("",
+  	        ::google::Metrics::SerializeMetricsToPrometheusTextFormat());
 }
 
-} // namespace internal
 } // namespace google

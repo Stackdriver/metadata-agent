@@ -17,7 +17,9 @@
 #include "metrics.h"
 
 #include <absl/strings/string_view.h>
+#include <opencensus/exporters/stats/prometheus/prometheus_exporter.h>
 #include <opencensus/stats/stats.h>
+#include <prometheus/text_serializer.h>
 
 namespace google {
 
@@ -58,6 +60,14 @@ const ::opencensus::stats::ViewDescriptor&
           .set_aggregation(::opencensus::stats::Aggregation::Count())
           .add_column(MethodTagKey());
   return descriptor;
+}
+
+std::string Metrics::SerializeMetricsToPrometheusTextFormat() {
+  static const auto* const text_serializer =
+      new ::prometheus::TextSerializer();
+  static auto* const exporter =
+      new ::opencensus::exporters::stats::PrometheusExporter();
+  return text_serializer->Serialize(exporter->Collect());
 }
 
 ::opencensus::stats::MeasureInt64 Metrics::GceApiRequestErrors() {

@@ -113,7 +113,6 @@ SRCS=\
      resource.cc \
      oauth2.cc \
      metrics.cc \
-     internal/measures_utils.cc \
      logging.cc \
      local_stream_http.cc \
      local_stream_delegate.cc \

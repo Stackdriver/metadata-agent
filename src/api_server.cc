@@ -21,7 +21,7 @@
 #include "configuration.h"
 #include "health_checker.h"
 #include "http_common.h"
-#include "internal/measures_utils.h"
+#include "metrics.h"
 #include "logging.h"
 #include "store.h"
 
@@ -209,7 +209,8 @@ void MetadataApiServer::HandleHealthz(
 void MetadataApiServer::HandleMetrics(
     const HttpServer::request& request,
     std::shared_ptr<HttpServer::connection> conn) {
-  std::string response = internal::SerializeMetricsToPrometheusTextFormat();
+  std::string response =
+      ::google::Metrics::SerializeMetricsToPrometheusTextFormat();
   conn->set_status(HttpServer::connection::ok);
   conn->set_headers(std::map<std::string, std::string>({
     {"Connection", "close"},

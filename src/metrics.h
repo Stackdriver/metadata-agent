@@ -18,6 +18,7 @@
 #define METADATA_AGENT_METRICS_H_
 
 #include <opencensus/stats/stats.h>
+#include <string>
 
 namespace google {
 
@@ -31,6 +32,8 @@ class Metrics {
   // View Descriptor accessors. If the view descriptor variable is not
   // initialized, these methods will initialize the variable.
   static const ::opencensus::stats::ViewDescriptor& GceApiRequestErrorsCumulative();
+
+  static std::string SerializeMetricsToPrometheusTextFormat();
 
  private:
   // Measure accessors. If the measure variable is not initialized, these methods
