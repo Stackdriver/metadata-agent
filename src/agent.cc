@@ -16,10 +16,10 @@
 
 #include "agent.h"
 
-#include "api_server.h"
 #include "configuration.h"
-#include "health_checker.h"
+#include "api_server.h"
 #include "reporter.h"
+#include "health_checker.h"
 
 namespace google {
 

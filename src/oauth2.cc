@@ -142,15 +142,6 @@ std::string Sign(const std::string& data, const PKey& pkey) {
 
 } // namespace
 
-OAuth2::OAuth2(const Environment& environment)
-  : OAuth2(environment, ExpirationImpl<std::chrono::system_clock>::New()) {}
-
-OAuth2::OAuth2(const Environment& environment,
-               std::unique_ptr<Expiration> expiration)
-  : environment_(environment),
-    token_expiration_(std::move(expiration)),
-    token_endpoint_(kDefaultTokenEndpoint) {}
-
 json::value OAuth2::ComputeTokenFromCredentials() const {
   const std::string service_account_email =
       environment_.CredentialsClientEmail();
