@@ -23,15 +23,15 @@ NETWORK_URI_DIR=$(CPP_NETLIB_DIR)/deps/uri
 NETWORK_URI_LIBDIR=$(NETWORK_URI_DIR)/src
 YAML_CPP_DIR=$(LIBDIR)/yaml-cpp
 YAML_CPP_LIBDIR=$(YAML_CPP_DIR)
-PROMETHEUS_CPP_DIR=$(LIBDIR)/prometheus-cpp
-PROMETHEUS_CPP_CORE_DIR=$(PROMETHEUS_CPP_DIR)/core
-PROMETHEUS_CPP_CORE_LIBDIR=$(PROMETHEUS_CPP_CORE_DIR)
 OPENCENSUS_CPP_DIR=$(LIBDIR)/opencensus-cpp
 OPENCENSUS_CPP_OPENCENSUS_DIR=$(OPENCENSUS_CPP_DIR)/opencensus
 OPENCENSUS_CPP_OPENCENSUS_LIBDIR=$(OPENCENSUS_CPP_OPENCENSUS_DIR)
 OPENCENSUS_CPP_ABSL_INCLUDEDIR=$(OPENCENSUS_CPP_DIR)/abseil-src
 OPENCENSUS_CPP_ABSL_LIBDIR=$(OPENCENSUS_CPP_DIR)/abseil-build/absl
-SUBMODULE_DIRS=$(CPP_NETLIB_DIR) $(YAML_CPP_DIR) $(PROMETHEUS_CPP_DIR) $(OPENCENSUS_CPP_DIR)
+OPENCENSUS_CPP_PROMETHEUS_CPP_DIR=$(OPENCENSUS_CPP_DIR)/prometheus-src
+OPENCENSUS_CPP_PROMETHEUS_CPP_CORE_DIR=$(OPENCENSUS_CPP_PROMETHEUS_CPP_DIR)/core
+OPENCENSUS_CPP_PROMETHEUS_CPP_CORE_LIBDIR=$(OPENCENSUS_CPP_DIR)/prometheus-build/core
+SUBMODULE_DIRS=$(CPP_NETLIB_DIR) $(YAML_CPP_DIR) $(OPENCENSUS_CPP_DIR)
 
 GIT=git
 GIT_VERSION=$(shell $(GIT) --version | grep -oh '[0-9]\+\.[0-9]\+\.[0-9]\+')
@@ -42,21 +42,21 @@ CPPFLAGS=\
     -DAGENT_VERSION='$(PKG_VERSION)-$(PKG_RELEASE)' \
     -DENABLE_DOCKER_METADATA \
     -I$(CPP_NETLIB_DIR) -I$(NETWORK_URI_DIR)/include -I$(YAML_CPP_DIR)/include \
-    -I$(PROMETHEUS_CPP_CORE_DIR)/include -I$(OPENCENSUS_CPP_DIR) \
-    -I$(OPENCENSUS_CPP_ABSL_INCLUDEDIR)
+    -I$(OPENCENSUS_CPP_DIR) -I$(OPENCENSUS_CPP_ABSL_INCLUDEDIR) \
+    -I$(OPENCENSUS_CPP_PROMETHEUS_CPP_CORE_DIR)/include
 CXXFLAGS=\
     -std=c++11 -g -pthread -Wno-write-strings -Wno-deprecated
 LDFLAGS=\
     -L$(CPP_NETLIB_LIBDIR) \
     -L$(NETWORK_URI_LIBDIR) \
     -L$(YAML_CPP_LIBDIR) \
-    -L$(PROMETHEUS_CPP_CORE_LIBDIR) \
     -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/stats \
     -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/context \
     -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/exporters/stats/prometheus \
     -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/trace \
     -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/tags \
     -L$(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/common/internal \
+    -L$(OPENCENSUS_CPP_PROMETHEUS_CPP_CORE_LIBDIR) \
     -L$(OPENCENSUS_CPP_ABSL_LIBDIR)/numeric \
     -L$(OPENCENSUS_CPP_ABSL_LIBDIR)/strings \
     -L$(OPENCENSUS_CPP_ABSL_LIBDIR)/synchronization \
@@ -66,7 +66,7 @@ LDFLAGS=\
 LDLIBS=\
     -lcppnetlib-client-connections -lcppnetlib-server-parsers -lnetwork-uri \
     -lboost_program_options -lboost_system -lboost_thread -lboost_filesystem \
-    -lpthread -lyajl -lssl -lcrypto -lyaml-cpp -lprometheus-cpp-core \
+    -lpthread -lyajl -lssl -lcrypto -lyaml-cpp \
     -lopencensus_exporters_stats_prometheus \
     -lopencensus_exporters_stats_prometheus_utils \
     -lopencensus_stats_core -lopencensus_stats_recording \
@@ -76,6 +76,7 @@ LDLIBS=\
     -lopencensus_trace_with_span \
     -lopencensus_trace \
     -lopencensus_common_random \
+    -lprometheus-cpp-core \
     -labsl_strings -labsl_synchronization -labsl_time \
     -labsl_int128 \
     -labsl_stacktrace -labsl_symbolize \
@@ -130,8 +131,6 @@ CPP_NETLIB_LIBS=\
     $(NETWORK_URI_LIBDIR)/libnetwork-uri.a
 YAML_CPP_LIBS=\
     $(YAML_CPP_LIBDIR)/libyaml-cpp.a
-PROMETHEUS_CPP_LIBS=\
-    $(PROMETHEUS_CPP_CORE_LIBDIR)/libprometheus-cpp-core.a
 OPENCENSUS_CPP_LIBS=\
     $(OPENCENSUS_CPP_ABSL_LIBDIR)/base/libabsl_base.a \
     $(OPENCENSUS_CPP_ABSL_LIBDIR)/base/libabsl_internal_malloc_internal.a \
@@ -156,8 +155,9 @@ OPENCENSUS_CPP_LIBS=\
     $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/trace/libopencensus_trace_with_span.a \
     $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/trace/libopencensus_trace_context_util.a \
     $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/context/libopencensus_context.a \
-    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/common/internal/libopencensus_common_random.a
-LIBS=$(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS) $(PROMETHEUS_CPP_LIBS) $(OPENCENSUS_CPP_LIBS)
+    $(OPENCENSUS_CPP_OPENCENSUS_LIBDIR)/common/internal/libopencensus_common_random.a \
+    $(OPENCENSUS_CPP_PROMETHEUS_CPP_CORE_LIBDIR)/libprometheus-cpp-core.a
+LIBS=$(CPP_NETLIB_LIBS) $(YAML_CPP_LIBS) $(OPENCENSUS_CPP_LIBS)
 
 sbindir=/opt/stackdriver/metadata/sbin
 INSTALL=/usr/bin/install
@@ -236,7 +236,7 @@ clean:
 	$(RM) metadatad $(OBJS)
 
 purge: clean
-	$(RM) -r init-submodules build-cpp-netlib build-yaml-cpp build-prometheus-cpp build-opencensus-cpp
+	$(RM) -r init-submodules build-cpp-netlib build-yaml-cpp build-opencensus-cpp
 	(cd .. && git submodule deinit -f $(SUBMODULE_DIRS:../%=%))
 
 init-submodules:
@@ -252,8 +252,6 @@ ifneq ($(findstring $(GIT_VERSION),2.7.0 2.7.1 2.7.2 2.7.3 2.7.4 2.7.5 2.7.6 2.8
 	    deps/*/.git
 	cd $(CPP_NETLIB_DIR) && $(SED_I) -e 's@/src/.git/@../../../../../../../.git/@' \
 	    libs/network/doc/_ext/breathe/.git
-	cd $(PROMETHEUS_CPP_DIR) && $(SED_I) -e 's@/src/.git/@../../../../.git/@' \
-	    3rdparty/*/.git
 endif
 	touch init-submodules
 
@@ -288,20 +286,6 @@ build-yaml-cpp: $(YAML_CPP_DIR)/Makefile
 	$(MAKE)
 	touch build-yaml-cpp
 
-$(PROMETHEUS_CPP_DIR)/Makefile: init-submodules
-	cd $(PROMETHEUS_CPP_DIR) && \
-	$(CMAKE) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
-	    -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
-	    -DENABLE_PUSH=OFF -DENABLE_PULL=OFF -DENABLE_COMPRESSION=OFF \
-	    -DENABLE_TESTING=OFF
-
-$(PROMETHEUS_CPP_LIBS): build-prometheus-cpp
-
-build-prometheus-cpp: $(PROMETHEUS_CPP_DIR)/Makefile
-	cd $(PROMETHEUS_CPP_DIR) && \
-	$(MAKE)
-	touch build-prometheus-cpp
-
 $(OPENCENSUS_CPP_DIR)/Makefile: init-submodules
 	cd $(OPENCENSUS_CPP_DIR) && \
 	$(CMAKE) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-std=c++11 \
@@ -317,11 +301,10 @@ build-opencensus-cpp: $(OPENCENSUS_CPP_DIR)/Makefile
 
 cpp-netlib: $(CPP_NETLIB_LIBS)
 yaml-cpp: $(YAML_CPP_LIBS)
-prometheus-cpp: $(PROMETHEUS_CPP_LIBS)
 opencensus-cpp: $(OPENCENSUS_CPP_LIBS)
 
-submodules: cpp-netlib yaml-cpp prometheus-cpp opencensus-cpp
+submodules: cpp-netlib yaml-cpp opencensus-cpp
 
 all: submodules metadatad
 
-.PHONY: all submodules cpp-netlib yaml-cpp prometheus-cpp opencensus-cpp purge clean install deb rpm
+.PHONY: all submodules cpp-netlib yaml-cpp opencensus-cpp purge clean install deb rpm
