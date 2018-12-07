@@ -76,6 +76,7 @@ int main(int ac, char** av) {
     return parse_result < 0 ? 0 : parse_result;
   }
 
+  ::google::RegisterAllViewsForExport();
   google::MetadataAgent server(config);
 
   google::InstanceUpdater instance_updater(config, server.mutable_store());
@@ -92,9 +93,6 @@ int main(int ac, char** av) {
   kubernetes_updater.Start();
 
   server.Start();
-
-  // Only register all the views after all the measures are initialized.
-  ::google::RegisterAllViewsForExport();
 
   // Wait for the server to shut down.
   google::cleanup_state->Wait();

@@ -149,11 +149,7 @@ OAuth2::OAuth2(const Environment& environment,
                std::unique_ptr<Expiration> expiration)
   : environment_(environment),
     token_expiration_(std::move(expiration)),
-    token_endpoint_(kDefaultTokenEndpoint) {
-  // Access the measure to ensure it is initialized. Otherwise, creating a view before
-  // any the first error would cause an error.
-  ::google::GceApiRequestErrors();
-}
+    token_endpoint_(kDefaultTokenEndpoint) {}
 
 json::value OAuth2::ComputeTokenFromCredentials() const {
   const std::string service_account_email =

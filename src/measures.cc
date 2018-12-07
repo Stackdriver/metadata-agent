@@ -57,6 +57,13 @@ const ::opencensus::stats::ViewDescriptor& GceApiRequestErrorsCumulative() {
 }
 
 void RegisterAllViewsForExport() {
+  // Access metrics used by views to ensure metrics are initalized.
+  GceApiRequestErrors();
+
+  // Register all the views for export.
+  //
+  // To avoid view registration throwing error, when adding a new view, register
+  // measures used by this view in the section above.
   GceApiRequestErrorsCumulative().RegisterForExport();
 }
 

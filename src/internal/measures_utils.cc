@@ -22,15 +22,12 @@
 namespace google {
 namespace internal {
 
-namespace {
-
-::prometheus::TextSerializer text_serializer;
-::opencensus::exporters::stats::PrometheusExporter exporter;
-
-} // namespace
-
 std::string SerializeMetricsToPrometheusTextFormat() {
-  return text_serializer.Serialize(exporter.Collect());
+  static const auto* const text_serializer =
+      new ::prometheus::TextSerializer();
+  static auto* const exporter =
+      new ::opencensus::exporters::stats::PrometheusExporter();
+  return text_serializer->Serialize(exporter->Collect());
 }
 
 } // namespace internal

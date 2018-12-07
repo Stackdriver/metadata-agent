@@ -38,10 +38,6 @@ namespace google {
 const ::opencensus::stats::ViewDescriptor& GceApiRequestErrorsCumulative();
 
 // Register all the view descriptors declared above as view for export.
-//
-// Measures should be registered before calling RegisterAllViewsForExport(),
-// otherwise calling this function will create invalid views, which exporter
-// cannot export meaningful data.
 void RegisterAllViewsForExport();
 
 } // namespace google
