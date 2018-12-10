@@ -22,9 +22,6 @@
 
 namespace google {
 
-const char Metrics::kGceApiRequestErrors[] =
-    "container.googleapis.com/internal/metadata_agent/gce_api_request_errors";
-
 namespace {
 
 constexpr char kCount[] = "1";
@@ -37,6 +34,8 @@ constexpr char kCount[] = "1";
 
 } // namespace
 
+const char Metrics::kGceApiRequestErrors[] =
+    "container.googleapis.com/internal/metadata_agent/gce_api_request_errors";
 
 void Metrics::RecordGceApiRequestErrors(int64_t value,
                                         const std::string& method) {
