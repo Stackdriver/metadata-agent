@@ -16,7 +16,6 @@
 
 #include "metrics.h"
 
-#include <absl/strings/string_view.h>
 #include <opencensus/exporters/stats/prometheus/prometheus_exporter.h>
 #include <opencensus/stats/stats.h>
 #include <prometheus/text_serializer.h>
@@ -25,12 +24,11 @@ namespace google {
 
 namespace {
 
-constexpr const char kCount[] = "1";
+constexpr char kCount[] = "1";
 
 } // namespace
 
-ABSL_CONST_INIT const absl::string_view
-    kGceApiRequestErrors =
+constexpr char kGceApiRequestErrors[] =
         "container.googleapis.com/internal/metadata_agent/gce_api_request_errors";
 
 void Metrics::RegisterAllViewsForExport() {
