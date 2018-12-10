@@ -123,9 +123,6 @@ TEST_F(OAuth2Test, GetAuthHeaderValueUsingTokenFromMetadataServerAsFallback) {
 }
 
 TEST_F(OAuth2Test, PropagateGceApiRequestErrorsCumulativeToView) {
-  // Flush to prevents other test contaminate the metrics.
-  ::opencensus::stats::testing::TestUtils::Flush();
-
   testing::FakeServer oauth_server;
   testing::TemporaryFile credentials_file(
     std::string(test_info_->name()) + "_creds.json",
@@ -137,15 +134,18 @@ TEST_F(OAuth2Test, PropagateGceApiRequestErrorsCumulativeToView) {
   OAuth2 auth(environment);
   SetTokenEndpointForTest(&auth, oauth_server.GetUrl() + "/oauth2/v3/token");
 
-  ::opencensus::stats::View errors_view(
-      ::google::Metrics::GceApiRequestErrorsCumulative());
-
-  // No record exists before internal function sent request to oauth_server.
-  EXPECT_THAT(errors_view.GetData().int_data(), ::testing::IsEmpty());
+  // Remove existing view on kGceApiRequestErrors to avoid
+  // other tests affecting the result.
+  ::opencensus::stats::StatsExporter::RemoveView(
+      ::google::Metrics::kGceApiRequestErrors);
+  // Flush to propagate records to views, including records from other tests.
+  ::opencensus::stats::testing::TestUtils::Flush();
 
   auth.GetAuthHeaderValue();
 
-  // Flush to propagate recorded stats to views.
+  // Flush records to propogate to views.
+  ::opencensus::stats::View errors_view(
+      ::google::Metrics::GceApiRequestErrorsCumulative());
   ::opencensus::stats::testing::TestUtils::Flush();
 
   EXPECT_THAT(errors_view.GetData().int_data(),

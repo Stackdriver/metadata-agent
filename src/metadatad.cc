@@ -24,7 +24,6 @@
 #include "docker.h"
 #include "instance.h"
 #include "kubernetes.h"
-#include "metrics.h"
 #include "time.h"
 
 namespace google {
@@ -76,7 +75,6 @@ int main(int ac, char** av) {
     return parse_result < 0 ? 0 : parse_result;
   }
 
-  ::google::Metrics::RegisterAllViewsForExport();
   google::MetadataAgent server(config);
 
   google::InstanceUpdater instance_updater(config, server.mutable_store());

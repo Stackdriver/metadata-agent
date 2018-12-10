@@ -24,29 +24,24 @@ namespace google {
 
 class Metrics {
  public:
-  // Register all the view descriptors declared above as view for export.
-  static void RegisterAllViewsForExport();
+  static const char kGceApiRequestErrors[];
 
   static void RecordGceApiRequestErrors(int64_t value, const std::string& method);
 
   // View Descriptor accessors. If the view descriptor variable is not
   // initialized, these methods will initialize the variable.
-  static const ::opencensus::stats::ViewDescriptor& GceApiRequestErrorsCumulative();
+  static const ::opencensus::stats::ViewDescriptor GceApiRequestErrorsCumulative();
+
+  static ::opencensus::stats::ViewData::DataMap<int64_t>
+      GetGceApiRequestErrorsCumulativeViewIntData();
 
   static std::string SerializeMetricsToPrometheusTextFormat();
 
  private:
-  // Measure accessors. If the measure variable is not initialized, these methods
-  // will initialize the variable.
-  //
-  // Reference of measure: https://opencensus.io/stats/measure/
+  static ::opencensus::stats::MeasureInt64 GceApiRequestErrorsInitialize();
   static ::opencensus::stats::MeasureInt64 GceApiRequestErrors();
-
-  // Tag key accessors. If the tag key variable is not initialized, these methods
-  // will initialize the variable.
-  //
-  // Reference of measure: https://opencensus.io/tag/key/
-  static ::opencensus::stats::TagKey MethodTagKey();
+  static const ::opencensus::stats::ViewDescriptor GceApiRequestErrorsCumulative(
+      const std::string& name);
 };
 
 } // namespace google
