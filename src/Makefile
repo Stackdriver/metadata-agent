@@ -165,10 +165,12 @@ docker-publish: docker
 
 clean:
 	$(RM) metadatad $(OBJS)
+	(cd ../test && $(MAKE) clean)
 
 purge: clean
 	$(RM) -r init-submodules build-cpp-netlib build-yaml-cpp
 	(cd .. && git submodule deinit -f $(SUBMODULE_DIRS:../%=%))
+	(cd ../test && $(MAKE) purge)
 
 init-submodules:
 	(cd .. && git submodule update --init --recursive $(SUBMODULE_DIRS:../%=%))
