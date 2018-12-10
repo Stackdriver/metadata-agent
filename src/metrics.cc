@@ -77,11 +77,8 @@ const ::opencensus::stats::ViewDescriptor
 }
 
 std::string Metrics::SerializeMetricsToPrometheusTextFormat() {
-  static const auto* const text_serializer =
-      new ::prometheus::TextSerializer();
-  static auto* const exporter =
-      new ::opencensus::exporters::stats::PrometheusExporter();
-  return text_serializer->Serialize(exporter->Collect());
+  return ::prometheus::TextSerializer().Serialize(
+      ::opencensus::exporters::stats::PrometheusExporter().Collect());
 }
 
 } // namespace google
