@@ -24,7 +24,7 @@ namespace google {
 
 namespace {
 
-constexpr char kCount[] = "1";
+constexpr const char kCount[] = "1";
 
 ::opencensus::stats::TagKey MethodTagKey() {
   static const auto method_tag_key =
