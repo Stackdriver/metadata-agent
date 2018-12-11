@@ -26,22 +26,20 @@ class Metrics {
  public:
   static const char kGceApiRequestErrors[];
 
+  // Record an API request error on a method, e.g. oauth2 is one of the methods.
   static void RecordGceApiRequestErrors(int64_t value, const std::string& method);
+
+  // Serialize all the available metrics as prometheus text format.
+  static std::string SerializeMetricsToPrometheusTextFormat();
 
   // View Descriptor accessors. If the view descriptor variable is not
   // initialized, these methods will initialize the variable.
-  static const ::opencensus::stats::ViewDescriptor GceApiRequestErrorsCumulative();
-
-  static ::opencensus::stats::ViewData::DataMap<int64_t>
-      GetGceApiRequestErrorsCumulativeViewIntData();
-
-  static std::string SerializeMetricsToPrometheusTextFormat();
+  static const ::opencensus::stats::ViewDescriptor
+      GceApiRequestErrorsCumulativeViewDescriptor();
 
  private:
   static ::opencensus::stats::MeasureInt64 GceApiRequestErrorsInitialize();
   static ::opencensus::stats::MeasureInt64 GceApiRequestErrors();
-  static const ::opencensus::stats::ViewDescriptor GceApiRequestErrorsCumulative(
-      const std::string& name);
 };
 
 } // namespace google

@@ -44,16 +44,6 @@ void Metrics::RecordGceApiRequestErrors(int64_t value,
       {{MethodTagKey(), method}});
 }
 
-const ::opencensus::stats::ViewDescriptor
-    Metrics::GceApiRequestErrorsCumulative() {
-  return ::opencensus::stats::ViewDescriptor()
-      .set_name(kGceApiRequestErrors)
-      .set_measure(kGceApiRequestErrors)
-      .set_aggregation(::opencensus::stats::Aggregation::Count())
-      .set_description("The total number of HTTP request errors.")
-      .add_column(MethodTagKey());
-}
-
 ::opencensus::stats::MeasureInt64 Metrics::GceApiRequestErrors() {
   static const auto measure = Metrics::GceApiRequestErrorsInitialize();
   return measure;
@@ -65,15 +55,18 @@ const ::opencensus::stats::ViewDescriptor
           kGceApiRequestErrors,
           "Number of API request errors encountered.",
           kCount);
-  Metrics::GceApiRequestErrorsCumulative().RegisterForExport();
+  Metrics::GceApiRequestErrorsCumulativeViewDescriptor().RegisterForExport();
   return measure;
 }
 
-::opencensus::stats::ViewData::DataMap<int64_t>
-    Metrics::GetGceApiRequestErrorsCumulativeViewIntData() {
-  static ::opencensus::stats::View errors_view(
-      GceApiRequestErrorsCumulative());
-  return errors_view.GetData().int_data();
+const ::opencensus::stats::ViewDescriptor
+    Metrics::GceApiRequestErrorsCumulativeViewDescriptor() {
+  return ::opencensus::stats::ViewDescriptor()
+      .set_name(kGceApiRequestErrors)
+      .set_measure(kGceApiRequestErrors)
+      .set_aggregation(::opencensus::stats::Aggregation::Count())
+      .set_description("The total number of HTTP request errors.")
+      .add_column(MethodTagKey());
 }
 
 std::string Metrics::SerializeMetricsToPrometheusTextFormat() {

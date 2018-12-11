@@ -136,16 +136,17 @@ TEST_F(OAuth2Test, PropagateGceApiRequestErrorsCumulativeToView) {
 
   // Remove existing view on kGceApiRequestErrors to avoid
   // other tests affecting the result.
+  // Flush to propagate existing records to views, including records from other
+  // tests.
   ::opencensus::stats::StatsExporter::RemoveView(
       ::google::Metrics::kGceApiRequestErrors);
-  // Flush to propagate records to views, including records from other tests.
   ::opencensus::stats::testing::TestUtils::Flush();
 
   auth.GetAuthHeaderValue();
 
   // Flush records to propogate to views.
   ::opencensus::stats::View errors_view(
-      ::google::Metrics::GceApiRequestErrorsCumulative());
+      ::google::Metrics::GceApiRequestErrorsCumulativeViewDescriptor());
   ::opencensus::stats::testing::TestUtils::Flush();
 
   EXPECT_THAT(errors_view.GetData().int_data(),

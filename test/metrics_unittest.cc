@@ -57,7 +57,6 @@ TEST(SerializeToPrometheusTextTest, SingleOpencensusView) {
   ::opencensus::stats::StatsExporter::RemoveView(view_name);
 }
 
-
 TEST(SerializeToPrometheusTextTest, RecordGceApiRequestErrors) {
   // remove view and flush the result before the actual test.
   ::opencensus::stats::StatsExporter::RemoveView(::google::Metrics::kGceApiRequestErrors);
@@ -75,4 +74,5 @@ TEST(SerializeToPrometheusTextTest, RecordGceApiRequestErrors) {
   // clean up the view which we registered for export.
   ::opencensus::stats::StatsExporter::RemoveView(::google::Metrics::kGceApiRequestErrors);
 }
+
 } // namespace google
