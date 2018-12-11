@@ -50,6 +50,7 @@ const ::opencensus::stats::ViewDescriptor
       .set_name(kGceApiRequestErrors)
       .set_measure(kGceApiRequestErrors)
       .set_aggregation(::opencensus::stats::Aggregation::Count())
+      .set_description("The total number of HTTP request errors.")
       .add_column(MethodTagKey());
 }
 
