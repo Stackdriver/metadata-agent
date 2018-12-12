@@ -144,7 +144,7 @@ TEST_F(OAuth2Test, PropagateGceApiRequestErrorsCumulativeToView) {
 
   auth.GetAuthHeaderValue();
 
-  // Flush records to propogate to views.
+  // Flush records to propagate to views.
   ::opencensus::stats::View errors_view(
       ::google::Metrics::GceApiRequestErrorsCumulativeViewDescriptor());
   ::opencensus::stats::testing::TestUtils::Flush();
