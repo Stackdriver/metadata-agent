@@ -220,4 +220,4 @@ void MetadataApiServer::HandleMetrics(
   conn->write(response);
 }
 
-} // namespace google
+}  // namespace google

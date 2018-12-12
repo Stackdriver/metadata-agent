@@ -140,7 +140,7 @@ std::string Sign(const std::string& data, const PKey& pkey) {
   return std::string(reinterpret_cast<char*>(result.get()), actual_result_size);
 }
 
-} // namespace
+}  // namespace
 
 json::value OAuth2::ComputeTokenFromCredentials() const {
   const std::string service_account_email =

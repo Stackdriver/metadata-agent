@@ -32,7 +32,7 @@ constexpr const char kCount[] = "1";
   return method_tag_key;
 }
 
-} // namespace
+}  // namespace
 
 const char Metrics::kGceApiRequestErrors[] =
     "container.googleapis.com/internal/metadata_agent/gce_api_request_errors";
@@ -74,4 +74,4 @@ std::string Metrics::SerializeMetricsToPrometheusTextFormat() {
       ::opencensus::exporters::stats::PrometheusExporter().Collect());
 }
 
-} // namespace google
+}  // namespace google

@@ -42,6 +42,6 @@ class Metrics {
   static ::opencensus::stats::MeasureInt64 GceApiRequestErrors();
 };
 
-} // namespace google
+}  // namespace google
 
 #endif /* METADATA_AGENT_METRICS_H_ */
