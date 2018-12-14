@@ -98,7 +98,7 @@ all: $(SRC_DIR)/build-cpp-netlib $(SRC_DIR)/build-yaml-cpp $(TESTS)
 test: $(TESTS)
 	@for t in $(TESTS); do \
 		echo "Running $$t"; \
-		./$$t || exit 1; \
+		./$$t --gunit_shuffle || exit 1; \
 	done
 
 clean:
