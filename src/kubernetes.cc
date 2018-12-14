@@ -51,7 +51,6 @@ constexpr const char kKubernetesEndpointHost[] = "https://kubernetes.default.svc
 constexpr const char kKubernetesApiVersion[] = "1.6";
 constexpr const char kKubernetesEndpointPath[] = "/api/v1";
 
-constexpr const char kGkeContainerResourcePrefix[] = "gke_container";
 constexpr const char kK8sContainerResourcePrefix[] = "k8s_container";
 constexpr const char kK8sPodResourcePrefix[] = "k8s_pod";
 constexpr const char kK8sNodeResourcePrefix[] = "k8s_node";
@@ -386,43 +385,6 @@ MetadataUpdater::ResourceMetadata KubernetesReader::GetContainerMetadata(
   );
 }
 
-MetadataUpdater::ResourceMetadata KubernetesReader::GetLegacyResource(
-    const json::Object* pod, const std::string& container_name) const
-    throw(std::out_of_range, json::Exception) {
-  const std::string instance_id = environment_.InstanceId();
-  const std::string zone = environment_.InstanceZone();
-  const std::string cluster_name = environment_.KubernetesClusterName();
-
-  if (instance_id.empty() || zone.empty()) {
-    throw std::out_of_range("No instance information, skipping gke_container");
-  }
-
-  const json::Object* metadata = pod->Get<json::Object>("metadata");
-  const std::string namespace_name = metadata->Get<json::String>("namespace");
-  const std::string pod_name = metadata->Get<json::String>("name");
-  const std::string pod_id = metadata->Get<json::String>("uid");
-
-  const MonitoredResource gke_container("gke_container", {
-    {"cluster_name", cluster_name},
-    {"namespace_id", namespace_name},
-    {"instance_id", instance_id},
-    {"pod_id", pod_id},
-    {"container_name", container_name},
-    {"zone", zone},
-  });
-
-  const std::string gke_container_pod_id = boost::algorithm::join(
-      std::vector<std::string>{kGkeContainerResourcePrefix, namespace_name, pod_id, container_name},
-      config_.MetadataApiResourceTypeSeparator());
-  const std::string gke_container_name = boost::algorithm::join(
-      std::vector<std::string>{kGkeContainerResourcePrefix, namespace_name, pod_name, container_name},
-      config_.MetadataApiResourceTypeSeparator());
-  return MetadataUpdater::ResourceMetadata(
-      std::vector<std::string>{gke_container_pod_id, gke_container_name},
-      gke_container,
-      MetadataStore::Metadata::IGNORED());
-}
-
 std::vector<MetadataUpdater::ResourceMetadata>
 KubernetesReader::GetPodAndContainerMetadata(
     const json::Object* pod, Timestamp collected_at, bool is_deleted) const
@@ -472,12 +434,6 @@ KubernetesReader::GetPodAndContainerMetadata(
       if (config_.VerboseLogging()) {
         LOG(INFO) << "Container status: " << *container_status;
       }
-    }
-    try {
-      result.emplace_back(GetLegacyResource(pod, name));
-    } catch (const std::out_of_range& e) {
-      // No instance information available; log and ignore.
-      LOG(INFO) << e.what();
     }
     result.emplace_back(
         GetContainerMetadata(pod, container_spec, container_status,
