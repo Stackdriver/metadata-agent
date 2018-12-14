@@ -50,7 +50,7 @@ void Metrics::RecordGceApiRequestErrors(int64_t value,
 }
 
 ::opencensus::stats::MeasureInt64 Metrics::GceApiRequestErrorsInitialize() {
-  auto measure =
+  const auto measure =
       ::opencensus::stats::MeasureInt64::Register(
           kGceApiRequestErrors,
           "Number of API request errors encountered.",
