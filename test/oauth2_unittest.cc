@@ -134,24 +134,40 @@ TEST_F(OAuth2Test, PropagateGceApiRequestErrorsCumulativeToView) {
   OAuth2 auth(environment);
   SetTokenEndpointForTest(&auth, oauth_server.GetUrl() + "/oauth2/v3/token");
 
-  // Remove existing view on kGceApiRequestErrors to avoid
-  // other tests affecting the result.
-  // Flush to propagate existing records to views, including records from other
-  // tests.
+  // Remove existing view on kGceApiRequestErrors to avoid other tests
+  // affecting the result, then flush to propagate existing records
+  // to views, including records from other tests.
   ::opencensus::stats::StatsExporter::RemoveView(
       ::google::Metrics::kGceApiRequestErrors);
   ::opencensus::stats::testing::TestUtils::Flush();
 
+  // We want to test this auth.GetAuthHeaderValue() that it records and
+  // register the view, but as inside the auth.GetAuthHeaderValue() we
+  // use singleton pattern, once we remove the view in previous section, it is
+  // unable to add the view back within auth.GetAuthHeaderValue(). Add a view
+  // to export here helps us to test the data inside the view, it also makes
+  // the test fragile if auth.GetAuthHeaderValue() does not register view
+  // correctly.
+  // TODO: Fix this hack if we can contribute to opencensus that when we add
+  // a view, we only add view if a view name is not existed. Current
+  // StatsExporter::AddView always add a new view and destroy the old one,
+  // which is not suitable for our
+  // Metrics::GceApiRequestErrorsCumulativeViewDescriptor().
+  ::google::Metrics::GceApiRequestErrorsCumulativeViewDescriptor().
+      RegisterForExport();
   auth.GetAuthHeaderValue();
-
-  // Flush records to propagate to views.
-  ::opencensus::stats::View errors_view(
-      ::google::Metrics::GceApiRequestErrorsCumulativeViewDescriptor());
+  // Flush to propagate existing records to views.
   ::opencensus::stats::testing::TestUtils::Flush();
 
-  EXPECT_THAT(errors_view.GetData().int_data(),
-                ::testing::UnorderedElementsAre(
-                    ::testing::Pair(::testing::ElementsAre("oauth2"), 1)));
+  EXPECT_THAT(::opencensus::stats::StatsExporter::GetViewData(),
+              ::testing::Contains(::testing::Pair(
+                      Metrics::GceApiRequestErrorsCumulativeViewDescriptor(),
+                      ::testing::Property(
+                          &::opencensus::stats::ViewData::int_data,
+                          ::testing::UnorderedElementsAre(
+                              ::testing::Pair(
+                                  ::testing::ElementsAre("oauth2"),
+                                  1))))));
 }
 
 TEST_F(OAuth2Test, GetAuthHeaderValueTokenJsonMissingField) {

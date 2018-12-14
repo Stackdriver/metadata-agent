@@ -28,9 +28,9 @@ TEST(SerializeToPrometheusTextTest, NoMetricExists) {
             ::google::Metrics::SerializeMetricsToPrometheusTextFormat());
 }
 
-TEST(SerializeToPrometheusTextTest, SingleOpencensusView) {
-  const char measure_name[] = "test_measure";
-  const char view_name[] = "test_view";
+TEST(SerializeToPrometheusTextTest, SingleMetricAndViewRegisteredForExport) {
+  const char* measure_name = "test_measure";
+  const char* view_name = "test_view";
   const ::opencensus::stats::MeasureInt64 test_measure =
       ::opencensus::stats::MeasureInt64::Register(
           measure_name, "description on test view", "1");
@@ -40,12 +40,13 @@ TEST(SerializeToPrometheusTextTest, SingleOpencensusView) {
           .set_description("description on test view")
           .set_measure(measure_name)
           .set_aggregation(opencensus::stats::Aggregation::Count());
-  // remove view and flush the result before the actual test.
+  // Remove view and flush the result before the actual test.
   ::opencensus::stats::StatsExporter::RemoveView(view_name);
   ::opencensus::stats::testing::TestUtils::Flush();
 
   test_view_descriptor.RegisterForExport();
-  opencensus::stats::Record({{test_measure, 1}});
+  ::opencensus::stats::Record({{test_measure, 1}});
+  // Flush to propagate existing records to views.
   ::opencensus::stats::testing::TestUtils::Flush();
   EXPECT_THAT(::google::Metrics::SerializeMetricsToPrometheusTextFormat(),
               ::testing::MatchesRegex(
@@ -53,17 +54,19 @@ TEST(SerializeToPrometheusTextTest, SingleOpencensusView) {
                   "# TYPE test_view_1 counter\n"
                   "test_view_1 1.000000 [0-9]*\n"));
 
-  // clean up the view which we registered for export.
+  // Clean up the view which we registered for export.
   ::opencensus::stats::StatsExporter::RemoveView(view_name);
 }
 
 TEST(SerializeToPrometheusTextTest, RecordGceApiRequestErrors) {
-  // remove view and flush the result before the actual test.
+  // Remove view and flush the result before the actual test.
   ::opencensus::stats::StatsExporter::RemoveView(::google::Metrics::kGceApiRequestErrors);
   ::opencensus::stats::testing::TestUtils::Flush();
 
   ::google::Metrics::RecordGceApiRequestErrors(1, "test_kind");
+  // Flush to propagate existing records to views.
   ::opencensus::stats::testing::TestUtils::Flush();
+
   EXPECT_THAT(::google::Metrics::SerializeMetricsToPrometheusTextFormat(),
               ::testing::MatchesRegex(
                   "# HELP container_googleapis_com_internal_metadata_agent_gce_api_request_errors_1 The total number of HTTP request errors.\n"
@@ -71,8 +74,8 @@ TEST(SerializeToPrometheusTextTest, RecordGceApiRequestErrors) {
                   "container_googleapis_com_internal_metadata_agent_gce_api_request_errors_1\\{method=\"test_kind\"\\} 1.000000 [0-9]*\n"
               ));
 
-  // clean up the view which we registered for export.
+  // Clean up the view which we registered for export.
   ::opencensus::stats::StatsExporter::RemoveView(::google::Metrics::kGceApiRequestErrors);
 }
 
-} // namespace google
+}  // namespace google
