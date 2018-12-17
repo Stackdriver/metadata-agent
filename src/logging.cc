@@ -34,10 +34,11 @@ Logger::Logger(const char* file, int line, Severity severity, LogStream* stream)
   // GCC 4.x does not implement std::put_time. Sigh.
   char time_val[20];
   std::strftime(time_val, sizeof(time_val), "%m%d %H:%M:%S ", &local_time);
+  std::hash<std::thread::id> hasher;
   (*this) << kSeverities_[severity]
           << time_val
-          << std::hex << std::this_thread::get_id() << std::dec << " "
-          << file_ << ":" << line_ << " ";
+          << static_cast<unsigned int>(hasher(std::this_thread::get_id())) << " "
+          << file_ << ":" << line_ << "] ";
 }
 
 Logger::~Logger() {
