@@ -21,6 +21,7 @@
 #include "configuration.h"
 #include "health_checker.h"
 #include "http_common.h"
+#include "metrics.h"
 #include "logging.h"
 #include "store.h"
 
@@ -83,6 +84,11 @@ MetadataApiServer::MetadataApiServer(const Configuration& config,
          [=](const HttpServer::request& request,
              std::shared_ptr<HttpServer::connection> conn) {
              HandleHealthz(request, conn);
+         }},
+        {{"GET", "/metrics"},
+         [=](const HttpServer::request& request,
+             std::shared_ptr<HttpServer::connection> conn) {
+             HandleMetrics(request, conn);
          }},
       }, config_.VerboseLogging()),
       server_(
@@ -200,4 +206,18 @@ void MetadataApiServer::HandleHealthz(
   }
 }
 
+void MetadataApiServer::HandleMetrics(
+    const HttpServer::request& request,
+    std::shared_ptr<HttpServer::connection> conn) {
+  std::string response =
+      ::google::Metrics::SerializeMetricsToPrometheusTextFormat();
+  conn->set_status(HttpServer::connection::ok);
+  conn->set_headers(std::map<std::string, std::string>({
+    {"Connection", "close"},
+    {"Content-Length", std::to_string(response.size())},
+    {"Content-Type", "text/plain; version=0.0.4"},
+  }));
+  conn->write(response);
 }
+
+}  // namespace google

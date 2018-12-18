@@ -77,6 +77,8 @@ class MetadataApiServer {
                                std::shared_ptr<HttpServer::connection> conn);
   void HandleHealthz(const HttpServer::request& request,
                      std::shared_ptr<HttpServer::connection> conn);
+  void HandleMetrics(const HttpServer::request& request,
+                     std::shared_ptr<HttpServer::connection> conn);
 
   const Configuration& config_;
   const HealthChecker* health_checker_;

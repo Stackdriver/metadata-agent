@@ -10,3 +10,8 @@
 	path = lib/googletest
 	url = https://github.com/google/googletest
 	ignore = dirty
+[submodule "lib/opencensus-cpp"]
+	path = lib/opencensus-cpp
+	url = https://github.com/census-instrumentation/opencensus-cpp
+	ignore = dirty
+

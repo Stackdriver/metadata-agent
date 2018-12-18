@@ -32,6 +32,7 @@
 #include "http_common.h"
 #include "json.h"
 #include "logging.h"
+#include "metrics.h"
 #include "time.h"
 
 namespace http = boost::network::http;
@@ -139,7 +140,7 @@ std::string Sign(const std::string& data, const PKey& pkey) {
   return std::string(reinterpret_cast<char*>(result.get()), actual_result_size);
 }
 
-}
+}  // namespace
 
 json::value OAuth2::ComputeTokenFromCredentials() const {
   const std::string service_account_email =
@@ -249,11 +250,12 @@ json::value OAuth2::ComputeTokenFromCredentials() const {
     return parsed_token;
   } catch (const json::Exception& e) {
     LOG(ERROR) << e.what();
-    return nullptr;
   } catch (const boost::system::system_error& e) {
     LOG(ERROR) << "HTTP error: " << e.what();
-    return nullptr;
   }
+
+  ::google::Metrics::RecordGceApiRequestErrors(1, "oauth2");
+  return nullptr;
 }
 
 json::value OAuth2::GetMetadataToken() const {
